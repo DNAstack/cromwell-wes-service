@@ -1,0 +1,25 @@
+app:
+  service-info:
+    auth-instruction-url: http://keycloak:8080.com
+    supported-wes-versions:
+    - "1.0.0"
+
+    supported-file-system-protocols:
+    - "gs"
+    - "http"
+    - "file"
+    - "drs"
+    workflow-engine-versions:
+      cromwell: 42
+    workflow-type-versions:
+      WDL:
+      - "draft-2"
+      - "1.0"
+
+server:
+  port: 8090
+
+spring:
+  servlet:
+    multipart:
+      enabled: true
