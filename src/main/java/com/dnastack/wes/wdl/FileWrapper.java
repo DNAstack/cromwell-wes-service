@@ -16,7 +16,6 @@ public class FileWrapper {
     JsonElement original;
 
     @Setter
-    @Getter
     String mappedValue;
 
     @Setter
@@ -29,6 +28,14 @@ public class FileWrapper {
 
     public FileWrapper(JsonElement original) {
         this.original = original;
-        this.mappedValue = original.getAsString();
     }
+
+    public String getMappedValue() {
+        if (mappedValue == null) {
+            return original.toString();
+        } else {
+            return mappedValue;
+        }
+    }
+
 }

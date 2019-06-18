@@ -8,9 +8,9 @@
  * %#
  */
 
-package com.dnastack.wes.wdl;
+package com.dnastack.wes.model.wdl;
 
-import com.dnastack.wes.utils.WdlTypeRepresentation;
+import com.dnastack.wes.model.wdl.WdlTypeRepresentation;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,6 +1,7 @@
 package com.dnastack.wes.model.drs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.gson.annotations.SerializedName;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,7 @@ public class DrsObject {
     String description;
     String id;
 
+    @SerializedName("mime_type")
     @JsonProperty("mime_type")
     String mimeType;
     Long size;
@@ -30,10 +32,12 @@ public class DrsObject {
     String version;
     List<String> aliases;
 
+    @SerializedName("check_sums")
     @JsonProperty("check_sums")
     List<CheckSum> checkSums;
 
     @JsonProperty("access_methods")
+    @SerializedName("access_methods")
     List<AccessMethod> accessMethods;
 
 }

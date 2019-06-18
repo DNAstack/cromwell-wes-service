@@ -1,17 +1,16 @@
 package com.dnastack.wes.mapper;
 
+import com.dnastack.wes.config.JacksonConfig;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
 import com.dnastack.wes.model.cromwell.CromwellStatus;
 import com.dnastack.wes.model.cromwell.CromwellTaskCall;
-import com.dnastack.wes.config.JacksonConfig;
 import com.dnastack.wes.model.wes.Log;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
-import com.dnastack.wes.utils.Constants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -37,7 +36,7 @@ public class CromwellWesMapper {
         return RunStatus.builder().runId(status.getId()).state(mapState(status.getStatus())).build();
     }
 
-    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse) {
+    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> mappedFileObject) {
         RunLog runLog = new RunLog();
         runLog.setRunId(metadataResponse.getId());
         runLog.setState(mapState(metadataResponse.getStatus()));
@@ -49,17 +48,18 @@ public class CromwellWesMapper {
             .name(metadataResponse.getWorkflowName()).build();
         runLog.setRunLog(workflowLog);
         runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
-        runLog.setRequest(mapMetadataToRunRequest(metadataResponse));
+        runLog.setRequest(mapMetadataToRunRequest(metadataResponse, mappedFileObject));
 
         return runLog;
     }
 
-    private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse) {
+    private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> mappedFileObject) {
         RunRequest runRequest = new RunRequest();
         runRequest.setWorkflowType(metadataResponse.getActualWorkflowLanguage());
         runRequest.setWorkflowTypeVersion(metadataResponse.getActualWorkflowLanguageVersions());
         Map<String, Object> options = getWorkflowOptions(metadataResponse);
-        runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(options, metadataResponse.getInputs()));
+        Map<String, String> labels = metadataResponse.getLabels();
+        runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(metadataResponse.getInputs(), mappedFileObject));
         runRequest.setWorkflowEngineParameters(mapOptionsToEngineParameters(options));
         runRequest.setTags(metadataResponse.getLabels());
 
@@ -86,27 +86,24 @@ public class CromwellWesMapper {
         Map<String, String> engineParams = new HashMap<>();
         ObjectMapper mapper = JacksonConfig.getInstance();
         for (Entry<String, Object> entry : workflowOptions.entrySet()) {
-            if (!entry.getKey().equals(Constants.ORIGINAL_FILE_OBJECT_MAPPING)) {
-                try {
-                    engineParams.put(entry.getKey(), mapper.writeValueAsString(entry.getValue()));
-                } catch (IOException e) {
-                    log.error(e.getMessage(), e);
-                }
+            try {
+                engineParams.put(entry.getKey(), mapper.writeValueAsString(entry.getValue()));
+            } catch (IOException e) {
+                log.error(e.getMessage(), e);
             }
+
         }
         return engineParams;
     }
 
-    private static Map<String, Object> mapCromwellInputsToOriginalValues(Map<String, Object> workflowOptions, Map<String, Object> inputs) {
-        if (workflowOptions.containsKey(Constants.ORIGINAL_FILE_OBJECT_MAPPING)) {
-            Object originalFileObject = workflowOptions.get(Constants.ORIGINAL_FILE_OBJECT_MAPPING);
-            if (originalFileObject instanceof Map) {
-                Map<String, Object> originalFiles = (Map<String, Object>) originalFileObject;
-                return inputs.entrySet().stream().map(entry -> {
-                    entry.setValue(mapFileObject(originalFiles, entry.getValue()));
+    private static Map<String, Object> mapCromwellInputsToOriginalValues(Map<String, Object> inputs, Map<String, Object> mappedFileObject) {
+
+        if (mappedFileObject != null) {
+            return inputs.entrySet().stream()
+                .map(entry -> {
+                    entry.setValue(mapFileObject(mappedFileObject, entry.getValue()));
                     return entry;
                 }).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-            }
         }
         return inputs;
 

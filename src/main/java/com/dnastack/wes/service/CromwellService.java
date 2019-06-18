@@ -2,6 +2,7 @@ package com.dnastack.wes.service;
 
 import com.dnastack.wes.client.CromwellClient;
 import com.dnastack.wes.client.WdlValidatorClient;
+import com.dnastack.wes.config.AppConfig;
 import com.dnastack.wes.exception.InvalidRequestException;
 import com.dnastack.wes.mapper.CromwellWesMapper;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
@@ -59,23 +60,33 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * Service layer for converting WES api calls into Cromwell API calls
+ */
 @Slf4j
 @Service
 public class CromwellService {
 
     private final CromwellClient client;
     private final WdlValidatorClient validatorClient;
+    private final FileMappingStore fileMappingStore;
     private final ObjectMapper mapper;
+    private final DrsService drsService;
+    private final AppConfig config;
+    private final TransferService transferService;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, WdlValidatorClient validatorClient, ObjectMapper mapper) {
+    CromwellService(CromwellClient cromwellClient, WdlValidatorClient validatorClient, FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService, ObjectMapper mapper) {
         this.client = cromwellClient;
         this.validatorClient = validatorClient;
         this.mapper = mapper;
+        this.drsService = drsService;
+        this.config = appConfig;
+        this.transferService = transferService;
+        this.fileMappingStore = fileMappingStore;
     }
 
 
@@ -110,6 +121,21 @@ public class CromwellService {
     }
 
 
+    /**
+     * Retrieve a list of runs from cromwell and convert them into <code>RunListResponse</code>. The WES Specification
+     * requires that paginated responses not change after an initial request has been made. This feature is not
+     * supported by cromwell (or by many other databases for that matter), and is also not performant either.
+     * Additionally, cromwell does not provide a mechanism for ordering the listed outputs, therefore all results are
+     * listed from most recent to oldest. Because of this limitation, listing jobs does not provide a guarantee that the
+     * list has not changed since the last time a user fetched results.
+     *
+     * @param pageSize The size of the page to return. If pageToken is provided, then page size will be ignored. If
+     * neither the pageSize or pageToken are defined, then the default page size will be used. {@link
+     * Constants#DEFAULT_PAGE_SIZE}
+     * @param pageToken The page token is an encoded string defining the next page to retrieve from the cromwell server.
+     * It is a base64 encoded query string containing the page size and the next page
+     * @return List of runs with next page set.
+     */
     public RunListResponse listRuns(Integer pageSize, String pageToken) {
 
         CromwellSearch search = new CromwellSearch();
@@ -146,22 +172,92 @@ public class CromwellService {
         return runListResponse;
     }
 
+    /**
+     * Get a Specific Run by retrieving the job metadata from cromwell.
+     *
+     * @param runId The cromwell id
+     * @return a complete run log
+     */
     public RunLog getRun(String runId) {
         CromwellMetadataResponse metadataResponse = client.getMetadata(runId);
-        return CromwellWesMapper.mapMetadataToRunLog(metadataResponse);
+        Map<String, Object> mappedFileObject = fileMappingStore.getMapping(runId);
+        return CromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject);
 
     }
 
+    /**
+     * Get a Specific Run by retrieving the job status from cromwell.
+     *
+     * @param runId The cromwell id
+     * @return a run status
+     */
     public RunStatus getRunStatus(String runId) {
         CromwellStatus status = client.getStatus(runId);
         return CromwellWesMapper.mapCromwellStatusToRunStatus(status);
     }
 
+    /**
+     * Attempt to cancel a workflow in cromwell if the job is in a "cancellable" state
+     *
+     * @param runId The cromwell id
+     * @return a complete run log
+     */
     public RunId cancel(String runId) {
         client.abortWorkflow(runId);
         return RunId.builder().id(runId).build();
     }
 
+
+    /**
+     * Given the user submitted run request, compose a new request to cromwell for executing a workflow. The run request
+     * should contain all of the required information for creating a run.
+     *
+     * <h3>Workflow Files</h3>
+     * <p/>
+     * In a WES call, any workflow descriptor files are contained directly in the request in the form of
+     * <code>workflow_attachments</code>. This flat array of files does correspond to how cromwell expects to receive a
+     * workflowSource file or its dependencies and therefore must be mapped in th following ways:
+     * <ul>
+     * <li><strong>workflowUrl:</strong> If the WES request points to an external URL, this will be passed directly to
+     * cromwell</li>
+     * <li><strong>workflowSource:</strong> If the WES request points to a relative URL contained in the
+     * <code>workflow_attachments</code> then the file referenced by the <code>workflow_url</code> will be read as a
+     * <code>UTF-8</code> string and attached to the cromwell request as the main source file</li>
+     * <li><strong>workflowDependencies:</strong> WES has a different approach to handling dependencies then cromwell
+     * does. In WES all files are submitted as <code>workflow_attachments</code>however with cromwell a distinct zip
+     * file containing the dependencies is what is expected. If a <code>RunRequest</code> contains more then a single
+     * <code>WDL</code> file, then any additional file will be bundled in a Zip File and submitted to cromwell. Source
+     * files will be added to the zip folder according to their submitted file names. For example, if two dependencies
+     * are submitted with the names <code>lib/additional_tasks.wdl</code> and <code>lib/struct/additional_structs.wdl</code>
+     * the resulting zip file will contain entries according to the following:
+     * <pre>
+     * |-lib/
+     *   |- additional_tasks.wdl
+     *   |- struct/
+     *      |- additional_structs.wdl
+     * </pre>
+     * <p>
+     * The user can provide a dependencies file as a <code>workflow_attachment</code> named {@link
+     * Constants#DEPENDENCIES_FILE} which will be sent to cromwell instead of the zip file produced by this method.
+     * </li>
+     * <li><strong>workflowOptions:</strong> Workflow options can be provided in two different ways.
+     * <ol>
+     * <li>A file submitted as a <code>workflow_attachment</code> with the name defined by {@link
+     * Constants#OPTIONS_FILE}. This file is expected to be <code>JSON</code> and will be extracted into a Hashmap and
+     * merged with the options submitted by <code>engine_parameters</code></li>
+     * <li>Key-Value pairs provided by the {@link RunRequest#workflowEngineParameters}. The values will extracted as
+     * <code>JSON</code> before being merged in the options map.
+     * </li>
+     * </ol>
+     * </li>
+     * <li><strong>workflowInputs</strong> The WES inputs will be expected to be in the same format which cromwell
+     * accepts. Any files that are provided as <code>DRS</code> objects will be expected to be mapped into a resolvable
+     * URL that will work with the specific cromwell backend. Additionally, if the object transfer service is configured
+     * then, files will be mapped into their final destination and then localized by the object transfer service.
+     * Original mappings of the input files will be stored as a <code>worfklowOption</code> under the key {@link
+     * Constants#ORIGINAL_FILE_OBJECT_MAPPING}</li>
+     * </ul>
+     */
     public RunId execute(RunRequest runRequest) {
         try {
             Path tempDirectory = null;
@@ -180,15 +276,20 @@ public class CromwellService {
                 }
                 executionRequest.setLabels(runRequest.getTags());
                 WdlFileProcessor processor = setWorkflowInputs(runRequest, executionRequest);
-                setWorkflowOptions(runRequest, executionRequest, processor);
+                setWorkflowOptions(runRequest, executionRequest);
                 executionRequest.setWorkflowOnHold(processor != null && processor.requiresTransfer());
 
                 CromwellStatus status = client.createWorkflow(executionRequest);
 
                 if (processor != null && processor.requiresTransfer()) {
-                    transferFilesAsync(processor, status);
+                    transferService.transferFilesAsync(processor, () -> {
+                        client.releaseHold(status.getId());
+                    });
                 }
 
+                if (processor != null) {
+                    fileMappingStore.saveMapping(status.getId(), processor.getMappedFiles());
+                }
                 return RunId.builder().id(status.getId()).build();
             } finally {
                 if (tempDirectory != null && tempDirectory.toFile().exists()) {
@@ -199,12 +300,13 @@ public class CromwellService {
         } catch (IOException e) {
             throw new InvalidRequestException(e.getMessage(), e);
         } catch (FeignException e) {
-            log.error(e.contentUTF8());
+            log.error(e.getMessage(), e);
             throw new InvalidRequestException(e.getMessage(), e);
         }
     }
 
-    private void setWorkflowOptions(RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest, WdlFileProcessor processor) throws IOException {
+
+    private void setWorkflowOptions(RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) throws IOException {
         Map<String, String> engineParams = runRequest.getWorkflowEngineParameters();
         Map<String, Object> cromwellOptions = new HashMap<>();
         Optional<MultipartFile> optionsFile = Stream.of(runRequest.getWorkflowAttachments())
@@ -229,10 +331,6 @@ public class CromwellService {
                 objectNode.set(entry.getKey(), node);
             }
             cromwellOptions.putAll(mapper.readValue(mapper.treeAsTokens(objectNode), typeReference));
-        }
-
-        if (processor != null && !processor.getMappedFiles().isEmpty()) {
-            cromwellOptions.put(Constants.ORIGINAL_FILE_OBJECT_MAPPING, processor.getMappedFiles());
         }
 
         cromwellExecutionRequest.setWorkflowOptions(cromwellOptions);
@@ -273,7 +371,6 @@ public class CromwellService {
                     .filter(file -> file.getOriginalFilename().endsWith(".wdl")).collect(Collectors.toList());
                 cromwellRequest.setWorkflowDependencies(createDependenciesZip(tempDirectory, wdls));
             }
-
         }
         cromwellRequest.setWorkflowInputs(runRequest.getWorkflowParams());
 
@@ -348,12 +445,13 @@ public class CromwellService {
             processor.applyFileMapping(new FileMapper() {
                 @Override
                 public void map(FileWrapper wrapper) {
-
+                    String mappedUrl = drsService.extractObjectUrl(wrapper.getOriginal());
+                    wrapper.setMappedValue(mappedUrl);
                 }
 
                 @Override
                 public boolean shouldMap(FileWrapper wrapper) {
-                    return false;
+                    return drsService.isDrsObject(wrapper.getOriginal());
                 }
             });
             cromwellInputs.putAll(processor.getProcessedInputs());
@@ -383,8 +481,4 @@ public class CromwellService {
         return validatorClient.validate(request);
     }
 
-    @Async
-    public void transferFilesAsync(WdlFileProcessor fileProcessor, CromwellStatus status) {
-
-    }
 }

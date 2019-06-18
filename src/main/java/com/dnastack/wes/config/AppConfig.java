@@ -14,4 +14,8 @@ public class AppConfig {
 
     ServiceInfo serviceInfo = new ServiceInfo();
 
+    DrsConfig drsConfig = new DrsConfig();
+
+    String fileMappingDirectory = System.getProperty("java.io.tmpdir") + "/cromwell-object-mappings";
+
 }

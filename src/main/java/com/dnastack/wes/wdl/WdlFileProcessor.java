@@ -12,7 +12,7 @@ package com.dnastack.wes.wdl;
 
 import com.dnastack.wes.model.wdl.WdlField;
 import com.dnastack.wes.model.wdl.WdlValidationResponse;
-import com.dnastack.wes.utils.WdlTypeRepresentation;
+import com.dnastack.wes.model.wdl.WdlTypeRepresentation;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -59,9 +59,10 @@ public class WdlFileProcessor {
         return mappedFiles.stream().map(FileWrapper::getRequiresTransfer).reduce(false, Boolean::logicalOr);
     }
 
-    public Map<String, String> getMappedFiles() {
+    public Map<String, Object> getMappedFiles() {
+
         return mappedFiles.stream().filter(FileWrapper::getWasMapped)
-            .collect(Collectors.toMap(FileWrapper::getMappedValue, (wrap) -> wrap.getOriginal().toString()));
+            .collect(Collectors.toMap(FileWrapper::getMappedValue, (wrap) -> gson.fromJson(wrap.getOriginal(),Object.class)));
     }
 
     public void applyFileMapping(FileMapper mapper) {

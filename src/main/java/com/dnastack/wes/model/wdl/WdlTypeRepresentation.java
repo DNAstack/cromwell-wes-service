@@ -8,7 +8,7 @@
  * %#
  */
 
-package com.dnastack.wes.utils;
+package com.dnastack.wes.model.wdl;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;

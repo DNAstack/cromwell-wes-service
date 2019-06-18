@@ -4,8 +4,10 @@ package com.dnastack.wes.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Client;
 import feign.Feign;
+import feign.Feign.Builder;
 import feign.Logger;
 import feign.Logger.Level;
+import feign.auth.BasicAuthRequestInterceptor;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
 import feign.form.FormEncoder;
@@ -38,34 +40,36 @@ public class ClientConfigurations {
     }
 
 
+    private class SimpleLogger extends Logger {
+
+        @Override
+        protected void log(String configKey, String format, Object... args) {
+            log.info("{} {}", configKey, String.format(format, args));
+
+        }
+    }
+
     @Bean
-    public CromwellClient cromwellClient(CromwellAuthRequestInterceptor authRequestInterceptor, CromwellConfig cromwellConfig) {
+    public CromwellClient cromwellClient(CromwellConfig cromwellConfig) {
         Client httpClient = new OkHttpClient();
 
-        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new Logger() {
+        Builder builder = Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder())
+            .logger(new SimpleLogger()).logLevel(Level.BASIC);
+        if (cromwellConfig.getPassword() != null && cromwellConfig.getUsername() != null) {
+            builder.requestInterceptor(new BasicAuthRequestInterceptor(cromwellConfig
+                .getUsername(), cromwellConfig.getPassword()));
+        }
 
-            @Override
-            protected void log(String configKey, String format, Object... args) {
-                log.info("{} {}", configKey, String.format(format, args));
+        return builder.target(CromwellClient.class, cromwellConfig.getUrl());
 
-            }
-        }).logLevel(Level.BASIC)
-            .requestInterceptor(authRequestInterceptor)
-            .target(CromwellClient.class, cromwellConfig.getUrl());
     }
 
     @Bean
     public WdlValidatorClient wdlValidatorClient(WdlValidatorClientConfig validatorConfig) {
         Client httpClient = new OkHttpClient();
 
-        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new Logger() {
-
-            @Override
-            protected void log(String configKey, String format, Object... args) {
-                log.info("{} {}", configKey, String.format(format, args));
-
-            }
-        }).logLevel(Level.BASIC)
+        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
+            .logLevel(Level.BASIC)
             .target(WdlValidatorClient.class, validatorConfig.getUrl());
     }
 

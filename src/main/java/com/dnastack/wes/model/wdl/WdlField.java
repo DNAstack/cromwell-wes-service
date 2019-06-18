@@ -1,6 +1,5 @@
 package com.dnastack.wes.model.wdl;
 
-import com.dnastack.wes.utils.WdlTypeRepresentation;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

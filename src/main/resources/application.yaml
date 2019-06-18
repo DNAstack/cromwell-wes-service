@@ -15,6 +15,9 @@ app:
       WDL:
       - "draft-2"
       - "1.0"
+  drs:
+    supported-types:
+    - "file"
 
 server:
   port: 8090
