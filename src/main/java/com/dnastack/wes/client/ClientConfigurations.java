@@ -7,6 +7,7 @@ import feign.Feign;
 import feign.Feign.Builder;
 import feign.Logger;
 import feign.Logger.Level;
+import feign.Target;
 import feign.auth.BasicAuthRequestInterceptor;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
@@ -71,6 +72,14 @@ public class ClientConfigurations {
         return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
             .logLevel(Level.BASIC)
             .target(WdlValidatorClient.class, validatorConfig.getUrl());
+    }
+
+    @Bean
+    public DrsClient drsClient() {
+        Client httpClient = new OkHttpClient();
+        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
+            .logLevel(Level.BASIC)
+            .target(Target.EmptyTarget.create(DrsClient.class));
     }
 
 
