@@ -2,9 +2,9 @@ package com.dnastack.wes.service;
 
 import com.dnastack.wes.client.CromwellClient;
 import com.dnastack.wes.client.WdlValidatorClient;
-import com.dnastack.wes.config.AppConfig;
-import com.dnastack.wes.exception.InvalidRequestException;
-import com.dnastack.wes.mapper.CromwellWesMapper;
+import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.drs.DrsService;
+import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
@@ -20,9 +20,7 @@ import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
-import com.dnastack.wes.utils.Constants;
-import com.dnastack.wes.wdl.FileMapper;
-import com.dnastack.wes.wdl.FileWrapper;
+import com.dnastack.wes.Constants;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -45,6 +43,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -69,20 +68,18 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 @Service
 public class CromwellService {
-
+    private final static ObjectMapper mapper = new ObjectMapper();
     private final CromwellClient client;
     private final WdlValidatorClient validatorClient;
     private final FileMappingStore fileMappingStore;
-    private final ObjectMapper mapper;
     private final DrsService drsService;
     private final AppConfig config;
     private final TransferService transferService;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, WdlValidatorClient validatorClient, FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService, ObjectMapper mapper) {
+    CromwellService(CromwellClient cromwellClient, WdlValidatorClient validatorClient, FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService) {
         this.client = cromwellClient;
         this.validatorClient = validatorClient;
-        this.mapper = mapper;
         this.drsService = drsService;
         this.config = appConfig;
         this.transferService = transferService;
@@ -254,8 +251,6 @@ public class CromwellService {
      * accepts. Any files that are provided as <code>DRS</code> objects will be expected to be mapped into a resolvable
      * URL that will work with the specific cromwell backend. Additionally, if the object transfer service is configured
      * then, files will be mapped into their final destination and then localized by the object transfer service.
-     * Original mappings of the input files will be stored as a <code>worfklowOption</code> under the key {@link
-     * Constants#ORIGINAL_FILE_OBJECT_MAPPING}</li>
      * </ul>
      */
     public RunId execute(RunRequest runRequest) {
@@ -282,7 +277,7 @@ public class CromwellService {
                 CromwellStatus status = client.createWorkflow(executionRequest);
 
                 if (processor != null && processor.requiresTransfer()) {
-                    transferService.transferFilesAsync(processor, () -> {
+                    transferService.transferFilesAsync(processor, (x,y) -> {
                         client.releaseHold(status.getId());
                     });
                 }
@@ -441,19 +436,7 @@ public class CromwellService {
         WdlFileProcessor processor = null;
         if (runRequest.getWorkflowParams() != null && !runRequest.getWorkflowParams().isEmpty()) {
             WdlValidationResponse schema = getWorkflowSchema(runRequest);
-            processor = new WdlFileProcessor(runRequest.getWorkflowParams(), schema);
-            processor.applyFileMapping(new FileMapper() {
-                @Override
-                public void map(FileWrapper wrapper) {
-                    String mappedUrl = drsService.extractObjectUrl(wrapper.getOriginal());
-                    wrapper.setMappedValue(mappedUrl);
-                }
-
-                @Override
-                public boolean shouldMap(FileWrapper wrapper) {
-                    return drsService.isDrsObject(wrapper.getOriginal());
-                }
-            });
+            processor = new WdlFileProcessor(runRequest.getWorkflowParams(), schema, Arrays.asList(drsService));
             cromwellInputs.putAll(processor.getProcessedInputs());
         }
         executionRequest.setWorkflowInputs(cromwellInputs);

@@ -13,17 +13,21 @@
 
 
   <groupId>com.dnastack</groupId>
-  <artifactId>wes-cromwell-service</artifactId>
+  <artifactId>wes-service</artifactId>
   <version>1.0-SNAPSHOT</version>
 
   <properties>
     <java.version>11</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
+    <feign.version>10.2.0</feign.version>
+    <feign-form.version>3.8.0</feign-form.version>
     <lombok.version>1.18.2</lombok.version>
     <lombok.plugin.version>1.18.0.0</lombok.plugin.version>
     <spring-cloud.version>Greenwich.RC2</spring-cloud.version>
     <springfox-swagger.version>2.9.2</springfox-swagger.version>
+
+    <org.jdbi.version>3.6.0</org.jdbi.version>
   </properties>
 
   <repositories>
@@ -54,25 +58,22 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-starter</artifactId>
+      <artifactId>spring-cloud-starter-config</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-starter-config</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
-    <!--<dependency>-->
-    <!--<groupId>org.springframework.boot</groupId>-->
-    <!--<artifactId>spring-boot-starter-security</artifactId>-->
-    <!--</dependency>-->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-configuration-processor</artifactId>
       <optional>true</optional>
     </dependency>
+
     <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
     <dependency>
       <groupId>com.google.code.gson</groupId>
@@ -82,22 +83,47 @@
     <dependency>
       <groupId>io.github.openfeign.form</groupId>
       <artifactId>feign-form</artifactId>
-      <version>3.8.0</version>
+      <version>${feign-form.version}</version>
     </dependency>
     <dependency>
       <groupId>io.github.openfeign</groupId>
       <artifactId>feign-core</artifactId>
-      <version>10.2.0</version>
+      <version>${feign.version}</version>
     </dependency>
     <dependency>
       <groupId>io.github.openfeign</groupId>
       <artifactId>feign-okhttp</artifactId>
-      <version>10.2.0</version>
+      <version>${feign.version}</version>
     </dependency>
     <dependency>
       <groupId>io.github.openfeign</groupId>
       <artifactId>feign-jackson</artifactId>
-      <version>10.2.0</version>
+      <version>${feign.version}</version>
+    </dependency>
+
+    <!--database connections -->
+    <dependency>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi3-core</artifactId>
+      <version>${org.jdbi.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi3-sqlobject</artifactId>
+      <version>${org.jdbi.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.liquibase</groupId>
+      <artifactId>liquibase-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
     </dependency>
 
     <!--Jackson-->
@@ -115,11 +141,6 @@
       <artifactId>springfox-swagger2</artifactId>
       <version>${springfox-swagger.version}</version>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 

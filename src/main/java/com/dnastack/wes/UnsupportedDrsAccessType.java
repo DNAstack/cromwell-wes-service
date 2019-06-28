@@ -1,4 +1,4 @@
-package com.dnastack.wes.exception;
+package com.dnastack.wes;
 
 public class UnsupportedDrsAccessType extends RuntimeException {
 

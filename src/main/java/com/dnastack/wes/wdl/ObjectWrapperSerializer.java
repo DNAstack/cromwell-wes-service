@@ -5,10 +5,10 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import java.io.IOException;
 
-public class FileWrapperSerializer extends JsonSerializer<FileWrapper> {
+public class ObjectWrapperSerializer extends JsonSerializer<ObjectWrapper> {
 
     @Override
-    public void serialize(FileWrapper value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+    public void serialize(ObjectWrapper value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
         gen.writeString(value.getMappedValue());
     }
 }

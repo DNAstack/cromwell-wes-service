@@ -11,8 +11,8 @@
 package com.dnastack.wes.wdl;
 
 import com.dnastack.wes.model.wdl.WdlField;
-import com.dnastack.wes.model.wdl.WdlValidationResponse;
 import com.dnastack.wes.model.wdl.WdlTypeRepresentation;
+import com.dnastack.wes.model.wdl.WdlValidationResponse;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -43,33 +43,46 @@ public class WdlFileProcessor {
     private Map<String, Object> processedInputs;
     private WdlValidationResponse validationResponse;
     private Gson gson;
-    private List<FileWrapper> mappedFiles;
 
+    @Getter
+    private List<ObjectWrapper> mappedObjects;
+    private final List<ObjectTranslator> translators;
 
-    public WdlFileProcessor(Map<String, Object> inputs, WdlValidationResponse validationResponse) {
+    public WdlFileProcessor(Map<String, Object> inputs, WdlValidationResponse validationResponse, List<ObjectTranslator> translators) {
         this.inputs = inputs;
         this.validationResponse = validationResponse;
         this.gson = new Gson();
-        this.mappedFiles = new ArrayList<>();
+        this.mappedObjects = new ArrayList<>();
+        this.translators = translators;
         processInputs();
+        applyTranslators();
     }
 
 
     public boolean requiresTransfer() {
-        return mappedFiles.stream().map(FileWrapper::getRequiresTransfer).reduce(false, Boolean::logicalOr);
+        return mappedObjects.stream().map(ObjectWrapper::getRequiresTransfer).reduce(false, Boolean::logicalOr);
     }
 
     public Map<String, Object> getMappedFiles() {
 
-        return mappedFiles.stream().filter(FileWrapper::getWasMapped)
-            .collect(Collectors.toMap(FileWrapper::getMappedValue, (wrap) -> gson.fromJson(wrap.getOriginal(),Object.class)));
+        return mappedObjects.stream().filter(ObjectWrapper::getWasMapped)
+            .collect(Collectors
+                .toMap(ObjectWrapper::getMappedValue, (wrap) -> gson.fromJson(wrap.getOriginal(), Object.class)));
     }
 
-    public void applyFileMapping(FileMapper mapper) {
-        for (FileWrapper wrapper : mappedFiles) {
-            if (mapper.shouldMap(wrapper)) {
-                mapper.map(wrapper);
-                wrapper.setWasMapped(true);
+
+    private void applyTranslators() {
+        if (translators != null) {
+            for (ObjectWrapper wrapper : mappedObjects) {
+                Optional<ObjectTranslator> optionalTranslator = translators.
+                    stream().filter(translator -> translator.shouldMap(wrapper)).findFirst();
+
+                if (optionalTranslator.isPresent()) {
+                    ObjectTranslator translator = optionalTranslator.get();
+                    String mappedUrl = translator.mapToUrl(wrapper);
+                    wrapper.setWasMapped(true);
+                    wrapper.setMappedValue(mappedUrl);
+                }
             }
         }
     }
@@ -109,8 +122,8 @@ public class WdlFileProcessor {
         } else if (type.equalsIgnoreCase("boolean")) {
             return inputValue.getAsBoolean();
         } else if (type.equalsIgnoreCase("file")) {
-            FileWrapper wrapper = new FileWrapper(inputValue);
-            mappedFiles.add(wrapper);
+            ObjectWrapper wrapper = new ObjectWrapper(inputValue);
+            mappedObjects.add(wrapper);
             return wrapper;
         } else if (type.equalsIgnoreCase("string")) {
             return inputValue.getAsString();

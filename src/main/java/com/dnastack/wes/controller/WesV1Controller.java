@@ -1,7 +1,7 @@
 package com.dnastack.wes.controller;
 
 
-import com.dnastack.wes.config.AppConfig;
+import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;

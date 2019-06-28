@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: Patrick Magee
+      changes:
+      - createTable:
+          tableName: file_mappings
+          columns:
+          - column:
+              name: id
+              type: varchar
+              constraints:
+                nullable: false
+              remarks: |-
+                The WES Run identifier for these mappings
+          - column:
+              name: mapping
+              type: jsonb
+              remarks: |-
+                An object containing the mappings for this run.
+          - addPrimaryKey:
+              constraintName: pk_file_mappings
+              tableName: file_mappings
+              columnNames: ["id"]

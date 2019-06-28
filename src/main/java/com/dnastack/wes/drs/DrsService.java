@@ -1,12 +1,13 @@
-package com.dnastack.wes.service;
+package com.dnastack.wes.drs;
 
-import com.dnastack.wes.config.AppConfig;
-import com.dnastack.wes.config.DrsConfig;
-import com.dnastack.wes.exception.UnsupportedDrsAccessType;
+import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.UnsupportedDrsAccessType;
 import com.dnastack.wes.model.drs.AccessMethod;
 import com.dnastack.wes.model.drs.AccessType;
 import com.dnastack.wes.model.drs.AccessURL;
 import com.dnastack.wes.model.drs.DrsObject;
+import com.dnastack.wes.wdl.ObjectTranslator;
+import com.dnastack.wes.wdl.ObjectWrapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -15,7 +16,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
-public class DrsService {
+public class DrsService implements ObjectTranslator {
 
     private DrsConfig drsConfig;
 
@@ -39,7 +40,7 @@ public class DrsService {
         String accessUrl = null;
         for (AccessMethod accessMethod : accessMethods) {
             AccessType accessType = accessMethod.getType();
-            if (accessMethod.getAccessUrl() != null && drsConfig.getSupportedTypes().contains(accessType.toString())){
+            if (accessMethod.getAccessUrl() != null && drsConfig.getSupportedTypes().contains(accessType.toString())) {
                 AccessURL url = accessMethod.getAccessUrl();
                 accessUrl = url.getUrl();
                 break;
@@ -51,5 +52,15 @@ public class DrsService {
                 "Could not identify a supported AccessType for DRS object: " + drsObject.getId());
         }
         return accessUrl;
+    }
+
+    @Override
+    public String mapToUrl(ObjectWrapper wrapper) {
+        return extractObjectUrl(wrapper.getOriginal());
+    }
+
+    @Override
+    public boolean shouldMap(ObjectWrapper wrapper) {
+        return isDrsObject(wrapper.getOriginal());
     }
 }

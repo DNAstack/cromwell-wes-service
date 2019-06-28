@@ -1,4 +1,4 @@
-package com.dnastack.wes.config;
+package com.dnastack.wes.drs;
 
 import com.dnastack.wes.model.drs.AccessType;
 import java.util.Arrays;

@@ -1,24 +1,26 @@
-package com.dnastack.wes.model.wes;
+package com.dnastack.wes.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
+
 
 @Getter
 @Setter
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @EqualsAndHashCode
-public class ErrorResponse {
+@Builder
+public class FileMapping {
 
-    @JsonProperty("msg")
-    String msg;
+    String id;
 
-    @JsonProperty("error_code")
-    Integer errorCode;
+    Map<String,Object> mapping;
+
 }

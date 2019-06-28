@@ -9,8 +9,8 @@ import lombok.Setter;
 
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonSerialize(using = FileWrapperSerializer.class)
-public class FileWrapper {
+@JsonSerialize(using = ObjectWrapperSerializer.class)
+public class ObjectWrapper {
 
     @Getter
     JsonElement original;
@@ -26,7 +26,7 @@ public class FileWrapper {
     @Getter
     Boolean requiresTransfer = false;
 
-    public FileWrapper(JsonElement original) {
+    public ObjectWrapper(JsonElement original) {
         this.original = original;
     }
 

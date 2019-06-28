@@ -1,5 +1,6 @@
-package com.dnastack.wes.config;
+package com.dnastack.wes;
 
+import com.dnastack.wes.drs.DrsConfig;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +16,5 @@ public class AppConfig {
     ServiceInfo serviceInfo = new ServiceInfo();
 
     DrsConfig drsConfig = new DrsConfig();
-
-    String fileMappingDirectory = System.getProperty("java.io.tmpdir") + "/cromwell-object-mappings";
 
 }

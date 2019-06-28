@@ -1,6 +1,5 @@
-package com.dnastack.wes.mapper;
+package com.dnastack.wes.service;
 
-import com.dnastack.wes.config.JacksonConfig;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
 import com.dnastack.wes.model.cromwell.CromwellStatus;
@@ -25,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CromwellWesMapper {
+
+    private final static ObjectMapper objectMapper = new ObjectMapper();
 
     public static RunListResponse mapCromwellResponseToRunListResposne(CromwellResponse response) {
         return RunListResponse.builder()
@@ -58,7 +59,6 @@ public class CromwellWesMapper {
         runRequest.setWorkflowType(metadataResponse.getActualWorkflowLanguage());
         runRequest.setWorkflowTypeVersion(metadataResponse.getActualWorkflowLanguageVersions());
         Map<String, Object> options = getWorkflowOptions(metadataResponse);
-        Map<String, String> labels = metadataResponse.getLabels();
         runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(metadataResponse.getInputs(), mappedFileObject));
         runRequest.setWorkflowEngineParameters(mapOptionsToEngineParameters(options));
         runRequest.setTags(metadataResponse.getLabels());
@@ -72,7 +72,7 @@ public class CromwellWesMapper {
         if (submittedFiles != null) {
             String options = submittedFiles.getOrDefault("options", "{}");
             try {
-                optionsMap = JacksonConfig.getInstance().readValue(options, new TypeReference<Map<String, Object>>() {
+                optionsMap = objectMapper.readValue(options, new TypeReference<Map<String, Object>>() {
                 });
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
@@ -84,10 +84,9 @@ public class CromwellWesMapper {
 
     private static Map<String, String> mapOptionsToEngineParameters(Map<String, Object> workflowOptions) {
         Map<String, String> engineParams = new HashMap<>();
-        ObjectMapper mapper = JacksonConfig.getInstance();
         for (Entry<String, Object> entry : workflowOptions.entrySet()) {
             try {
-                engineParams.put(entry.getKey(), mapper.writeValueAsString(entry.getValue()));
+                engineParams.put(entry.getKey(), objectMapper.writeValueAsString(entry.getValue()));
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
             }
