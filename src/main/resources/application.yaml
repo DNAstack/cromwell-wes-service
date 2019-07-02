@@ -1,6 +1,6 @@
 app:
   service-info:
-    auth-instruction-url: http://keycloak:8080.com
+    auth-instruction-url: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/.well-known/openid-configuration"
     supported-wes-versions:
     - "1.0.0"
 
@@ -18,11 +18,15 @@ app:
   drs:
     supported-types:
     - "file"
+  keycloak:
+    baseUrl: "https://wep-keycloak.staging.dnastack.com/auth"
+    clientId: "${security.oauth2.client.client-id}"
 
 server:
   port: 8090
 
 spring:
+  security.oauth2.resourceserver.jwt.issuer-uri: ${app.keycloak.baseUrl}/realms/DNAstack
   servlet:
     multipart:
       enabled: true
@@ -44,3 +48,11 @@ spring:
             # Fix for cosmetic error on startup `HHH000424: Disabling contextual LOB creation as createClob() method threw error`
             non_contextual_creation: true
     database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+security.oauth2.client:
+  client-id: wes-service
+  client-secret: e5c145eb-2f2e-4d3e-949c-c5a9f247fd01
+  user-authorization-uri: "${app.keycloak.baseUrl}/realms/DNAstack/protocol/openid-connect/auth"
+  access-token-uri: ${app.keycloak.baseUrl}/realms/DNAstack/protocol/openid-connect/token
+  scope: openid
+  grant-type: client_credentials
+

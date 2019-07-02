@@ -17,4 +17,6 @@ public class AppConfig {
 
     DrsConfig drsConfig = new DrsConfig();
 
+    private String identityProvider = "keycloak";
+
 }

@@ -9,9 +9,11 @@ import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.service.CromwellService;
+import java.security.Principal;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,16 +38,20 @@ public class WesV1Controller {
         this.config = config;
     }
 
+    @PreAuthorize("permitAll()")
     @GetMapping(value = "/service-info", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE})
-    public ServiceInfo getServiceInfo() {
+    public ServiceInfo getServiceInfo(Principal user) {
         ServiceInfo serviceInfo = config.getServiceInfo();
-        serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
+        if (user != null) {
+            serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
+        }
         serviceInfo.setWorkflowEngineVersions(adapter.getEngineVersions());
         return serviceInfo;
     }
 
 
+    @PreAuthorize("isFullyAuthenticated()")
     @PostMapping(value = "/runs", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
@@ -63,24 +69,32 @@ public class WesV1Controller {
         return adapter.execute(runRequest);
     }
 
+
+    @PreAuthorize("isFullyAuthenticated()")
     @GetMapping(path = "/runs", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public RunListResponse getRuns(@RequestParam(value = "page_size", required = false) Integer pageSize,
         @RequestParam(value = "page_token", required = false) String pageToken) {
         return adapter.listRuns(pageSize, pageToken);
     }
 
+
+    @PreAuthorize("isFullyAuthenticated()")
     @GetMapping(value = "/runs/{run_id}", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE})
     public RunLog getRun(@PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
+
+    @PreAuthorize("isFullyAuthenticated()")
     @GetMapping(value = "/runs/{run_id}/status", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE})
     public RunStatus getRunStatus(@PathVariable("run_id") String runId) {
         return adapter.getRunStatus(runId);
     }
 
+
+    @PreAuthorize("isFullyAuthenticated()")
     @PostMapping(path = "/runs/{runId}/cancel", produces =
         MediaType.APPLICATION_JSON_UTF8_VALUE)
     public RunId cancelRun(@PathVariable("runId") String runId) {
