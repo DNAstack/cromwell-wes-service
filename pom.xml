@@ -26,7 +26,7 @@
     <lombok.plugin.version>1.18.0.0</lombok.plugin.version>
     <spring-cloud.version>Greenwich.RC2</spring-cloud.version>
     <springfox-swagger.version>2.9.2</springfox-swagger.version>
-
+    <jsonwebtoken.version>0.9.1</jsonwebtoken.version>
     <org.jdbi.version>3.6.0</org.jdbi.version>
   </properties>
 
@@ -159,6 +159,10 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
     </dependency>
     <dependency>
       <groupId>io.springfox</groupId>

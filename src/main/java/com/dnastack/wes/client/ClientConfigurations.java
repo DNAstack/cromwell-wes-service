@@ -1,6 +1,8 @@
 package com.dnastack.wes.client;
 
 
+import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.model.oauth.AccessToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Client;
 import feign.Feign;
@@ -82,5 +84,33 @@ public class ClientConfigurations {
             .target(Target.EmptyTarget.create(DrsClient.class));
     }
 
+    @Bean
+    public ExternalAccountClient externalAccountClient(AppConfig appConfig) {
+        Client httpClient = new OkHttpClient();
+        return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder())
+            .logger(new SimpleLogger())
+            .logLevel(Level.BASIC)
+            .target(ExternalAccountClient.class, appConfig.getTransferConfig().getExternalAccountUri());
+    }
+
+    @Bean
+    public OauthTokenClient oauthTokenClient(AppConfig appConfig) {
+        Client httpClient = new OkHttpClient();
+        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
+            .logLevel(Level.BASIC)
+            .target(OauthTokenClient.class, appConfig.getOauthConfig().getOidcTokenUri());
+    }
+
+    @Bean
+    public TransferServiceClient transferServiceClient(AppConfig appConfig, OAuthTokenCache tokenCache) {
+        Client httpClient = new OkHttpClient();
+        return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder()).logger(new SimpleLogger())
+            .logLevel(Level.BASIC)
+            .requestInterceptor((template) -> {
+                AccessToken accessToken = tokenCache.getToken();
+                template.header("Authorization", "Bearer " + accessToken.getToken());
+            })
+            .target(TransferServiceClient.class, appConfig.getTransferConfig().getObjectTransferUri());
+    }
 
 }

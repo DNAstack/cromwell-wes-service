@@ -25,9 +25,10 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     @Autowired
     public SecurityConfiguration(Map<String, JwtAuthenticationConverter> converterMap, AppConfig appConfig) {
-        this.jwtAuthenticationConverter = converterMap.get(appConfig.getIdentityProvider());
+        this.jwtAuthenticationConverter = converterMap.get(appConfig.getOauthConfig().getIdentityProvider());
         if (this.jwtAuthenticationConverter == null) {
-            throw new IllegalArgumentException("Unrecognized identity provider " + appConfig.getIdentityProvider());
+            throw new IllegalArgumentException(
+                "Unrecognized identity provider " + appConfig.getOauthConfig().getIdentityProvider());
         }
     }
 

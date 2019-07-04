@@ -11,6 +11,7 @@ import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.service.CromwellService;
 import java.security.Principal;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 
+@Slf4j
 @RestController
 @RequestMapping("/ga4gh/wes/v1")
 public class WesV1Controller {
@@ -54,7 +56,7 @@ public class WesV1Controller {
     @PreAuthorize("isFullyAuthenticated()")
     @PostMapping(value = "/runs", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
+    public RunId submitRun(Principal principal, @RequestPart("workflow_url") String workflowUrl,
         @RequestPart(name = "workflow_type", required = false) String workflowType,
         @RequestPart(name = "workflow_type_version", required = false) String workflowTypeVersion,
         @RequestPart(name = "workflow_engine_parameters", required = false) Map<String, String> workflowEngineParams,
@@ -66,7 +68,7 @@ public class WesV1Controller {
             .workflowEngineParameters(workflowEngineParams).workflowParams(workflowParams)
             .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments).tags(tags).build();
 
-        return adapter.execute(runRequest);
+        return adapter.execute(principal, runRequest);
     }
 
 

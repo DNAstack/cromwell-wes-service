@@ -1,10 +1,11 @@
 package com.dnastack.wes.service;
 
+import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.Constants;
+import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.client.CromwellClient;
 import com.dnastack.wes.client.WdlValidatorClient;
-import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.drs.DrsService;
-import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
@@ -20,7 +21,8 @@ import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
-import com.dnastack.wes.Constants;
+import com.dnastack.wes.transfer.TransferContext;
+import com.dnastack.wes.transfer.TransferService;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,6 +44,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -68,6 +71,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 @Service
 public class CromwellService {
+
     private final static ObjectMapper mapper = new ObjectMapper();
     private final CromwellClient client;
     private final WdlValidatorClient validatorClient;
@@ -253,7 +257,7 @@ public class CromwellService {
      * then, files will be mapped into their final destination and then localized by the object transfer service.
      * </ul>
      */
-    public RunId execute(RunRequest runRequest) {
+    public RunId execute(Principal principal, RunRequest runRequest) {
         try {
             Path tempDirectory = null;
             try {
@@ -269,23 +273,28 @@ public class CromwellService {
                 } else {
                     setWorkflowSourceAndDependencies(tempDirectory, runRequest, executionRequest);
                 }
-                executionRequest.setLabels(runRequest.getTags());
                 WdlFileProcessor processor = setWorkflowInputs(runRequest, executionRequest);
-                setWorkflowOptions(runRequest, executionRequest);
-                executionRequest.setWorkflowOnHold(processor != null && processor.requiresTransfer());
-
-                CromwellStatus status = client.createWorkflow(executionRequest);
-
-                if (processor != null && processor.requiresTransfer()) {
-                    transferService.transferFilesAsync(processor, (x,y) -> {
-                        client.releaseHold(status.getId());
-                    });
-                }
 
                 if (processor != null) {
+                    transferService.configureObjectsForTransfer(processor.getMappedObjects());
+                }
+
+                setWorkflowLabels(principal, runRequest, executionRequest);
+                setWorkflowOptions(runRequest, executionRequest);
+                executionRequest.setWorkflowOnHold(processor != null && processor.requiresTransfer());
+                CromwellStatus status = client.createWorkflow(executionRequest);
+                RunId runId = RunId.builder().id(status.getId()).build();
+
+                if (processor != null) {
+                    if (processor.requiresTransfer()) {
+                        transferService
+                            .transferFiles(new TransferContext(runId.getId(), processor, null, this::transferCallBack));
+                    }
+
                     fileMappingStore.saveMapping(status.getId(), processor.getMappedFiles());
                 }
-                return RunId.builder().id(status.getId()).build();
+
+                return runId;
             } finally {
                 if (tempDirectory != null && tempDirectory.toFile().exists()) {
                     Files.walk(tempDirectory.toAbsolutePath()).sorted(Comparator.reverseOrder()).map(Path::toFile)
@@ -301,11 +310,30 @@ public class CromwellService {
     }
 
 
+    private void transferCallBack(Throwable throwable, String runId) {
+        if (throwable != null) {
+            log.error("Encountered error while transferring files. Aborting run {}", runId);
+            client.abortWorkflow(runId);
+        } else {
+            log.info("Transferring files complete, releasing hold on run {}", runId);
+            client.releaseHold(runId);
+        }
+    }
+
+    private void setWorkflowLabels(Principal principal, RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) {
+        Map<String, String> labels = new HashMap<>();
+        if (runRequest.getTags() != null) {
+            labels.putAll(runRequest.getTags());
+        }
+        labels.put(Constants.USER_LABEL, principal.getName());
+        cromwellExecutionRequest.setLabels(labels);
+    }
+
     private void setWorkflowOptions(RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) throws IOException {
         Map<String, String> engineParams = runRequest.getWorkflowEngineParameters();
         Map<String, Object> cromwellOptions = new HashMap<>();
         Optional<MultipartFile> optionsFile = Stream.of(runRequest.getWorkflowAttachments())
-            .filter((file) -> file.getOriginalFilename().endsWith("options.json")).findFirst();
+            .filter((file) -> file.getOriginalFilename().endsWith(Constants.OPTIONS_FILE)).findFirst();
         TypeReference<Map<String, Object>> typeReference = new TypeReference<>() {
         };
 

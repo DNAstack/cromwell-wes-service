@@ -21,6 +21,19 @@ app:
   keycloak:
     baseUrl: "https://wep-keycloak.staging.dnastack.com/auth"
     clientId: "${security.oauth2.client.client-id}"
+  transfer-config:
+    enabled: true
+    staging-directory: "gs://ds-test-uploading"
+    object-transfer-uri: "https://object-transfer.staging.dnastack.com"
+    external-account-uri: "https://external-accounts.staging.dnastack.com"
+  o-auth-Config:
+    identity-provider: "keycloak"
+    oidc-token-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/token"
+    service-account-client-id: "wes-service"
+    service-account-secret: "e5c145eb-2f2e-4d3e-949c-c5a9f247fd01"
+
+
+
 
 server:
   port: 8090

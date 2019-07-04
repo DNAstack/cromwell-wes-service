@@ -67,7 +67,7 @@ public class WdlFileProcessor {
 
         return mappedObjects.stream().filter(ObjectWrapper::getWasMapped)
             .collect(Collectors
-                .toMap(ObjectWrapper::getMappedValue, (wrap) -> gson.fromJson(wrap.getOriginal(), Object.class)));
+                .toMap(ObjectWrapper::getMappedValue, (wrap) -> gson.fromJson(wrap.getOriginalValue(), Object.class)));
     }
 
 

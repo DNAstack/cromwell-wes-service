@@ -18,7 +18,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -96,7 +95,7 @@ public class DrsService implements ObjectTranslator {
 
     @Override
     public String mapToUrl(ObjectWrapper wrapper) {
-        JsonElement element = wrapper.getOriginal();
+        JsonElement element = wrapper.getOriginalValue();
         if (isDrsObject(element)) {
             Gson gson = new Gson();
             DrsObject drsObject = gson.fromJson(element, DrsObject.class);
@@ -108,6 +107,6 @@ public class DrsService implements ObjectTranslator {
 
     @Override
     public boolean shouldMap(ObjectWrapper wrapper) {
-        return isDrsObject(wrapper.getOriginal()) || isDrsUri(wrapper.getOriginal());
+        return isDrsObject(wrapper.getOriginalValue()) || isDrsUri(wrapper.getOriginalValue());
     }
 }

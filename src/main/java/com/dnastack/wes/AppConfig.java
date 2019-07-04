@@ -2,6 +2,7 @@ package com.dnastack.wes;
 
 import com.dnastack.wes.drs.DrsConfig;
 import com.dnastack.wes.model.wes.ServiceInfo;
+import com.dnastack.wes.transfer.TransferConfig;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -17,6 +18,8 @@ public class AppConfig {
 
     DrsConfig drsConfig = new DrsConfig();
 
-    private String identityProvider = "keycloak";
+    TransferConfig transferConfig = new TransferConfig();
+
+    OauthConfig oauthConfig = new OauthConfig();
 
 }

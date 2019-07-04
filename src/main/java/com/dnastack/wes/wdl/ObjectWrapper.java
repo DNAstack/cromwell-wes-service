@@ -1,5 +1,6 @@
 package com.dnastack.wes.wdl;
 
+import com.dnastack.wes.model.transfer.ExternalAccount;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.gson.JsonElement;
 import lombok.AllArgsConstructor;
@@ -13,10 +14,22 @@ import lombok.Setter;
 public class ObjectWrapper {
 
     @Getter
-    JsonElement original;
+    JsonElement originalValue;
 
     @Setter
     String mappedValue;
+
+    @Getter
+    @Setter
+    String transferDestination;
+
+    @Getter
+    @Setter
+    String sourceDestination;
+
+    @Getter
+    @Setter
+    ExternalAccount transferExternalAccount;
 
     @Setter
     @Getter
@@ -26,16 +39,17 @@ public class ObjectWrapper {
     @Getter
     Boolean requiresTransfer = false;
 
-    public ObjectWrapper(JsonElement original) {
-        this.original = original;
+    public ObjectWrapper(JsonElement originalValue) {
+        this.originalValue = originalValue;
     }
 
     public String getMappedValue() {
         if (mappedValue == null) {
-            return original.toString();
+            return originalValue.getAsString();
         } else {
             return mappedValue;
         }
     }
+
 
 }
