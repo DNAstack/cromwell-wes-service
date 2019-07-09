@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -e
+set -x
+
+# This script packages the end-to-end test module into a Docker image that runs the tests against
+# an arbitrary deployment of this service, specified by the E2E_BASE_URI environment variable.
+# The contents of /target are captured by the CI system after the tests have run, which makes
+# report generation possible.
+
+# The Docker image we build is tagged with the string passed in as the first argument to this script.
+
+# This script is invoked during CI build with the following arguments:
+target_image_name=$1
+app_name=$2
+app_version=$3
+
+pushd e2e-tests
+../mvnw versions:set -DnewVersion=${app_version}
+../mvnw clean package -DskipTests=true
+../mvnw versions:revert
+popd
+
+# This script does all its staging in a directory called target for easy cleanup and effective .gitignore.
+dockerWorkspace=ci/e2e-tests/target
+mkdir -p ${dockerWorkspace}
+
+cp -rp mvnw .mvn ${dockerWorkspace}/
+cp -p ci/e2e-tests/e2e-exec-pom.xml ${dockerWorkspace}/pom.xml
+cp -p e2e-tests/target/e2e-tests-${app_version}.jar ${dockerWorkspace}/e2e-tests.jar
+
+(cd ci/e2e-tests && docker build -t ${target_image_name} .)

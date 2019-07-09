@@ -28,10 +28,9 @@ app:
     object-transfer-uri: "https://object-transfer.staging.dnastack.com"
     external-account-uri: "https://external-accounts.staging.dnastack.com"
   auth:
-    oauth-enabled: false
     identity-provider: "keycloak"
     base-url:  "https://wep-keycloak.staging.dnastack.com/auth"
-    client-id: "${security.oauth2.client.client-id}"
+    client-id: "${app.auth.service-account-client-id}"
     oidc-token-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/token"
     service-account-client-id: "wes-service"
     service-account-secret: "e5c145eb-2f2e-4d3e-949c-c5a9f247fd01"
@@ -71,8 +70,8 @@ spring:
             non_contextual_creation: true
     database-platform: org.hibernate.dialect.PostgreSQL95Dialect
 security.oauth2.client:
-  client-id: wes-service
-  client-secret: e5c145eb-2f2e-4d3e-949c-c5a9f247fd01
+  client-id: ${app.auth.service-account-client-id}
+  client-secret: ${app.auth.service-account-secret}
   user-authorization-uri: "${app.auth.base-url}/realms/DNAstack/protocol/openid-connect/auth"
   access-token-uri: ${app.auth.base-url}/realms/DNAstack/protocol/openid-connect/token
   scope: openid
