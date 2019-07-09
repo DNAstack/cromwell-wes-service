@@ -10,18 +10,30 @@ public class AuthenticatedUser {
      * @return The structured representation of the Jwt.
      */
     public static Jwt getJwt() {
-        return (Jwt) (SecurityContextHolder.getContext().getAuthentication().getCredentials());
+        try {
+            return (Jwt) (SecurityContextHolder.getContext().getAuthentication().getCredentials());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
      * @return The token value of the JWT.
      */
     public static String getBearerToken() {
-        return getJwt().getTokenValue();
+        try {
+            return getJwt().getTokenValue();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static String getSubject() {
-        return getJwt().getSubject();
+        try {
+            return getJwt().getSubject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
 }

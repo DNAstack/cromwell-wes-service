@@ -1,6 +1,5 @@
 package com.dnastack.wes.transfer;
 
-import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.client.ExternalAccountClient;
 import com.dnastack.wes.client.TransferServiceClient;
 import com.dnastack.wes.model.transfer.ExternalAccount;
@@ -37,11 +36,12 @@ public class TransferService {
     private final BlockingQueue<TransferContext> monitorQueue;
 
 
-    TransferService(ExternalAccountClient externalAccountClient, TransferServiceClient transferServiceClient, TaskScheduler taskScheduler, AppConfig config) {
+    TransferService(ExternalAccountClient externalAccountClient, TransferServiceClient transferServiceClient,
+        TaskScheduler taskScheduler, TransferConfig config) {
         this.externalAccountClient = externalAccountClient;
         this.transferServiceClient = transferServiceClient;
         this.taskScheduler = taskScheduler;
-        this.config = config.getTransferConfig();
+        this.config = config;
         this.monitorQueue = new LinkedBlockingQueue<>();
     }
 

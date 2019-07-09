@@ -1,6 +1,7 @@
 package com.dnastack.wes.model.wes;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -18,6 +19,7 @@ import lombok.ToString;
 @Builder
 public class RunId {
 
-    String id;
+    @JsonProperty("run_id")
+    String runId;
 
 }

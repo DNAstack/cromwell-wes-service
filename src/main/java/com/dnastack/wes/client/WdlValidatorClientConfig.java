@@ -11,5 +11,5 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties("app.wdl.validator")
 public class WdlValidatorClientConfig {
 
-    String url = "http://localhost:8080";
+    String url = "https://wdl-validator.staging.dnastack.com";
 }

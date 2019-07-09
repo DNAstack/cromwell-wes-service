@@ -1,6 +1,5 @@
 package com.dnastack.wes.drs;
 
-import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.UnsupportedDrsAccessType;
 import com.dnastack.wes.client.DrsClient;
@@ -31,8 +30,8 @@ public class DrsService implements ObjectTranslator {
 
     private final DrsClient drsClient;
 
-    DrsService(AppConfig appConfig, DrsClient drsClient) {
-        this.drsConfig = appConfig.getDrsConfig();
+    DrsService(DrsConfig drsConfig, DrsClient drsClient) {
+        this.drsConfig = drsConfig;
         this.drsClient = drsClient;
     }
 

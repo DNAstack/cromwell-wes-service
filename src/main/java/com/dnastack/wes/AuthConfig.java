@@ -1,4 +1,4 @@
-package com.dnastack.wes.security;
+package com.dnastack.wes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -8,11 +8,24 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-@Configuration
-@ConfigurationProperties(prefix = "app.keycloak")
+
 @Getter
 @Setter
-public class KeycloakConfiguration {
+@Configuration
+@ConfigurationProperties(prefix = "app.auth")
+public class AuthConfig {
+
+
+    String identityProvider;
+
+    String oidcTokenUri;
+
+    String serviceAccountClientId;
+
+    String serviceAccountSecret;
+
     private String clientId;
+
     private Map<String, List<String>> roleMapping = new HashMap<>();
+
 }

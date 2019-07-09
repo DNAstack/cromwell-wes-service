@@ -8,6 +8,7 @@ import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
+import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
 import java.security.Principal;
 import java.util.Map;
@@ -43,9 +44,10 @@ public class WesV1Controller {
     @PreAuthorize("permitAll()")
     @GetMapping(value = "/service-info", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE})
-    public ServiceInfo getServiceInfo(Principal user) {
+    public ServiceInfo getServiceInfo() {
         ServiceInfo serviceInfo = config.getServiceInfo();
-        if (user != null) {
+        if (AuthenticatedUser.getSubject() != null) {
+            log.info(AuthenticatedUser.getSubject());
             serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
         }
         serviceInfo.setWorkflowEngineVersions(adapter.getEngineVersions());
@@ -56,7 +58,7 @@ public class WesV1Controller {
     @PreAuthorize("isFullyAuthenticated()")
     @PostMapping(value = "/runs", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public RunId submitRun(Principal principal, @RequestPart("workflow_url") String workflowUrl,
+    public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
         @RequestPart(name = "workflow_type", required = false) String workflowType,
         @RequestPart(name = "workflow_type_version", required = false) String workflowTypeVersion,
         @RequestPart(name = "workflow_engine_parameters", required = false) Map<String, String> workflowEngineParams,
@@ -68,7 +70,7 @@ public class WesV1Controller {
             .workflowEngineParameters(workflowEngineParams).workflowParams(workflowParams)
             .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments).tags(tags).build();
 
-        return adapter.execute(principal, runRequest);
+        return adapter.execute(runRequest);
     }
 
 

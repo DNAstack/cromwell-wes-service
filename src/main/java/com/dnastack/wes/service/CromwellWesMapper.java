@@ -102,7 +102,7 @@ public class CromwellWesMapper {
                 .map(entry -> {
                     entry.setValue(mapFileObject(mappedFileObject, entry.getValue()));
                     return entry;
-                }).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+                }).collect(HashMap::new,(m,v) -> m.put(v.getKey(),v.getValue()),HashMap::putAll);
         }
         return inputs;
 
@@ -110,6 +110,9 @@ public class CromwellWesMapper {
 
 
     private static Object mapFileObject(Map<String, Object> originalFiles, Object objectToMap) {
+        if (objectToMap == null){
+            return null;
+        }
         if (objectToMap instanceof String && originalFiles.containsKey(objectToMap)) {
             return originalFiles.get(objectToMap);
         } else if (objectToMap instanceof List) {

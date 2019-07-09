@@ -1,6 +1,7 @@
 package com.dnastack.wes.service;
 
 import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.AuthorizationException;
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.client.CromwellClient;
@@ -21,6 +22,7 @@ import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
+import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.transfer.TransferContext;
 import com.dnastack.wes.transfer.TransferService;
 import com.dnastack.wes.wdl.WdlFileProcessor;
@@ -44,7 +46,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -95,7 +96,16 @@ public class CromwellService {
      * List workflows from the associated cromwell service and aggregate them into system counts
      */
     public Map<State, Integer> getSystemStateCounts() {
-        CromwellResponse response = client.listWorkflows();
+        CromwellResponse response;
+        if (config.getRestrictUserAccessToOwnRuns()) {
+            CromwellSearch search = new CromwellSearch();
+            search
+                .setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, AuthenticatedUser.getSubject())));
+            response = client.listWorkflows(search);
+        } else {
+            response = client.listWorkflows();
+        }
+
         Map<State, Integer> systemCounts = new HashMap<>();
         response.getResults().stream().forEach(cromwellStatus -> {
             State state = CromwellWesMapper.mapState(cromwellStatus.getStatus());
@@ -159,6 +169,13 @@ public class CromwellService {
             search.setPageSize(pageSize == null ? Constants.DEFAULT_PAGE_SIZE : pageSize);
         }
 
+        String user = AuthenticatedUser.getSubject();
+        if (config.getRestrictUserAccessToOwnRuns() && user != null) {
+            search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
+        } else if (config.getRestrictUserAccessToOwnRuns()) {
+            throw new AuthorizationException("Listing of workflows is restricted to authorized users");
+        }
+
         CromwellResponse response = client.listWorkflows(search);
         RunListResponse runListResponse = CromwellWesMapper.mapCromwellResponseToRunListResposne(response);
         if (response.getTotalResultsCount() > search.getPage() * search.getPageSize()) {
@@ -180,10 +197,10 @@ public class CromwellService {
      * @return a complete run log
      */
     public RunLog getRun(String runId) {
+        authorizeUserForRun(runId);
         CromwellMetadataResponse metadataResponse = client.getMetadata(runId);
         Map<String, Object> mappedFileObject = fileMappingStore.getMapping(runId);
         return CromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject);
-
     }
 
     /**
@@ -193,6 +210,7 @@ public class CromwellService {
      * @return a run status
      */
     public RunStatus getRunStatus(String runId) {
+        authorizeUserForRun(runId);
         CromwellStatus status = client.getStatus(runId);
         return CromwellWesMapper.mapCromwellStatusToRunStatus(status);
     }
@@ -204,8 +222,9 @@ public class CromwellService {
      * @return a complete run log
      */
     public RunId cancel(String runId) {
+        authorizeUserForRun(runId);
         client.abortWorkflow(runId);
-        return RunId.builder().id(runId).build();
+        return RunId.builder().runId(runId).build();
     }
 
 
@@ -257,7 +276,7 @@ public class CromwellService {
      * then, files will be mapped into their final destination and then localized by the object transfer service.
      * </ul>
      */
-    public RunId execute(Principal principal, RunRequest runRequest) {
+    public RunId execute(RunRequest runRequest) {
         try {
             Path tempDirectory = null;
             try {
@@ -279,16 +298,17 @@ public class CromwellService {
                     transferService.configureObjectsForTransfer(processor.getMappedObjects());
                 }
 
-                setWorkflowLabels(principal, runRequest, executionRequest);
+                setWorkflowLabels(runRequest, executionRequest);
                 setWorkflowOptions(runRequest, executionRequest);
                 executionRequest.setWorkflowOnHold(processor != null && processor.requiresTransfer());
                 CromwellStatus status = client.createWorkflow(executionRequest);
-                RunId runId = RunId.builder().id(status.getId()).build();
+                RunId runId = RunId.builder().runId(status.getId()).build();
 
                 if (processor != null) {
                     if (processor.requiresTransfer()) {
                         transferService
-                            .transferFiles(new TransferContext(runId.getId(), processor, null, this::transferCallBack));
+                            .transferFiles(new TransferContext(runId
+                                .getRunId(), processor, null, this::transferCallBack));
                     }
 
                     fileMappingStore.saveMapping(status.getId(), processor.getMappedFiles());
@@ -310,6 +330,20 @@ public class CromwellService {
     }
 
 
+    private void authorizeUserForRun(String runId) {
+        String user = AuthenticatedUser.getSubject();
+        if (config.getRestrictUserAccessToOwnRuns()) {
+            CromwellSearch search = new CromwellSearch();
+            search.setId(Arrays.asList(runId));
+            search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
+            CromwellResponse response = client.listWorkflows(search);
+            if (response.getTotalResultsCount() == 0) {
+                throw new AuthorizationException("The resource does not exist or the user is unauthorized to access "
+                    + "it");
+            }
+        }
+    }
+
     private void transferCallBack(Throwable throwable, String runId) {
         if (throwable != null) {
             log.error("Encountered error while transferring files. Aborting run {}", runId);
@@ -320,12 +354,16 @@ public class CromwellService {
         }
     }
 
-    private void setWorkflowLabels(Principal principal, RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) {
+    private void setWorkflowLabels(RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) {
         Map<String, String> labels = new HashMap<>();
         if (runRequest.getTags() != null) {
             labels.putAll(runRequest.getTags());
         }
-        labels.put(Constants.USER_LABEL, principal.getName());
+
+        String user = AuthenticatedUser.getSubject();
+        if (user != null) {
+            labels.put(Constants.USER_LABEL, user);
+        }
         cromwellExecutionRequest.setLabels(labels);
     }
 
@@ -489,7 +527,7 @@ public class CromwellService {
             }
             request.setDependencies(dependencies);
         }
-        return validatorClient.validate(request);
+        return validatorClient.validate(request, AuthenticatedUser.getBearerToken());
     }
 
 }

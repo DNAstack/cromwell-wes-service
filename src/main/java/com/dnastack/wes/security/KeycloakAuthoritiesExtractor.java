@@ -1,5 +1,6 @@
 package com.dnastack.wes.security;
 
+import com.dnastack.wes.AuthConfig;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -22,16 +23,16 @@ public class KeycloakAuthoritiesExtractor extends JwtAuthenticationConverter {
     private String clientId;
 
     @Autowired
-    public KeycloakAuthoritiesExtractor(KeycloakConfiguration keycloakConfiguration) {
-        this.roleMapping = keycloakConfiguration.getRoleMapping();
-        this.clientId = keycloakConfiguration.getClientId();
+    public KeycloakAuthoritiesExtractor(AuthConfig authConfig) {
+        this.roleMapping = authConfig.getRoleMapping();
+        this.clientId = authConfig.getClientId();
     }
 
     private Stream<GrantedAuthority> translateKeycloakRole(String keycloakRole) {
         List<String> authorities = roleMapping.get(keycloakRole);
         if (authorities != null) {
             return Stream.concat(Stream.of(new SimpleGrantedAuthority("ROLE_" + keycloakRole)), authorities.stream().
-                    map(authority -> new SimpleGrantedAuthority("SCOPE_" + authority)));
+                map(authority -> new SimpleGrantedAuthority("SCOPE_" + authority)));
 
         }
         return Stream.empty();
@@ -64,11 +65,11 @@ public class KeycloakAuthoritiesExtractor extends JwtAuthenticationConverter {
 
     protected Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
         return Stream.concat(getAuthoritiesFromRealmRoles(jwt), getAuthoritiesFromResourceRoles(jwt))
-                     .map((grantedAuthority)->{
-                         log.debug("Got granted authority: "+grantedAuthority.getAuthority());
-                         return grantedAuthority;
-                     })
-                     .collect(Collectors.toSet());
+            .map((grantedAuthority) -> {
+                log.debug("Got granted authority: " + grantedAuthority.getAuthority());
+                return grantedAuthority;
+            })
+            .collect(Collectors.toSet());
     }
 
 }

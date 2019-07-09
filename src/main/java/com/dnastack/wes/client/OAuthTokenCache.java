@@ -1,7 +1,6 @@
 package com.dnastack.wes.client;
 
-import com.dnastack.wes.AppConfig;
-import com.dnastack.wes.OauthConfig;
+import com.dnastack.wes.AuthConfig;
 import com.dnastack.wes.model.oauth.AccessToken;
 import com.dnastack.wes.model.oauth.OAuthRequest;
 import feign.FeignException;
@@ -20,7 +19,7 @@ public class OAuthTokenCache {
     private OauthTokenClient tokenClient;
 
     @Autowired
-    private AppConfig appConfig;
+    private AuthConfig authConfig;
 
     private AccessToken token;
 
@@ -38,16 +37,15 @@ public class OAuthTokenCache {
     }
 
     private AccessToken retrieveToken() {
-        OauthConfig oAuthConfig = appConfig.getOauthConfig();
         OAuthRequest request = new OAuthRequest();
-        request.setClientId(oAuthConfig.getServiceAccountClientId());
-        request.setClientSecret(oAuthConfig.getServiceAccountSecret());
+        request.setClientId(authConfig.getServiceAccountClientId());
+        request.setClientSecret(authConfig.getServiceAccountSecret());
         request.setGrantType("client_credentials");
         try {
             AccessToken accessToken = tokenClient.getToken(request);
             issuedAt = Instant.now().getEpochSecond();
             return accessToken;
-        } catch (FeignException e){
+        } catch (FeignException e) {
             log.error(e.contentUTF8());
             throw e;
         }

@@ -24,4 +24,9 @@ public class GlobalControllerExceptionHandler {
     public ResponseEntity<ErrorResponse> handle(UnsupportedDrsAccessType ex) {
         return ResponseEntity.status(404).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(400).build());
     }
+
+    @ExceptionHandler(AuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handle(AuthorizationException ex) {
+        return ResponseEntity.status(404).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(404).build());
+    }
 }

@@ -1,8 +1,9 @@
 package com.dnastack.wes.client;
 
 
-import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.AuthConfig;
 import com.dnastack.wes.model.oauth.AccessToken;
+import com.dnastack.wes.transfer.TransferConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Client;
 import feign.Feign;
@@ -85,32 +86,33 @@ public class ClientConfigurations {
     }
 
     @Bean
-    public ExternalAccountClient externalAccountClient(AppConfig appConfig) {
+    public ExternalAccountClient externalAccountClient(TransferConfig transferConfig) {
         Client httpClient = new OkHttpClient();
         return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder())
             .logger(new SimpleLogger())
             .logLevel(Level.BASIC)
-            .target(ExternalAccountClient.class, appConfig.getTransferConfig().getExternalAccountUri());
+            .target(ExternalAccountClient.class, transferConfig.getExternalAccountUri());
     }
 
     @Bean
-    public OauthTokenClient oauthTokenClient(AppConfig appConfig) {
+    public OauthTokenClient oauthTokenClient(AuthConfig authConfig) {
         Client httpClient = new OkHttpClient();
         return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
             .logLevel(Level.BASIC)
-            .target(OauthTokenClient.class, appConfig.getOauthConfig().getOidcTokenUri());
+            .target(OauthTokenClient.class, authConfig.getOidcTokenUri());
     }
 
     @Bean
-    public TransferServiceClient transferServiceClient(AppConfig appConfig, OAuthTokenCache tokenCache) {
+    public TransferServiceClient transferServiceClient(TransferConfig transferConfig, OAuthTokenCache tokenCache) {
         Client httpClient = new OkHttpClient();
-        return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder()).logger(new SimpleLogger())
+        return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder())
+            .logger(new SimpleLogger())
             .logLevel(Level.BASIC)
             .requestInterceptor((template) -> {
                 AccessToken accessToken = tokenCache.getToken();
                 template.header("Authorization", "Bearer " + accessToken.getToken());
             })
-            .target(TransferServiceClient.class, appConfig.getTransferConfig().getObjectTransferUri());
+            .target(TransferServiceClient.class, transferConfig.getObjectTransferUri());
     }
 
 }

@@ -1,6 +1,6 @@
 package com.dnastack.wes.security;
 
-import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.AuthConfig;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.resource.OAuth2AccessDeniedException;
 import org.springframework.security.oauth2.client.resource.OAuth2ProtectedResourceDetails;
@@ -24,20 +25,21 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
 
     @Autowired
-    public SecurityConfiguration(Map<String, JwtAuthenticationConverter> converterMap, AppConfig appConfig) {
-        this.jwtAuthenticationConverter = converterMap.get(appConfig.getOauthConfig().getIdentityProvider());
+    public SecurityConfiguration(Map<String, JwtAuthenticationConverter> converterMap, AuthConfig authConfig) {
+        this.jwtAuthenticationConverter = converterMap.get(authConfig.getIdentityProvider());
         if (this.jwtAuthenticationConverter == null) {
             throw new IllegalArgumentException(
-                "Unrecognized identity provider " + appConfig.getOauthConfig().getIdentityProvider());
+                "Unrecognized identity provider " + authConfig.getIdentityProvider());
         }
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        // @formatter:off
         http
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
             .authorizeRequests()
-            .antMatchers("/actuator/**").permitAll()
+            .antMatchers("/actuator", "/actuator/info", "/actuator/health").permitAll()
             .antMatchers("/").permitAll()
             .antMatchers("/index.html").permitAll()
             .antMatchers("/ga4gh/drs/**").permitAll()
@@ -46,7 +48,6 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
             .and()
             .oauth2ResourceServer()
             .jwt().jwtAuthenticationConverter(jwtAuthenticationConverter);
-        // @formatter:on
     }
 
     @Bean
