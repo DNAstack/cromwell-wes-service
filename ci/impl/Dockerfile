@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk
+FROM openjdk:11-slim
 
 ADD target/app.jar /app.jar
 

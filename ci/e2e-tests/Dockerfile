@@ -1,5 +1,5 @@
 # Packages the application into a runnable Docker container
-FROM openjdk:11-jdk
+FROM openjdk:11-slim
 
 
 COPY target/e2e-tests.jar /

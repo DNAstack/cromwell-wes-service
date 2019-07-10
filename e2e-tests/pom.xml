@@ -9,7 +9,7 @@
     <relativePath/> <!-- lookup parent from repository -->
   </parent>
   <groupId>com.dnastack</groupId>
-  <artifactId>wes-service-e2e-tests</artifactId>
+  <artifactId>e2e-tests</artifactId>
   <version>1.0-SNAPSHOT</version>
   <name>e2e-tests</name>
   <description>E2E tests for DNAstack WES Translator</description>
