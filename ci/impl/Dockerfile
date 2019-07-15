@@ -47,4 +47,4 @@ ARG APP_VERSION
 
 COPY --from=0 /build/target/${APP_NAME}*.jar /app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "${JAVA_OPTS}","-jar", "app.jar"]
+ENTRYPOINT ["java","-jar", "app.jar"]
