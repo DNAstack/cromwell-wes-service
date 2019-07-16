@@ -262,7 +262,7 @@ public class WesE2ETest extends BaseE2eTest {
                     .getString("run_id");
                 //@formatter:on
 
-                Thread.sleep(5000L);
+                Thread.sleep(15000L);
             }
 
 
