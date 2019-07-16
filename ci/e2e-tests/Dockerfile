@@ -50,4 +50,4 @@ COPY --from=0 /build/target/${APP_NAME}*.jar /e2e-tests.jar
 RUN mkdir /target
 RUN ./mvnw -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 
-ENTRYPOINT ["./mvnw", "-o", "test"]
+ENTRYPOINT ["./mvnw", "test"]
