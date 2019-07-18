@@ -16,14 +16,14 @@ import lombok.ToString;
 public class TransferRequest {
 
     private String srcExternalAccountId;
+    private String srcAccessToken;
     private List<List<String>> copyPairs;
 
-    public TransferRequest(String srcExternalAccountId) {
+
+    public TransferRequest(String srcAccessToken, String srcExternalAccountId) {
         this.srcExternalAccountId = srcExternalAccountId;
+        this.srcAccessToken = srcAccessToken;
         copyPairs = new ArrayList<>();
     }
-
-
-
 
 }

@@ -295,7 +295,7 @@ public class CromwellService {
                 WdlFileProcessor processor = setWorkflowInputs(runRequest, executionRequest);
 
                 if (processor != null) {
-                    transferService.configureObjectsForTransfer(processor.getMappedObjects());
+                    transferService.configureObjectsForTransfer(processor.getMappedObjects(), runRequest);
                 }
 
                 setWorkflowLabels(runRequest, executionRequest);
@@ -324,6 +324,7 @@ public class CromwellService {
         } catch (IOException e) {
             throw new InvalidRequestException(e.getMessage(), e);
         } catch (FeignException e) {
+            log.error(e.contentUTF8());
             log.error(e.getMessage(), e);
             throw new InvalidRequestException(e.getMessage(), e);
         }
@@ -388,8 +389,10 @@ public class CromwellService {
             JsonNodeFactory nodeFactory = new JsonNodeFactory(false);
             ObjectNode objectNode = nodeFactory.objectNode();
             for (Entry<String, String> entry : engineParams.entrySet()) {
-                JsonNode node = extractJsonNode(entry.getValue());
-                objectNode.set(entry.getKey(), node);
+                if (Constants.VALID_CROMWELL_OPTIONS.contains(entry.getKey())) {
+                    JsonNode node = extractJsonNode(entry.getValue());
+                    objectNode.set(entry.getKey(), node);
+                }
             }
             cromwellOptions.putAll(mapper.readValue(mapper.treeAsTokens(objectNode), typeReference));
         }

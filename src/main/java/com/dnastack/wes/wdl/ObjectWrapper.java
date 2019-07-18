@@ -29,6 +29,10 @@ public class ObjectWrapper {
 
     @Getter
     @Setter
+    String accessToken;
+
+    @Getter
+    @Setter
     ExternalAccount transferExternalAccount;
 
     @Setter
