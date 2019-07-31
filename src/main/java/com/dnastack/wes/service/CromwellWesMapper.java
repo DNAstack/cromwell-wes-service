@@ -11,6 +11,7 @@ import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,7 +60,8 @@ public class CromwellWesMapper {
         runRequest.setWorkflowType(metadataResponse.getActualWorkflowLanguage());
         runRequest.setWorkflowTypeVersion(metadataResponse.getActualWorkflowLanguageVersions());
         Map<String, Object> options = getWorkflowOptions(metadataResponse);
-        runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(metadataResponse.getInputs(), mappedFileObject));
+        runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(metadataResponse
+            .getSubmittedFiles(), mappedFileObject));
         runRequest.setWorkflowEngineParameters(mapOptionsToEngineParameters(options));
         runRequest.setTags(metadataResponse.getLabels());
 
@@ -68,12 +70,16 @@ public class CromwellWesMapper {
 
     private static Map<String, Object> getWorkflowOptions(CromwellMetadataResponse metadataResponse) {
         Map<String, String> submittedFiles = metadataResponse.getSubmittedFiles();
-        Map<String, Object> optionsMap = Collections.emptyMap();
+        Map<String, Object> optionsMap = new HashMap<>();
+        if (metadataResponse.getWorkflowRoot() != null && !metadataResponse.getWorkflowRoot().isEmpty()) {
+            optionsMap.put("workflow_root", metadataResponse.getWorkflowRoot());
+        }
+
         if (submittedFiles != null) {
             String options = submittedFiles.getOrDefault("options", "{}");
             try {
-                optionsMap = objectMapper.readValue(options, new TypeReference<Map<String, Object>>() {
-                });
+                optionsMap.putAll(objectMapper.readValue(options, new TypeReference<Map<String, Object>>() {
+                }));
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
 
@@ -86,7 +92,12 @@ public class CromwellWesMapper {
         Map<String, String> engineParams = new HashMap<>();
         for (Entry<String, Object> entry : workflowOptions.entrySet()) {
             try {
-                engineParams.put(entry.getKey(), objectMapper.writeValueAsString(entry.getValue()));
+                JsonNode node = objectMapper.valueToTree(entry.getValue());
+                if (node.isObject() || node.isArray() || node.isPojo()) {
+                    engineParams.put(entry.getKey(), objectMapper.writeValueAsString(entry.getValue()));
+                } else {
+                    engineParams.put(entry.getKey(), entry.getValue().toString());
+                }
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
             }
@@ -95,14 +106,25 @@ public class CromwellWesMapper {
         return engineParams;
     }
 
-    private static Map<String, Object> mapCromwellInputsToOriginalValues(Map<String, Object> inputs, Map<String, Object> mappedFileObject) {
+    private static Map<String, Object> mapCromwellInputsToOriginalValues(Map<String, String> submittedFiles,
+        Map<String, Object> mappedFileObject) {
+        Map<String, Object> inputs = Collections.emptyMap();
 
-        if (mappedFileObject != null) {
-            return inputs.entrySet().stream()
-                .map(entry -> {
-                    entry.setValue(mapFileObject(mappedFileObject, entry.getValue()));
-                    return entry;
-                }).collect(HashMap::new,(m,v) -> m.put(v.getKey(),v.getValue()),HashMap::putAll);
+        try {
+            String rawInputs = submittedFiles.get("inputs");
+            if (rawInputs != null) {
+                inputs = objectMapper.readValue(rawInputs, new TypeReference<Map<String, Object>>() {
+                });
+                if (mappedFileObject != null) {
+                    return inputs.entrySet().stream()
+                        .map(entry -> {
+                            entry.setValue(mapFileObject(mappedFileObject, entry.getValue()));
+                            return entry;
+                        }).collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
+                }
+            }
+        } catch (Exception e) {
+
         }
         return inputs;
 
@@ -110,7 +132,7 @@ public class CromwellWesMapper {
 
 
     private static Object mapFileObject(Map<String, Object> originalFiles, Object objectToMap) {
-        if (objectToMap == null){
+        if (objectToMap == null) {
             return null;
         }
         if (objectToMap instanceof String && originalFiles.containsKey(objectToMap)) {

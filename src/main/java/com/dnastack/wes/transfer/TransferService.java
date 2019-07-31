@@ -2,6 +2,7 @@ package com.dnastack.wes.transfer;
 
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.client.ExternalAccountClient;
+import com.dnastack.wes.client.OAuthTokenCache;
 import com.dnastack.wes.client.TransferServiceClient;
 import com.dnastack.wes.model.transfer.ExternalAccount;
 import com.dnastack.wes.model.transfer.TransferJob;
@@ -42,15 +43,17 @@ public class TransferService {
     private final TransferConfig config;
     private final TaskScheduler taskScheduler;
     private final BlockingQueue<TransferContext> monitorQueue;
+    private final OAuthTokenCache oAuthTokenCache;
 
 
     TransferService(ExternalAccountClient externalAccountClient, TransferServiceClient transferServiceClient,
-        TaskScheduler taskScheduler, TransferConfig config) {
+        TaskScheduler taskScheduler, TransferConfig config, OAuthTokenCache oAuthTokenCache) {
         this.externalAccountClient = externalAccountClient;
         this.transferServiceClient = transferServiceClient;
         this.taskScheduler = taskScheduler;
         this.config = config;
         this.monitorQueue = new LinkedBlockingQueue<>();
+        this.oAuthTokenCache = oAuthTokenCache;
     }
 
     @PostConstruct
@@ -151,10 +154,10 @@ public class TransferService {
 
     private List<ExternalAccount> getExternalAccountsForUser() {
         if (config.isEnabled()) {
-            String userId = AuthenticatedUser.getBearerToken();
+            String userId = AuthenticatedUser.getSubject();
             log.trace("Retrieving external accounts for user {}", userId);
             List<ExternalAccount> externalAccounts = externalAccountClient
-                .listExternalAccounts(userId);
+                .listExternalAccounts(oAuthTokenCache.getToken().getToken(), userId);
             if (externalAccounts != null) {
                 return externalAccounts;
             } else {
@@ -219,6 +222,7 @@ public class TransferService {
                 objectWrapper.setSourceDestination(mappedValue);
                 objectWrapper.setMappedValue(destinationLocation);
                 objectWrapper.setRequiresTransfer(true);
+                objectWrapper.setWasMapped(true);
                 objectWrapper.setAccessToken(accessToken);
 
             } else {
@@ -234,6 +238,7 @@ public class TransferService {
                     objectWrapper.setSourceDestination(mappedValue);
                     objectWrapper.setMappedValue(destinationLocation);
                     objectWrapper.setRequiresTransfer(true);
+                    objectWrapper.setWasMapped(true);
                     objectWrapper.setTransferExternalAccount(externalAccount);
                 }
             }

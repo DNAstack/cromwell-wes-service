@@ -35,6 +35,8 @@ public class Constants {
         options.add("monitoring_image");
         options.add("google_labels");
         options.add("default_runtime_attributes");
+        options.add("continueOnReturnCode");
+        options.add("backend");
 
         return options;
 

@@ -1,37 +1,30 @@
 package com.dnastack.wes.security;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.AbstractOAuth2Token;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+@Slf4j
 public class AuthenticatedUser {
-
-    /**
-     * @return The structured representation of the Jwt.
-     */
-    public static Jwt getJwt() {
-        try {
-            return (Jwt) (SecurityContextHolder.getContext().getAuthentication().getCredentials());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
-     * @return The token value of the JWT.
-     */
-    public static String getBearerToken() {
-        try {
-            return getJwt().getTokenValue();
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
     public static String getSubject() {
         try {
-            return getJwt().getSubject();
+            Object cred = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            if (cred instanceof Jwt) {
+                return ((Jwt) cred).getSubject();
+            } else if (cred instanceof OidcUser) {
+                return ((OidcUser) cred).getName();
+            } else {
+                return null;
+            }
         } catch (Exception e) {
+            log.warn(e.getMessage());
             return null;
         }
     }

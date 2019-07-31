@@ -8,8 +8,8 @@ import java.util.List;
 
 public interface ExternalAccountClient {
 
-    @RequestLine("GET /api/externalAccount")
+    @RequestLine("GET /api/admin/externalAccount?userId={userId}")
     @Headers({"Authorization: Bearer {accessToken}"})
-    List<ExternalAccount> listExternalAccounts(@Param("accessToken") String accessToken);
+    List<ExternalAccount> listExternalAccounts(@Param("accessToken") String accessToken, @Param("userId") String userId);
 
 }

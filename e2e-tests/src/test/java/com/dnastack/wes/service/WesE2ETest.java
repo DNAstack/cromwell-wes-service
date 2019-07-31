@@ -94,13 +94,15 @@ public class WesE2ETest extends BaseE2eTest {
         String path = getRootPath() + "/runs";
         //@formatter:off
         given()
+            .redirects()
+            .follow(false)
             .log().uri()
             .log().method()
             .accept(ContentType.JSON)
         .get(path)
         .then()
             .assertThat()
-            .statusCode(401);
+            .statusCode(302);
         //@formatter:on
 
     }

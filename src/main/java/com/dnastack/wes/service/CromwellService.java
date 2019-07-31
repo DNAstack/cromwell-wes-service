@@ -5,6 +5,8 @@ import com.dnastack.wes.AuthorizationException;
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.client.CromwellClient;
+import com.dnastack.wes.client.ExternalAccountClient;
+import com.dnastack.wes.client.OAuthTokenCache;
 import com.dnastack.wes.client.WdlValidatorClient;
 import com.dnastack.wes.drs.DrsService;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
@@ -76,19 +78,26 @@ public class CromwellService {
     private final static ObjectMapper mapper = new ObjectMapper();
     private final CromwellClient client;
     private final WdlValidatorClient validatorClient;
+    private final OAuthTokenCache oAuthTokenCache;
     private final FileMappingStore fileMappingStore;
     private final DrsService drsService;
     private final AppConfig config;
     private final TransferService transferService;
+    private final ExternalAccountClient externalAccountClient;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, WdlValidatorClient validatorClient, FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService) {
+    CromwellService(ExternalAccountClient externalAccountClient, OAuthTokenCache oAuthTokenCache,
+        CromwellClient cromwellClient,
+        WdlValidatorClient validatorClient,
+        FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService) {
+        this.oAuthTokenCache = oAuthTokenCache;
         this.client = cromwellClient;
         this.validatorClient = validatorClient;
         this.drsService = drsService;
         this.config = appConfig;
         this.transferService = transferService;
         this.fileMappingStore = fileMappingStore;
+        this.externalAccountClient = externalAccountClient;
     }
 
 
@@ -148,7 +157,6 @@ public class CromwellService {
      * @return List of runs with next page set.
      */
     public RunListResponse listRuns(Integer pageSize, String pageToken) {
-
         CromwellSearch search = new CromwellSearch();
         if (pageToken != null) {
             String urlEncodedToken = new String(Base64.getDecoder().decode(pageToken), Charset.defaultCharset());
@@ -311,7 +319,8 @@ public class CromwellService {
                                 .getRunId(), processor, null, this::transferCallBack));
                     }
 
-                    fileMappingStore.saveMapping(status.getId(), processor.getMappedFiles());
+                    Map<String, Object> mappedFiles = processor.getMappedFiles();
+                    fileMappingStore.saveMapping(status.getId(), mappedFiles);
                 }
 
                 return runId;
@@ -530,7 +539,7 @@ public class CromwellService {
             }
             request.setDependencies(dependencies);
         }
-        return validatorClient.validate(request, AuthenticatedUser.getBearerToken());
+        return validatorClient.validate(request, oAuthTokenCache.getToken().getToken());
     }
 
 }
