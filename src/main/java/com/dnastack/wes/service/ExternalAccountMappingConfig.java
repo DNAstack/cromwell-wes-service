@@ -1,4 +1,4 @@
-package com.dnastack.wes.transfer;
+package com.dnastack.wes.service;
 
 import java.util.ArrayList;
 import java.util.List;

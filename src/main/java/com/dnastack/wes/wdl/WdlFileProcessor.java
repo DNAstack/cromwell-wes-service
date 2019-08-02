@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 
 /**
- * The WDL Value mapper is a class for marshling any JSON input value into the appropriate Java type corresponding to
+ * The WDL Value Processor is a class for marshling any JSON input value into the appropriate Java type corresponding to
  * the type defined within the WDL. This is necessary in order to ensure the proper types are delivered to cromwell and
  * are also properly escaped (Since cromwell does not handle all type conversions very well)
  * <p>
@@ -59,10 +59,20 @@ public class WdlFileProcessor {
     }
 
 
+    /**
+     * Returns true if any of the processed files requires transfer to the staging area. This was previously set by the
+     * TransferService
+     * @return
+     */
     public boolean requiresTransfer() {
         return mappedObjects.stream().map(ObjectWrapper::getRequiresTransfer).reduce(false, Boolean::logicalOr);
     }
 
+    /**
+     * Mapped files have been converted from their original format into a single target destination. the Returned Map
+     * contains the target destination as key and the original object as the value
+     * @return
+     */
     public Map<String, Object> getMappedFiles() {
 
         return mappedObjects.stream().filter(ObjectWrapper::getWasMapped)
@@ -71,6 +81,12 @@ public class WdlFileProcessor {
     }
 
 
+    /**
+     * Apply the first ObjectTranslator (if present) to an object. The role of the object translator is to take the
+     * provided object and convert it into a usable URI that can then be passed to the execution engine or used for
+     * transfer. If the ObjectTranslator is present, the {@code wasMapped} attribute is set to true and the {@code
+     * mappedValue} is set to the new mapped Url
+     */
     private void applyTranslators() {
         if (translators != null) {
             for (ObjectWrapper wrapper : mappedObjects) {

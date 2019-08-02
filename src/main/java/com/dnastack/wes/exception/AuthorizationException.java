@@ -1,4 +1,4 @@
-package com.dnastack.wes;
+package com.dnastack.wes.exception;
 
 public class AuthorizationException extends RuntimeException {
 

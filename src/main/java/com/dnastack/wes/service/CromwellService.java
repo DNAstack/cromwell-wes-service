@@ -1,14 +1,12 @@
 package com.dnastack.wes.service;
 
-import com.dnastack.wes.AppConfig;
-import com.dnastack.wes.AuthorizationException;
 import com.dnastack.wes.Constants;
-import com.dnastack.wes.InvalidRequestException;
 import com.dnastack.wes.client.CromwellClient;
-import com.dnastack.wes.client.ExternalAccountClient;
 import com.dnastack.wes.client.OAuthTokenCache;
 import com.dnastack.wes.client.WdlValidatorClient;
-import com.dnastack.wes.drs.DrsService;
+import com.dnastack.wes.config.AppConfig;
+import com.dnastack.wes.exception.AuthorizationException;
+import com.dnastack.wes.exception.InvalidRequestException;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
@@ -25,8 +23,6 @@ import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
 import com.dnastack.wes.security.AuthenticatedUser;
-import com.dnastack.wes.transfer.TransferContext;
-import com.dnastack.wes.transfer.TransferService;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -83,12 +79,9 @@ public class CromwellService {
     private final DrsService drsService;
     private final AppConfig config;
     private final TransferService transferService;
-    private final ExternalAccountClient externalAccountClient;
 
     @Autowired
-    CromwellService(ExternalAccountClient externalAccountClient, OAuthTokenCache oAuthTokenCache,
-        CromwellClient cromwellClient,
-        WdlValidatorClient validatorClient,
+    CromwellService(OAuthTokenCache oAuthTokenCache, CromwellClient cromwellClient, WdlValidatorClient validatorClient,
         FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService) {
         this.oAuthTokenCache = oAuthTokenCache;
         this.client = cromwellClient;
@@ -97,16 +90,16 @@ public class CromwellService {
         this.config = appConfig;
         this.transferService = transferService;
         this.fileMappingStore = fileMappingStore;
-        this.externalAccountClient = externalAccountClient;
     }
 
 
     /**
-     * List workflows from the associated cromwell service and aggregate them into system counts
+     * Retrieve as list of workflows from cromwell and aggregate them into a map of state counts. If multi tenant
+     * support is enabled, the state counts will be limited to those submitted by the current principal
      */
     public Map<State, Integer> getSystemStateCounts() {
         CromwellResponse response;
-        if (config.getRestrictUserAccessToOwnRuns()) {
+        if (config.getEnableMultiTenantSupport()) {
             CromwellSearch search = new CromwellSearch();
             search
                 .setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, AuthenticatedUser.getSubject())));
@@ -178,9 +171,9 @@ public class CromwellService {
         }
 
         String user = AuthenticatedUser.getSubject();
-        if (config.getRestrictUserAccessToOwnRuns() && user != null) {
+        if (config.getEnableMultiTenantSupport() && user != null) {
             search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
-        } else if (config.getRestrictUserAccessToOwnRuns()) {
+        } else if (config.getEnableMultiTenantSupport()) {
             throw new AuthorizationException("Listing of workflows is restricted to authorized users");
         }
 
@@ -342,7 +335,7 @@ public class CromwellService {
 
     private void authorizeUserForRun(String runId) {
         String user = AuthenticatedUser.getSubject();
-        if (config.getRestrictUserAccessToOwnRuns()) {
+        if (config.getEnableMultiTenantSupport()) {
             CromwellSearch search = new CromwellSearch();
             search.setId(Arrays.asList(runId));
             search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));

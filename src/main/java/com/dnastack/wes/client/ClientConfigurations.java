@@ -1,9 +1,11 @@
 package com.dnastack.wes.client;
 
 
-import com.dnastack.wes.AuthConfig;
+import com.dnastack.wes.config.AuthConfig;
+import com.dnastack.wes.config.CromwellConfig;
+import com.dnastack.wes.config.WdlValidatorClientConfig;
 import com.dnastack.wes.model.oauth.AccessToken;
-import com.dnastack.wes.transfer.TransferConfig;
+import com.dnastack.wes.config.TransferConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Client;
 import feign.Feign;
@@ -99,7 +101,7 @@ public class ClientConfigurations {
         Client httpClient = new OkHttpClient();
         return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
             .logLevel(Level.BASIC)
-            .target(OauthTokenClient.class, authConfig.getOidcTokenUri());
+            .target(OauthTokenClient.class, authConfig.getServiceAccountAuthenticationUri());
     }
 
     @Bean

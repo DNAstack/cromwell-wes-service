@@ -1,7 +1,8 @@
-package com.dnastack.wes.drs;
+package com.dnastack.wes.service;
 
-import com.dnastack.wes.InvalidRequestException;
-import com.dnastack.wes.UnsupportedDrsAccessType;
+import com.dnastack.wes.config.DrsConfig;
+import com.dnastack.wes.exception.InvalidRequestException;
+import com.dnastack.wes.exception.UnsupportedDrsAccessType;
 import com.dnastack.wes.client.DrsClient;
 import com.dnastack.wes.model.drs.AccessMethod;
 import com.dnastack.wes.model.drs.AccessType;
@@ -78,7 +79,7 @@ public class DrsService implements ObjectTranslator {
         String accessUrl = null;
         for (AccessMethod accessMethod : accessMethods) {
             AccessType accessType = accessMethod.getType();
-            if (accessMethod.getAccessUrl() != null && drsConfig.getSupportedTypes().contains(accessType.toString())) {
+            if (accessMethod.getAccessUrl() != null && drsConfig.getSupportedAccessTypes().contains(accessType.toString())) {
                 AccessURL url = accessMethod.getAccessUrl();
                 accessUrl = url.getUrl();
                 break;

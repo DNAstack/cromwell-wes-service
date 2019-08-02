@@ -1,9 +1,10 @@
-package com.dnastack.wes.transfer;
+package com.dnastack.wes.service;
 
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.client.ExternalAccountClient;
 import com.dnastack.wes.client.OAuthTokenCache;
 import com.dnastack.wes.client.TransferServiceClient;
+import com.dnastack.wes.config.TransferConfig;
 import com.dnastack.wes.model.transfer.ExternalAccount;
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.model.transfer.TransferRequest;

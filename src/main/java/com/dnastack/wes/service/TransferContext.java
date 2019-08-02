@@ -1,4 +1,4 @@
-package com.dnastack.wes.transfer;
+package com.dnastack.wes.service;
 
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.wdl.WdlFileProcessor;

@@ -1,4 +1,4 @@
-package com.dnastack.wes.transfer;
+package com.dnastack.wes.service;
 
 public class TransferFailedException extends RuntimeException {
 

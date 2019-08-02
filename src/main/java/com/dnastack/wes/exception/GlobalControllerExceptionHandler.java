@@ -1,4 +1,4 @@
-package com.dnastack.wes;
+package com.dnastack.wes.exception;
 
 import com.dnastack.wes.model.wes.ErrorResponse;
 import feign.FeignException;

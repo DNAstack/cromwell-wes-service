@@ -1,7 +1,7 @@
 package com.dnastack.wes.controller;
 
 
-import com.dnastack.wes.AppConfig;
+import com.dnastack.wes.config.AppConfig;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;
@@ -10,7 +10,6 @@ import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
-import java.security.Principal;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +46,6 @@ public class WesV1Controller {
     public ServiceInfo getServiceInfo() {
         ServiceInfo serviceInfo = config.getServiceInfo();
         if (AuthenticatedUser.getSubject() != null) {
-            log.info(AuthenticatedUser.getSubject());
             serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
         }
         serviceInfo.setWorkflowEngineVersions(adapter.getEngineVersions());
