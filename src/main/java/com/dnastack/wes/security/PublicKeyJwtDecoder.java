@@ -60,7 +60,8 @@ public class PublicKeyJwtDecoder implements JwtDecoder {
 
         JWKSource jwkSource;
         try {
-            publicKeyContent = publicKeyContent.replaceAll("\\n", "").replace("-----BEGIN PUBLIC KEY-----", "")
+            publicKeyContent = publicKeyContent.replaceAll("\\n", "").replaceAll("\\\\n","").replace("-----BEGIN PUBLIC"
+                + " KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "");
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             X509EncodedKeySpec x509EncodedKeySpec =
@@ -68,6 +69,7 @@ public class PublicKeyJwtDecoder implements JwtDecoder {
             RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(x509EncodedKeySpec);
             RSAKey key = new RSAKey.Builder(publicKey).build();
             jwkSource = new ImmutableJWKSet(new JWKSet(key));
+
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             throw new IllegalArgumentException("Invalid publicKeyContent: " + e.getMessage(), e);
         }

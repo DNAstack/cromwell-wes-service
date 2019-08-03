@@ -46,6 +46,7 @@ public class WesV1Controller {
     public ServiceInfo getServiceInfo() {
         ServiceInfo serviceInfo = config.getServiceInfo();
         if (AuthenticatedUser.getSubject() != null) {
+            log.info(AuthenticatedUser.getSubject());
             serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
         }
         serviceInfo.setWorkflowEngineVersions(adapter.getEngineVersions());

@@ -7,13 +7,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jose.jws.JwsAlgorithms;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtDecoders;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoderJwkSupport;
 
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
@@ -23,21 +17,7 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     @Bean
     public JwtDecoder jwtDecoder(AuthConfig authConfig) {
-        OAuth2TokenValidator<Jwt> jwtValidator =
-            JwtValidators.createDefaultWithIssuer(authConfig.getIssuerUri());
-
-        if (authConfig.getRsaPublicKey() != null) {
-            PublicKeyJwtDecoder publicKeyJwtDecoder = new PublicKeyJwtDecoder(authConfig.getRsaPublicKey());
-            publicKeyJwtDecoder.setJwtValidator(jwtValidator);
-            return publicKeyJwtDecoder;
-        } else if (authConfig.getJwkSetUri() != null) {
-            NimbusJwtDecoderJwkSupport nimbusJwtDecoderJwkSupport =
-                new NimbusJwtDecoderJwkSupport(authConfig.getJwkSetUri());
-            nimbusJwtDecoderJwkSupport.setJwtValidator(jwtValidator);
-            return nimbusJwtDecoderJwkSupport;
-        } else {
-            return JwtDecoders.fromOidcIssuerLocation(authConfig.getIssuerUri());
-        }
+        return new DelegatingJwtDecoder(authConfig.getTokenIssuers());
     }
 
     @Override

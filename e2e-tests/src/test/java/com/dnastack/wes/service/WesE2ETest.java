@@ -12,9 +12,13 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
-import com.dnastack.wes.service.utils.Oauth2Client;
+import com.dnastack.wes.service.utils.AuthorizationClient;
 import com.dnastack.wes.service.utils.WdlSupplier;
+import com.nimbusds.jose.util.IOUtils;
 import io.restassured.http.ContentType;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,19 +29,46 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
+
 @DisplayName("WES tests")
 public class WesE2ETest extends BaseE2eTest {
 
-
-    static Oauth2Client oauth2Client;
+    private static final String DEFAULT_PUBLIC_KEY_FILE = "jwt.pub.pem";
+    private static final String DEFAULT_PRIVATE_KEY_FILE = "jwt.pem";
+    private static AuthorizationClient authorizationClient;
 
     private String getRootPath() {
         return "/ga4gh/wes/v1";
     }
 
     @BeforeAll
-    public static void setupOauth2Client() {
-        oauth2Client = new Oauth2Client(requiredEnv("E2E_OAUTH_TOKEN_URL"), requiredEnv("E2E_OAUTH_CLIENTID"), requiredEnv("E2E_OAUTH_USERNAME"), requiredEnv("E2E_OAUTH_PASSWORD"));
+    public static void setupTests() {
+        try {
+            authorizationClient = new AuthorizationClient(loadPublicKey(), loadPrivateKey());
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+
+    private static String loadPrivateKey() throws IOException {
+        String privKey = optionalEnv("E2E_WES_PRIVATE_KEY", null);
+
+        if (privKey == null) {
+            InputStream inputStream = WesE2ETest.class.getResourceAsStream(DEFAULT_PRIVATE_KEY_FILE);
+            privKey = IOUtils.readInputStreamToString(inputStream, Charset.forName("UTF-8"));
+        }
+        return privKey;
+    }
+
+    private static String loadPublicKey() throws IOException {
+        String pubKey = optionalEnv("E2E_WES_PUBLIC_KEY", null);
+        if (pubKey == null) {
+            InputStream inputStream = WesE2ETest.class.getResourceAsStream(DEFAULT_PUBLIC_KEY_FILE);
+            pubKey = IOUtils.readInputStreamToString(inputStream, Charset.forName("UTF-8"));
+        }
+        return pubKey;
+
     }
 
     @Test
@@ -74,7 +105,7 @@ public class WesE2ETest extends BaseE2eTest {
             .log().uri()
             .log().method()
             .accept(ContentType.JSON)
-            .header(oauth2Client.getHeader())
+            .header(authorizationClient.getHeader())
         .get(path)
         .then()
             .assertThat()
@@ -102,7 +133,7 @@ public class WesE2ETest extends BaseE2eTest {
         .get(path)
         .then()
             .assertThat()
-            .statusCode(302);
+            .statusCode(401);
         //@formatter:on
 
     }
@@ -116,7 +147,7 @@ public class WesE2ETest extends BaseE2eTest {
         given()
             .log().uri()
             .log().method()
-            .header(oauth2Client.getHeader())
+            .header(authorizationClient.getHeader())
             .queryParam("page_size",5)
             .accept(ContentType.JSON)
         .get(path)
@@ -145,7 +176,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
                 .log().uri()
                 .log().method()
-                .header(oauth2Client.getHeader())
+                .header(authorizationClient.getHeader())
                 .multiPart("workflow_url","echo.wdl")
                 .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
                 .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
@@ -167,7 +198,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
               .log().uri()
               .log().method()
-              .header(oauth2Client.getHeader())
+              .header(authorizationClient.getHeader())
               .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
             .post(path)
             .then()
@@ -186,7 +217,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
                 .log().uri()
                 .log().method()
-                .header(oauth2Client.getHeader())
+                .header(authorizationClient.getHeader())
                 .multiPart("workflow_url","echo.wdl")
                 .multiPart("workflow_attachment","echo.wdl",WdlSupplier.ECHO_WITH_IMPORT_WDL.getBytes())
                 .multiPart("workflow_attachment","struct_test.wdl",WdlSupplier.STRUCT_TEST_WDL.getBytes())
@@ -211,7 +242,7 @@ public class WesE2ETest extends BaseE2eTest {
             String runId = given()
               .log().uri()
               .log().method()
-              .header(oauth2Client.getHeader())
+              .header(authorizationClient.getHeader())
               .multiPart("workflow_url","echo.wdl")
               .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
               .multiPart("workflow_attachment", "options.json",engineParams,ContentType.JSON.toString())
@@ -248,7 +279,7 @@ public class WesE2ETest extends BaseE2eTest {
                 workflowJobId = given()
                   .log().uri()
                   .log().method()
-                  .header(oauth2Client.getHeader())
+                  .header(authorizationClient.getHeader())
                   .multiPart("workflow_url","echo.wdl")
                   .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
                   .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
@@ -277,7 +308,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(oauth2Client.getHeader())
+                    .header(authorizationClient.getHeader())
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -301,7 +332,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(oauth2Client.getHeader())
+                    .header(authorizationClient.getHeader())
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -322,7 +353,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(oauth2Client.getHeader())
+                    .header(authorizationClient.getHeader())
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -341,7 +372,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(oauth2Client.getHeader())
+                    .header(authorizationClient.getHeader())
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -360,7 +391,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(oauth2Client.getHeader())
+                    .header(authorizationClient.getHeader())
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()

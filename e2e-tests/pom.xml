@@ -54,14 +54,14 @@
       <artifactId>hamcrest-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.keycloak</groupId>
-      <artifactId>keycloak-admin-client</artifactId>
-      <version>${keycloak.version}</version>
-    </dependency>
-    <dependency>
       <groupId>io.codearte.jfairy</groupId>
       <artifactId>jfairy</artifactId>
       <version>${jfairy.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>6.0.2</version>
     </dependency>
 
     <dependency>
