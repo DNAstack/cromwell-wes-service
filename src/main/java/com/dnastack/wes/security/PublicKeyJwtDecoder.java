@@ -7,7 +7,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.JWSKeySelector;
-import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -15,14 +14,8 @@ import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,7 +43,7 @@ public class PublicKeyJwtDecoder implements JwtDecoder {
         MappedJwtClaimSetConverter.withDefaults(Collections.emptyMap());
     private OAuth2TokenValidator<Jwt> jwtValidator = JwtValidators.createDefault();
 
-    public PublicKeyJwtDecoder(String publicKeyContent){
+    public PublicKeyJwtDecoder(String publicKeyContent) {
         this(publicKeyContent, JwsAlgorithms.RS256);
     }
 
@@ -59,20 +52,9 @@ public class PublicKeyJwtDecoder implements JwtDecoder {
         Assert.hasText(algorithm, "algorithm cannot be null");
 
         JWKSource jwkSource;
-        try {
-            publicKeyContent = publicKeyContent.replaceAll("\\n", "").replaceAll("\\\\n","").replace("-----BEGIN PUBLIC"
-                + " KEY-----", "")
-                .replace("-----END PUBLIC KEY-----", "");
-            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            X509EncodedKeySpec x509EncodedKeySpec =
-                new X509EncodedKeySpec(Base64.getDecoder().decode(publicKeyContent));
-            RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(x509EncodedKeySpec);
-            RSAKey key = new RSAKey.Builder(publicKey).build();
-            jwkSource = new ImmutableJWKSet(new JWKSet(key));
-
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalArgumentException("Invalid publicKeyContent: " + e.getMessage(), e);
-        }
+        RSAKey key =
+            new RSAKey.Builder(RsaKeyHelper.parsePublicKey(publicKeyContent)).build();
+        jwkSource = new ImmutableJWKSet(new JWKSet(key));
 
         this.jwsAlgorithm = JWSAlgorithm.parse(algorithm);
         JWSKeySelector<SecurityContext> jwsKeySelector =

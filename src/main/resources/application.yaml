@@ -34,11 +34,7 @@ wes:
       issuer-uri: "https://testing.dnastack.com"
     token-issuers:
     - issuer-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack"
-      jwk-set-uri: "https://wes-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
-      audiences:
-      - dnastack-client
-    - issuer-uri: "https://app.dnastack.com/auth/realms/DNAstack"
-      jwk-set-uri: "https://app.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
+      jwk-set-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
       audiences:
       - dnastack-client
   wdl:

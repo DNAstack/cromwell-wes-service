@@ -51,9 +51,8 @@ public class AuthorizationClient {
     }
 
     private String sanitizeKeyString(String keyString) {
-        return keyString.replaceAll("\\n", "").replaceAll("\\\\n","").replaceAll("-----BEGIN (PUBLIC|PRIVATE) "
-                + "KEY-----",
-            "").replaceAll("-----END (PUBLIC|PRIVATE) KEY-----", "");
+        return keyString.replaceAll("\\n", "").replaceAll("\\\\n", "").replaceAll("-----BEGIN (PUBLIC|PRIVATE) "
+            + "KEY-----", "").replaceAll("-----END (PUBLIC|PRIVATE) KEY-----", "").replaceAll("\"", "");
     }
 
     public String getAccessToken() {
