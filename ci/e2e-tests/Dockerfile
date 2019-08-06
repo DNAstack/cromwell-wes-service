@@ -26,7 +26,6 @@ RUN ./mvnw -B versions:set -DnewVersion=${APP_VERSION}
 # Now add sources, which will bust the cache.
 ADD target/src ./src
 RUN ./mvnw -B -o package -DskipTests=true
-RUN ls -lah /build/target/${APP_NAME}*.jar
 
 ##
 ## Stage 2: Package the runnable test image
@@ -46,7 +45,7 @@ ADD target/mvnw /
 # include all the files assembled for us by the build-docker-e2e-image script
 USER root
 
-COPY --from=0 /build/target/${APP_NAME}*.jar /e2e-tests.jar
+COPY --from=0 /build/target/wes-service-e2e-tests-*.jar /e2e-tests.jar
 RUN mkdir /target
 RUN ./mvnw -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 

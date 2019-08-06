@@ -45,6 +45,6 @@ FROM openjdk:11-slim
 ARG APP_NAME
 ARG APP_VERSION
 
-COPY --from=0 /build/target/${APP_NAME}*.jar /app.jar
+COPY --from=0 /build/target/wes-service*.jar /app.jar
 EXPOSE 8080
 ENTRYPOINT ["java","-jar", "app.jar"]
