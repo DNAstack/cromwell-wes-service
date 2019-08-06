@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package com.dnastack.wes.security;
+package com.dnastack.wes.service.utils;
 
 import static org.springframework.security.jwt.codec.Codecs.b64Decode;
 import static org.springframework.security.jwt.codec.Codecs.utf8Encode;
@@ -83,6 +83,7 @@ class RsaKeyHelper {
                 BigInteger exponent = ((RSAPrivateCrtKey) privateKey).getPublicExponent();
                 RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(modulus, exponent);
                 publicKey = fact.generatePublic(publicKeySpec);
+
             } else if (type.equals("PUBLIC KEY")) {
                 KeySpec keySpec = new X509EncodedKeySpec(content);
                 publicKey = fact.generatePublic(keySpec);

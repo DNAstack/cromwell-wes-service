@@ -33,7 +33,6 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 @DisplayName("WES tests")
 public class WesE2ETest extends BaseE2eTest {
 
-    private static final String DEFAULT_PUBLIC_KEY_FILE = "jwt.pub.pem";
     private static final String DEFAULT_PRIVATE_KEY_FILE = "jwt.pem";
     private static AuthorizationClient authorizationClient;
 
@@ -44,7 +43,7 @@ public class WesE2ETest extends BaseE2eTest {
     @BeforeAll
     public static void setupTests() {
         try {
-            authorizationClient = new AuthorizationClient(loadPublicKey(), loadPrivateKey());
+            authorizationClient = new AuthorizationClient(loadPrivateKey());
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -59,16 +58,6 @@ public class WesE2ETest extends BaseE2eTest {
             privKey = IOUtils.readInputStreamToString(inputStream, Charset.forName("UTF-8"));
         }
         return privKey;
-    }
-
-    private static String loadPublicKey() throws IOException {
-        String pubKey = optionalEnv("E2E_WES_PUBLIC_KEY", null);
-        if (pubKey == null) {
-            InputStream inputStream = WesE2ETest.class.getResourceAsStream(DEFAULT_PUBLIC_KEY_FILE);
-            pubKey = IOUtils.readInputStreamToString(inputStream, Charset.forName("UTF-8"));
-        }
-        return pubKey;
-
     }
 
     @Test
