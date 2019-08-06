@@ -24,25 +24,23 @@ wes:
     object-transfer-uri: "https://object-transfer.staging.dnastack.com"
     external-account-uri: "https://external-accounts.staging.dnastack.com"
   auth:
-    dev-rsa-public-key: >
-      -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxySDfhuXD+0khrgMX4Zq\nK4JBrexDoEK7gooBI6E1oYlX8nrQm6Z7G6QJtyFOTt04z9HR0fwGUDgaU9abBWzf\n/wJdABPTIUwlwB9yFAelF6jY9k2nVe/Agpbdlx4ylu2MbQ3ybCW8ma33UmQSK9/N\nR1R1aw3bKj5gvKF9/aWNLeObeipqXKZ/T3nD5/2O1BD8xzNZ+eQ6qWJKtWvVsq42\nB5Z9DNuvgmYYmPAc2OUQc9qhdsO1Jw8J58ZxBIFNC0h1/yaaeUuUtKMaw1VMOZqT\n7EjteeEujFVG4zqUPXaJNiFLd7kFkL65JEbxlCxFfh0b6SjJESNcwDHbSZt6EitG\n5QIDAQAB\n-----END PUBLIC KEY-----\n
     service-account-authentication-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/token"
     service-account-client-id: "wes-service"
     service-account-secret: "e5c145eb-2f2e-4d3e-949c-c5a9f247fd01"
+    dev-token-issuer:
+      rsa-public-key: >
+        -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxySDfhuXD+0khrgMX4Zq\nK4JBrexDoEK7gooBI6E1oYlX8nrQm6Z7G6QJtyFOTt04z9HR0fwGUDgaU9abBWzf\n/wJdABPTIUwlwB9yFAelF6jY9k2nVe/Agpbdlx4ylu2MbQ3ybCW8ma33UmQSK9/N\nR1R1aw3bKj5gvKF9/aWNLeObeipqXKZ/T3nD5/2O1BD8xzNZ+eQ6qWJKtWvVsq42\nB5Z9DNuvgmYYmPAc2OUQc9qhdsO1Jw8J58ZxBIFNC0h1/yaaeUuUtKMaw1VMOZqT\n7EjteeEujFVG4zqUPXaJNiFLd7kFkL65JEbxlCxFfh0b6SjJESNcwDHbSZt6EitG\n5QIDAQAB\n-----END PUBLIC KEY-----\n
+      audiences: wes-e2e-test
+      issuer-uri: "https://testing.dnastack.com"
     token-issuers:
     - issuer-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack"
-      rsa-public-key: >
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlgEyFxU4YzqWVPycXx7BlmNPpH6fMtvJr2ZEC5LfJi2GVzzOwp7jZV/zan7pru/phJ1nrJoffatKuy+uRXJIjldDn5PjTphMNYbGYfIrmISOP8eP2oHmTHVGXrA3tESwCSwL82fjoxQj04sdGniezjBR+yELENOajASwwNCRjI2ktmKxaHoaEcz4bRNek3CwyifhEiHEd970VFVkeOTVo4X9TM07qtlJoK1mCJTcWt3VT45K8PcHQaEy88NvgPNltJ9VH5UaJf/tG7z3hdkFghjR5q3gEhR+7wxYylIujcGQUzoaKx4AxNZoHLrJE4iraw3qf8ac3/yvmbfBzjfFawIDAQAB
+      jwk-set-uri: "https://wes-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
       audiences:
       - dnastack-client
     - issuer-uri: "https://app.dnastack.com/auth/realms/DNAstack"
       jwk-set-uri: "https://app.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
       audiences:
       - dnastack-client
-    - issuer-uri: "https://testing.dnastack.com"
-      audiences:
-      - wes-e2e-test
-      rsa-public-key: ${wes.auth.dev-rsa-public-key}
   wdl:
     validator:
       url: "https://wdl-validator.staging.dnastack.com"

@@ -30,6 +30,9 @@ public class AuthConfig {
      */
     String serviceAccountSecret;
 
+
+    IssuerConfig devTokenIssuer = null;
+
     List<IssuerConfig> tokenIssuers = new ArrayList<>();
 
 
