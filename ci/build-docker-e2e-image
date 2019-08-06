@@ -18,7 +18,9 @@ app_version=$3
 
 # This script does all its staging in a directory called target for easy cleanup and effective .gitignore.
 docker_context_dir=ci/e2e-tests/target
+rm -rf ${docker_context_dir}
 mkdir -p ${docker_context_dir}
+
 
 cp -rp \
   e2e-tests/pom.xml \
