@@ -30,9 +30,11 @@ import java.util.stream.Stream;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Service
@@ -47,6 +49,7 @@ public class TransferService {
     private final OAuthTokenCache oAuthTokenCache;
 
 
+    @Autowired
     TransferService(ExternalAccountClient externalAccountClient, TransferServiceClient transferServiceClient,
         TaskScheduler taskScheduler, TransferConfig config, OAuthTokenCache oAuthTokenCache) {
         this.externalAccountClient = externalAccountClient;
@@ -190,16 +193,10 @@ public class TransferService {
                 .filter(attachment -> attachment.getOriginalFilename() != null && attachment.getOriginalFilename()
                     .equals(Constants.OBJECT_ACCESS_TOKEN_FILE)).findFirst();
 
-        String objectAccessTokenString =
-            runRequest.getWorkflowEngineParameters() != null ? runRequest.getWorkflowEngineParameters()
-                .get(Constants.OBJECT_ACCESS_TOKEN_ENGINE_PARAM) : null;
-
         TypeReference<Map<String, String>> typeReference = new TypeReference<>() {
         };
         if (objectAccessTokenFile.isPresent()) {
             objectAccessTokens = mapper.readValue(objectAccessTokenFile.get().getInputStream(), typeReference);
-        } else if (objectAccessTokenString != null) {
-            objectAccessTokens = mapper.readValue(objectAccessTokenString, typeReference);
         } else {
             objectAccessTokens = Collections.emptyMap();
         }
@@ -273,7 +270,7 @@ public class TransferService {
             prefix = prefix + "/" + originalUri.getHost();
         }
 
-        return stagingDirectory + "/" + prefix + "/" + path;
+        return UriComponentsBuilder.fromUriString(stagingDirectory).path(prefix).path(path).build().toString();
     }
 
     private boolean isCloudBucket(String scheme) {
