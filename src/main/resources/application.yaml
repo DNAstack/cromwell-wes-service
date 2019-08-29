@@ -15,6 +15,13 @@ wes:
       WDL:
       - "draft-2"
       - "1.0"
+    tags:
+      object-access-token-attachment-name: "tokens.json"
+      cromwell-options-attachment-name: "options.json"
+      dependencies-zip-attachment-name: "dependencies.zip"
+
+
+
   drs:
     supported-types:
     - "file"

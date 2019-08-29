@@ -10,10 +10,10 @@ public class Constants {
 
 
     public static final String USER_LABEL = "user_id";
+    public static final String WORKFLOW_URL_LABEL = "workflow_url";
     public static final String OPTIONS_FILE = "options.json";
     public static final String DEPENDENCIES_FILE = "dependencies.zip";
-    public static final String OBJECT_ACCESS_TOKEN_FILE = "object_access_tokens.json";
-    public static final String OBJECT_ACCESS_TOKEN_ENGINE_PARAM = "object_access_tokens";
+    public static final String OBJECT_ACCESS_TOKEN_FILE = "tokens.json";
 
     public static final Set<String> VALID_CROMWELL_OPTIONS = cromwellOptions();
 

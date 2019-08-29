@@ -122,7 +122,6 @@ public class CromwellService {
         return systemCounts;
     }
 
-
     /**
      * Retrieve the associated version of cromwell
      */
@@ -367,6 +366,7 @@ public class CromwellService {
         if (user != null) {
             labels.put(Constants.USER_LABEL, user);
         }
+        labels.put(Constants.WORKFLOW_URL_LABEL, runRequest.getWorkflowUrl());
         cromwellExecutionRequest.setLabels(labels);
     }
 

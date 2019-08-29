@@ -1,5 +1,6 @@
 package com.dnastack.wes.service;
 
+import com.dnastack.wes.Constants;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
 import com.dnastack.wes.model.cromwell.CromwellStatus;
@@ -63,10 +64,18 @@ public class CromwellWesMapper {
         runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(metadataResponse
             .getSubmittedFiles(), mappedFileObject));
         runRequest.setWorkflowEngineParameters(mapOptionsToEngineParameters(options));
+
+        if (metadataResponse.getLabels() != null && metadataResponse.getLabels()
+            .containsKey(Constants.WORKFLOW_URL_LABEL)) {
+            runRequest.setWorkflowUrl(metadataResponse.getLabels().get(Constants.WORKFLOW_URL_LABEL));
+            metadataResponse.getLabels().remove(Constants.WORKFLOW_URL_LABEL);
+        }
+
         runRequest.setTags(metadataResponse.getLabels());
 
         return runRequest;
     }
+
 
     private static Map<String, Object> getWorkflowOptions(CromwellMetadataResponse metadataResponse) {
         Map<String, String> submittedFiles = metadataResponse.getSubmittedFiles();
