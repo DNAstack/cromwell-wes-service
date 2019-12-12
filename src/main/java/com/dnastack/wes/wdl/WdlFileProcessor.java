@@ -132,8 +132,12 @@ public class WdlFileProcessor {
     }
 
     private boolean isUrl(String workflowUrl) {
-        URI uri = URI.create(workflowUrl);
-        return uri.getScheme() != null && uri.getHost() != null;
+        try {
+            URI uri = URI.create(workflowUrl);
+            return uri.getScheme() != null && uri.getHost() != null;
+        } catch (Exception e){
+            return false;
+        }
     }
 
 
