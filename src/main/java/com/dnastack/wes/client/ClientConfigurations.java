@@ -3,16 +3,14 @@ package com.dnastack.wes.client;
 
 import com.dnastack.wes.config.AuthConfig;
 import com.dnastack.wes.config.CromwellConfig;
-import com.dnastack.wes.config.WdlValidatorClientConfig;
-import com.dnastack.wes.model.oauth.AccessToken;
 import com.dnastack.wes.config.TransferConfig;
+import com.dnastack.wes.model.oauth.AccessToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Client;
 import feign.Feign;
 import feign.Feign.Builder;
 import feign.Logger;
 import feign.Logger.Level;
-import feign.Target;
 import feign.auth.BasicAuthRequestInterceptor;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
@@ -46,7 +44,7 @@ public class ClientConfigurations {
     }
 
 
-    private class SimpleLogger extends Logger {
+    public static class SimpleLogger extends Logger {
 
         @Override
         protected void log(String configKey, String format, Object... args) {
@@ -70,31 +68,6 @@ public class ClientConfigurations {
 
     }
 
-    @Bean
-    public WdlValidatorClient wdlValidatorClient(WdlValidatorClientConfig validatorConfig) {
-        Client httpClient = new OkHttpClient();
-
-        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
-            .logLevel(Level.BASIC)
-            .target(WdlValidatorClient.class, validatorConfig.getUrl());
-    }
-
-    @Bean
-    public DrsClient drsClient() {
-        Client httpClient = new OkHttpClient();
-        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
-            .logLevel(Level.BASIC)
-            .target(Target.EmptyTarget.create(DrsClient.class));
-    }
-
-    @Bean
-    public ExternalAccountClient externalAccountClient(TransferConfig transferConfig) {
-        Client httpClient = new OkHttpClient();
-        return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder())
-            .logger(new SimpleLogger())
-            .logLevel(Level.BASIC)
-            .target(ExternalAccountClient.class, transferConfig.getExternalAccountUri());
-    }
 
     @Bean
     public OauthTokenClient oauthTokenClient(AuthConfig authConfig) {

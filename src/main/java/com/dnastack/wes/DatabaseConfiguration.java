@@ -1,7 +1,7 @@
 package com.dnastack.wes;
 
 
-import com.dnastack.wes.service.FileMappingRowMapper;
+import com.dnastack.wes.service.OriginalInputRowMapper;
 import com.dnastack.wes.service.JsonMapArgumentFactory;
 import javax.sql.DataSource;
 import org.jdbi.v3.core.Jdbi;
@@ -20,7 +20,7 @@ public class DatabaseConfiguration {
     public Jdbi jdbi() {
         return Jdbi.create(dataSource)
             .registerArgument(new JsonMapArgumentFactory())
-            .registerRowMapper(new FileMappingRowMapper())
+            .registerRowMapper(new OriginalInputRowMapper())
             .installPlugin(new SqlObjectPlugin());
     }
 }

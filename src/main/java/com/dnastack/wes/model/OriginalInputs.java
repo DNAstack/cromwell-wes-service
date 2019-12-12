@@ -17,7 +17,7 @@ import lombok.ToString;
 @ToString
 @EqualsAndHashCode
 @Builder
-public class FileMapping {
+public class OriginalInputs {
 
     String id;
 

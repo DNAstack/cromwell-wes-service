@@ -45,9 +45,4 @@ public class TransferConfig {
      */
     private String objectTransferUri = null;
 
-    /**
-     * base URI of the external account service
-     */
-    private String externalAccountUri = null;
-
 }

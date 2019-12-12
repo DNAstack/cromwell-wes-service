@@ -1,8 +1,8 @@
 package com.dnastack.wes.service;
 
 import com.dnastack.wes.model.transfer.TransferJob;
-import com.dnastack.wes.wdl.WdlFileProcessor;
 import java.util.List;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -11,7 +11,7 @@ import lombok.Data;
 public class TransferContext {
 
     String runId;
-    WdlFileProcessor fileProcessor;
+    Map<String, String[]> objectsToTransfer;
     List<TransferJob> transferJobs;
     PostTransferCallback callback;
 

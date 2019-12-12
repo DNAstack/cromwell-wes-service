@@ -2,8 +2,6 @@ package com.dnastack.wes.service;
 
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.client.CromwellClient;
-import com.dnastack.wes.client.OAuthTokenCache;
-import com.dnastack.wes.client.WdlValidatorClient;
 import com.dnastack.wes.config.AppConfig;
 import com.dnastack.wes.exception.AuthorizationException;
 import com.dnastack.wes.exception.InvalidRequestException;
@@ -13,9 +11,6 @@ import com.dnastack.wes.model.cromwell.CromwellResponse;
 import com.dnastack.wes.model.cromwell.CromwellSearch;
 import com.dnastack.wes.model.cromwell.CromwellStatus;
 import com.dnastack.wes.model.cromwell.CromwellVersion;
-import com.dnastack.wes.model.wdl.WdlValidationRequest;
-import com.dnastack.wes.model.wdl.WdlValidationResponse;
-import com.dnastack.wes.model.wdl.WdlWorkflowDependency;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;
@@ -44,9 +39,9 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -73,23 +68,18 @@ public class CromwellService {
 
     private final static ObjectMapper mapper = new ObjectMapper();
     private final CromwellClient client;
-    private final WdlValidatorClient validatorClient;
-    private final OAuthTokenCache oAuthTokenCache;
-    private final FileMappingStore fileMappingStore;
-    private final DrsService drsService;
+    private final OriginalInputStore originalInputStore;
+    private final DrsObjectResolverFactory drsObjectResolverFactory;
     private final AppConfig config;
     private final TransferService transferService;
 
     @Autowired
-    CromwellService(OAuthTokenCache oAuthTokenCache, CromwellClient cromwellClient, WdlValidatorClient validatorClient,
-        FileMappingStore fileMappingStore, AppConfig appConfig, DrsService drsService, TransferService transferService) {
-        this.oAuthTokenCache = oAuthTokenCache;
+    CromwellService(CromwellClient cromwellClient, DrsObjectResolverFactory drsObjectResolverFactory, OriginalInputStore originalInputStore, AppConfig appConfig, TransferService transferService) {
         this.client = cromwellClient;
-        this.validatorClient = validatorClient;
-        this.drsService = drsService;
+        this.drsObjectResolverFactory = drsObjectResolverFactory;
         this.config = appConfig;
         this.transferService = transferService;
-        this.fileMappingStore = fileMappingStore;
+        this.originalInputStore = originalInputStore;
     }
 
 
@@ -199,7 +189,7 @@ public class CromwellService {
     public RunLog getRun(String runId) {
         authorizeUserForRun(runId);
         CromwellMetadataResponse metadataResponse = client.getMetadata(runId);
-        Map<String, Object> mappedFileObject = fileMappingStore.getMapping(runId);
+        Map<String, Object> mappedFileObject = originalInputStore.getInputs(runId);
         return CromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject);
     }
 
@@ -265,7 +255,7 @@ public class CromwellService {
      * <li>A file submitted as a <code>workflow_attachment</code> with the name defined by {@link
      * Constants#OPTIONS_FILE}. This file is expected to be <code>JSON</code> and will be extracted into a Hashmap and
      * merged with the options submitted by <code>engine_parameters</code></li>
-     * <li>Key-Value pairs provided by the {@link RunRequest#workflowEngineParameters}. The values will extracted as
+     * <li>Key-Value pairs provided by the . The values will extracted as
      * <code>JSON</code> before being merged in the options map.
      * </li>
      * </ol>
@@ -282,6 +272,7 @@ public class CromwellService {
             try {
                 tempDirectory = Files.createTempDirectory("wes-dependency-resolver");
                 CromwellExecutionRequest executionRequest = new CromwellExecutionRequest();
+                final Map<String, Object> originalInputs = runRequest.getWorkflowParams();
 
                 if (runRequest.getWorkflowAttachments() == null) {
                     runRequest.setWorkflowAttachments(new MultipartFile[0]);
@@ -292,28 +283,28 @@ public class CromwellService {
                 } else {
                     setWorkflowSourceAndDependencies(tempDirectory, runRequest, executionRequest);
                 }
-                WdlFileProcessor processor = setWorkflowInputs(runRequest, executionRequest);
-
+                Map<String, String> tokens = getObjectAccessTokens(runRequest);
+                WdlFileProcessor processor = setWorkflowInputs(runRequest
+                    .getWorkflowParams(), tokens, executionRequest);
+                Map<String, String[]> objectsToTransfer = null;
                 if (processor != null) {
-                    transferService.configureObjectsForTransfer(processor.getMappedObjects(), runRequest);
+                    objectsToTransfer = transferService
+                        .configureObjectsForTransfer(processor.getMappedObjects(), tokens);
                 }
 
                 setWorkflowLabels(runRequest, executionRequest);
                 setWorkflowOptions(runRequest, executionRequest);
-                executionRequest.setWorkflowOnHold(processor != null && processor.requiresTransfer());
+                executionRequest.setWorkflowOnHold(objectsToTransfer != null && !objectsToTransfer.isEmpty());
                 CromwellStatus status = client.createWorkflow(executionRequest);
                 RunId runId = RunId.builder().runId(status.getId()).build();
 
-                if (processor != null) {
-                    if (processor.requiresTransfer()) {
-                        transferService
-                            .transferFiles(new TransferContext(runId
-                                .getRunId(), processor, null, this::transferCallBack));
-                    }
+                if (objectsToTransfer != null && !objectsToTransfer.isEmpty()) {
+                    transferService
+                        .transferFiles(new TransferContext(runId
+                            .getRunId(), objectsToTransfer, null, this::transferCallBack));
 
-                    Map<String, Object> mappedFiles = processor.getMappedFiles();
-                    fileMappingStore.saveMapping(status.getId(), mappedFiles);
                 }
+                originalInputStore.saveInputs(runId.getRunId(), originalInputs);
 
                 return runId;
             } finally {
@@ -332,6 +323,24 @@ public class CromwellService {
     }
 
 
+    private Map<String, String> getObjectAccessTokens(RunRequest runRequest) throws IOException {
+        Map<String, String> objectAccessTokens;
+
+        Optional<MultipartFile> objectAccessTokenFile =
+            Stream.of(runRequest.getWorkflowAttachments())
+                .filter(attachment -> attachment.getOriginalFilename() != null && attachment.getOriginalFilename()
+                    .equals(Constants.OBJECT_ACCESS_TOKEN_FILE)).findFirst();
+
+        TypeReference<Map<String, String>> typeReference = new TypeReference<>() {
+        };
+        if (objectAccessTokenFile.isPresent()) {
+            objectAccessTokens = mapper.readValue(objectAccessTokenFile.get().getInputStream(), typeReference);
+        } else {
+            objectAccessTokens = Collections.emptyMap();
+        }
+        return objectAccessTokens;
+    }
+
     private void authorizeUserForRun(String runId) {
         String user = AuthenticatedUser.getSubject();
         if (config.getEnableMultiTenantSupport()) {
@@ -349,6 +358,7 @@ public class CromwellService {
     private void transferCallBack(Throwable throwable, String runId) {
         if (throwable != null) {
             log.error("Encountered error while transferring files. Aborting run {}", runId);
+            log.error(throwable.getMessage(),throwable);
             client.abortWorkflow(runId);
         } else {
             log.info("Transferring files complete, releasing hold on run {}", runId);
@@ -502,37 +512,16 @@ public class CromwellService {
     }
 
 
-    private WdlFileProcessor setWorkflowInputs(RunRequest runRequest, CromwellExecutionRequest executionRequest) throws IOException {
+    private WdlFileProcessor setWorkflowInputs(Map<String, Object> workflowParams, Map<String, String> tokens, CromwellExecutionRequest executionRequest) {
         Map<String, Object> cromwellInputs = new HashMap<>();
         WdlFileProcessor processor = null;
-        if (runRequest.getWorkflowParams() != null && !runRequest.getWorkflowParams().isEmpty()) {
-            WdlValidationResponse schema = getWorkflowSchema(runRequest);
-            processor = new WdlFileProcessor(runRequest.getWorkflowParams(), schema, Arrays.asList(drsService));
+        if (workflowParams != null && !workflowParams.isEmpty()) {
+            processor = new WdlFileProcessor(workflowParams, Arrays.asList(drsObjectResolverFactory.getService(tokens)));
             cromwellInputs.putAll(processor.getProcessedInputs());
         }
         executionRequest.setWorkflowInputs(cromwellInputs);
         return processor;
 
-    }
-
-    private WdlValidationResponse getWorkflowSchema(RunRequest runRequest) throws IOException {
-        WdlValidationRequest request = new WdlValidationRequest();
-        if (isUrl(runRequest.getWorkflowUrl())) {
-            request.setUri(request.getUri());
-        } else {
-            request.setUri(runRequest.getWorkflowUrl());
-            List<WdlWorkflowDependency> dependencies = new ArrayList<>();
-            List<MultipartFile> wdls = Stream.of(runRequest.getWorkflowAttachments())
-                .filter(file -> file.getOriginalFilename().endsWith(".wdl")).collect(Collectors.toList());
-            for (MultipartFile file : wdls) {
-                WdlWorkflowDependency dependency = new WdlWorkflowDependency();
-                dependency.setContent(new String(file.getBytes(), Charset.defaultCharset()));
-                dependency.setUri(file.getOriginalFilename());
-                dependencies.add(dependency);
-            }
-            request.setDependencies(dependencies);
-        }
-        return validatorClient.validate(request, oAuthTokenCache.getToken().getToken());
     }
 
 }

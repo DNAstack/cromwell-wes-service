@@ -39,7 +39,7 @@ public class CromwellWesMapper {
         return RunStatus.builder().runId(status.getId()).state(mapState(status.getStatus())).build();
     }
 
-    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> mappedFileObject) {
+    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
         RunLog runLog = new RunLog();
         runLog.setRunId(metadataResponse.getId());
         runLog.setState(mapState(metadataResponse.getStatus()));
@@ -51,18 +51,27 @@ public class CromwellWesMapper {
             .name(metadataResponse.getWorkflowName()).build();
         runLog.setRunLog(workflowLog);
         runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
-        runLog.setRequest(mapMetadataToRunRequest(metadataResponse, mappedFileObject));
+        runLog.setRequest(mapMetadataToRunRequest(metadataResponse, originalInputs));
 
         return runLog;
     }
 
-    private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> mappedFileObject) {
+    private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
         RunRequest runRequest = new RunRequest();
         runRequest.setWorkflowType(metadataResponse.getActualWorkflowLanguage());
         runRequest.setWorkflowTypeVersion(metadataResponse.getActualWorkflowLanguageVersions());
         Map<String, Object> options = getWorkflowOptions(metadataResponse);
-        runRequest.setWorkflowParams(mapCromwellInputsToOriginalValues(metadataResponse
-            .getSubmittedFiles(), mappedFileObject));
+
+        Map<String, Object> params = metadataResponse.getInputs();
+        if (originalInputs != null) {
+            params = originalInputs;
+        }
+
+        if (params == null) {
+            params = Collections.emptyMap();
+        }
+
+        runRequest.setWorkflowParams(params);
         runRequest.setWorkflowEngineParameters(mapOptionsToEngineParameters(options));
 
         if (metadataResponse.getLabels() != null && metadataResponse.getLabels()
@@ -113,55 +122,7 @@ public class CromwellWesMapper {
 
         }
         return engineParams;
-    }
 
-    private static Map<String, Object> mapCromwellInputsToOriginalValues(Map<String, String> submittedFiles,
-        Map<String, Object> mappedFileObject) {
-        Map<String, Object> inputs = Collections.emptyMap();
-
-        try {
-            String rawInputs = submittedFiles.get("inputs");
-            if (rawInputs != null) {
-                inputs = objectMapper.readValue(rawInputs, new TypeReference<Map<String, Object>>() {
-                });
-                if (mappedFileObject != null) {
-                    return inputs.entrySet().stream()
-                        .map(entry -> {
-                            entry.setValue(mapFileObject(mappedFileObject, entry.getValue()));
-                            return entry;
-                        }).collect(HashMap::new, (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll);
-                }
-            }
-        } catch (Exception e) {
-
-        }
-        return inputs;
-
-    }
-
-
-    private static Object mapFileObject(Map<String, Object> originalFiles, Object objectToMap) {
-        if (objectToMap == null) {
-            return null;
-        }
-        if (objectToMap instanceof String && originalFiles.containsKey(objectToMap)) {
-            return originalFiles.get(objectToMap);
-        } else if (objectToMap instanceof List) {
-            List listObjectsToMap = (List) objectToMap;
-            List<Object> returnObjects = new ArrayList<>();
-            for (Object object : listObjectsToMap) {
-                returnObjects.add(mapFileObject(originalFiles, object));
-            }
-            return returnObjects;
-        } else if (objectToMap instanceof Map) {
-            Map<String, Object> mapObjectsToMap = (Map<String, Object>) objectToMap;
-            Map<String, Object> returnObjects = new HashMap<>();
-            for (Entry<String, Object> entry : mapObjectsToMap.entrySet()) {
-                returnObjects.put(entry.getKey(), mapFileObject(originalFiles, entry.getValue()));
-            }
-            return returnObjects;
-        }
-        return objectToMap;
     }
 
 

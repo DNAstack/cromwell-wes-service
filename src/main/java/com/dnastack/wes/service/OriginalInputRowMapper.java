@@ -1,6 +1,6 @@
 package com.dnastack.wes.service;
 
-import com.dnastack.wes.model.FileMapping;
+import com.dnastack.wes.model.OriginalInputs;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -11,15 +11,15 @@ import java.util.Map;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 
-public class FileMappingRowMapper implements RowMapper<FileMapping> {
+public class OriginalInputRowMapper implements RowMapper<OriginalInputs> {
 
     private final static ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public FileMapping map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return new FileMapping(
+    public OriginalInputs map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new OriginalInputs(
             rs.getString("id"),
-            getJsonOrNull(rs.getString("mapping"))
+            getJsonOrNull(rs.getString("inputs"))
         );
     }
 

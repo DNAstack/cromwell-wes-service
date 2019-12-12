@@ -2,34 +2,31 @@ wes:
   service-info:
     auth-instruction-url: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/.well-known/openid-configuration"
     supported-wes-versions:
-    - "1.0.0"
+      - "1.0.0"
 
     supported-file-system-protocols:
-    - "gs"
-    - "http"
-    - "file"
-    - "drs"
+      - "gs"
+      - "http"
+      - "file"
+      - "drs"
     workflow-engine-versions:
-      cromwell: 42
+      cromwell: 47
     workflow-type-versions:
       WDL:
-      - "draft-2"
-      - "1.0"
+        - "draft-2"
+        - "1.0"
     tags:
       object-access-token-attachment-name: "tokens.json"
       cromwell-options-attachment-name: "options.json"
       dependencies-zip-attachment-name: "dependencies.zip"
-
-
-
   drs:
-    supported-types:
-    - "file"
+    supported-access-types:
+      - gs
+      - https
   transfer:
-    enabled: false
+    enabled: true
     staging-directory: "gs://ds-test-uploading"
     object-transfer-uri: "https://object-transfer.staging.dnastack.com"
-    external-account-uri: "https://external-accounts.staging.dnastack.com"
   auth:
     service-account-authentication-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/token"
     service-account-client-id: "wes-service"
@@ -46,28 +43,27 @@ wes:
         5QIDAQAB
         -----END PUBLIC KEY-----
       audiences:
-      - wes-e2e-test
+        - wes-e2e-test
       issuer-uri: "https://testing.dnastack.com"
     token-issuers:
-    - issuer-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack"
-      jwk-set-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
-      audiences:
-      - dnastack-client
-    - issuer-uri: "https://data-access-manager.staging.dnastack.com"
-      rsa-public-key: |
-        -----BEGIN RSA PUBLIC KEY-----
-        MIIBCgKCAQEAz0WC1eM5IFvnQuaQKt1z90QINJ+5PaH0TflUXMqeM/9bAsDaIbYZ
-        zMu0uDNzSTVOOl5o1/mclo88wzS1E572VzOOsu6eXHzztpokHI5bbxbhDIrA+2o3
-        wOsddFo+QvrMmR+I73ZqmVIuUd03Dhlk/i32Dk7NLOOSsn/WCEZUQ9vM7SuaWwZr
-        NXBJ633MtgxOE/UEDnJ7gqZrllzBfDDKhgkG7nbRpoU9bSY3G6DwcjnmW2g3HVom
-        6hZao6JWpcddP/7dvTY5sKYVjbSVIG4eJUqIZI2wSAxp/Fj9SPGl3nRqNkWJdkQl
-        iMZxVlN2CZ481xaOK8jVjiN88LIZbMcPqwIDAQAB
-        -----END RSA PUBLIC KEY-----
-      audiences:
-      - ddap-wes
-  wdl:
-    validator:
-      url: "https://wdl-validator.staging.dnastack.com"
+      - issuer-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack"
+        jwk-set-uri: "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/protocol/openid-connect/certs"
+        audiences:
+          - dnastack-client
+      - issuer-uri: "https://data-access-manager.staging.dnastack.com"
+        rsa-public-key: |
+          -----BEGIN RSA PUBLIC KEY-----
+          MIIBCgKCAQEAz0WC1eM5IFvnQuaQKt1z90QINJ+5PaH0TflUXMqeM/9bAsDaIbYZ
+          zMu0uDNzSTVOOl5o1/mclo88wzS1E572VzOOsu6eXHzztpokHI5bbxbhDIrA+2o3
+          wOsddFo+QvrMmR+I73ZqmVIuUd03Dhlk/i32Dk7NLOOSsn/WCEZUQ9vM7SuaWwZr
+          NXBJ633MtgxOE/UEDnJ7gqZrllzBfDDKhgkG7nbRpoU9bSY3G6DwcjnmW2g3HVom
+          6hZao6JWpcddP/7dvTY5sKYVjbSVIG4eJUqIZI2wSAxp/Fj9SPGl3nRqNkWJdkQl
+          iMZxVlN2CZ481xaOK8jVjiN88LIZbMcPqwIDAQAB
+          -----END RSA PUBLIC KEY-----
+        audiences:
+          - ddap-wes
+      - issuer-uri: https://wallet.staging.dnastack.com
+        jwk-set-uri: https://wallet.staging.dnastack.com/oauth/jwks
   enable-multi-tenant-support: false
 
 # App information

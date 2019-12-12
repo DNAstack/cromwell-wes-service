@@ -29,6 +29,7 @@ public class AppConfig {
      */
     Boolean enableMultiTenantSupport = false;
 
+
     public ServiceInfo getServiceInfo() {
         try {
             return mapper.readValue(mapper.writeValueAsString(serviceInfo), ServiceInfo.class);

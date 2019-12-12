@@ -1,70 +1,55 @@
 package com.dnastack.wes.service;
 
-import com.dnastack.wes.Constants;
-import com.dnastack.wes.client.ExternalAccountClient;
-import com.dnastack.wes.client.OAuthTokenCache;
 import com.dnastack.wes.client.TransferServiceClient;
 import com.dnastack.wes.config.TransferConfig;
-import com.dnastack.wes.model.transfer.ExternalAccount;
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.model.transfer.TransferRequest;
-import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.wdl.ObjectWrapper;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import feign.FeignException;
-import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Service
 public class TransferService {
 
-    private final static ObjectMapper mapper = new ObjectMapper();
-    private final ExternalAccountClient externalAccountClient;
     private final TransferServiceClient transferServiceClient;
     private final TransferConfig config;
     private final TaskScheduler taskScheduler;
     private final BlockingQueue<TransferContext> monitorQueue;
-    private final OAuthTokenCache oAuthTokenCache;
 
 
     @Autowired
-    TransferService(ExternalAccountClient externalAccountClient, TransferServiceClient transferServiceClient,
-        TaskScheduler taskScheduler, TransferConfig config, OAuthTokenCache oAuthTokenCache) {
-        this.externalAccountClient = externalAccountClient;
+    TransferService(TransferServiceClient transferServiceClient, TaskScheduler taskScheduler, TransferConfig config) {
         this.transferServiceClient = transferServiceClient;
         this.taskScheduler = taskScheduler;
         this.config = config;
         this.monitorQueue = new LinkedBlockingQueue<>();
-        this.oAuthTokenCache = oAuthTokenCache;
     }
 
     @PostConstruct
     public void init() {
         if (config.isEnabled()) {
             for (int i = 0; i < config.getNumMonitoringThreads(); i++) {
-                taskScheduler.scheduleWithFixedDelay(this::monitorTransfer, 1000L);
+                taskScheduler.scheduleWithFixedDelay(this::monitorTransfer, 13_000L);
             }
         }
     }
@@ -125,24 +110,22 @@ public class TransferService {
 
     private void performTransfer(TransferContext context) {
         Map<String, TransferRequest> transferRequests = new HashMap<>();
-        List<ObjectWrapper> objectsToTransfer = context.fileProcessor.getMappedObjects().stream()
-            .filter(ObjectWrapper::getRequiresTransfer).collect(Collectors.toList());
+        Map<String, String[]> objectsToTransfer = context.getObjectsToTransfer();
+        for (Map.Entry<String, String[]> entry : objectsToTransfer.entrySet()) {
 
-        for (ObjectWrapper wrapper : objectsToTransfer) {
-            String externalAccountId = wrapper.getTransferExternalAccount() != null ?
-                wrapper.getTransferExternalAccount().getExternalAccountId() : null;
-            String accessToken = wrapper.getAccessToken();
-            TransferRequest request;
-            if (accessToken != null) {
-                request = transferRequests.computeIfAbsent(accessToken, (k) -> new TransferRequest(accessToken, null));
-            } else {
-                request = transferRequests
-                    .computeIfAbsent(externalAccountId, (k) -> new TransferRequest(null, externalAccountId));
+            if (entry.getValue().length != 2) {
+                throw new IllegalArgumentException("Object to transfer must have a destination and an access token");
             }
 
-            List<String> copyPair = Arrays.asList(wrapper.getSourceDestination(), wrapper.getTransferDestination());
+            String source = entry.getKey();
+            String destination = entry.getValue()[0];
+            String accessToken = entry.getValue()[1];
+            TransferRequest request;
+            request = transferRequests.computeIfAbsent(accessToken, (k) -> new TransferRequest(accessToken));
+            List<String> copyPair = Arrays.asList(source, destination);
             request.getCopyPairs().add(copyPair);
         }
+
 
         List<TransferJob> transfersToMonitor = new ArrayList<>();
         for (TransferRequest request : transferRequests.values()) {
@@ -156,125 +139,73 @@ public class TransferService {
     }
 
 
-    private List<ExternalAccount> getExternalAccountsForUser() {
-        if (config.isEnabled()) {
-            String userId = AuthenticatedUser.getSubject();
-            log.trace("Retrieving external accounts for user {}", userId);
-            List<ExternalAccount> externalAccounts = externalAccountClient
-                .listExternalAccounts(oAuthTokenCache.getToken().getToken(), userId);
-            if (externalAccounts != null) {
-                return externalAccounts;
-            } else {
-                return Collections.emptyList();
-            }
-        } else {
-            return Collections.emptyList();
-        }
-    }
-
-
-    public void configureObjectsForTransfer(List<ObjectWrapper> objectWrappers, RunRequest runRequest) throws IOException {
+    public Map<String, String[]> configureObjectsForTransfer(List<ObjectWrapper> objectWrappers, Map<String, String> objectAccessTokens) {
+        Map<String, String[]> objectsToTransfer = new HashMap<>();
         if (config.isEnabled() && objectWrappers != null && !objectWrappers.isEmpty()) {
-            Map<String, String> objectAccessTokens = getObjectAccessTokens(runRequest);
             log.trace("Configuring object transfers for {} objects", objectWrappers.size());
             String stagingDirectoryPrefix = RandomStringUtils.randomAlphanumeric(6);
-            List<ExternalAccount> externalAccounts = getExternalAccountsForUser();
             for (ObjectWrapper wrapper : objectWrappers) {
-                configureObjectForTransfer(stagingDirectoryPrefix, objectAccessTokens, externalAccounts, wrapper);
+                configureObjectForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, wrapper);
             }
         }
+        return objectsToTransfer;
     }
 
-    private Map<String, String> getObjectAccessTokens(RunRequest runRequest) throws IOException {
-        Map<String, String> objectAccessTokens;
-
-        Optional<MultipartFile> objectAccessTokenFile =
-            Stream.of(runRequest.getWorkflowAttachments())
-                .filter(attachment -> attachment.getOriginalFilename() != null && attachment.getOriginalFilename()
-                    .equals(Constants.OBJECT_ACCESS_TOKEN_FILE)).findFirst();
-
-        TypeReference<Map<String, String>> typeReference = new TypeReference<>() {
-        };
-        if (objectAccessTokenFile.isPresent()) {
-            objectAccessTokens = mapper.readValue(objectAccessTokenFile.get().getInputStream(), typeReference);
-        } else {
-            objectAccessTokens = Collections.emptyMap();
-        }
-        return objectAccessTokens;
-    }
-
-    private void configureObjectForTransfer(String stagingDirectoryPrefix, Map<String, String> objectAccessTokens, List<ExternalAccount> externalAccounts,
+    private void configureObjectForTransfer(String stagingDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens,
         ObjectWrapper objectWrapper) {
         if (config.isEnabled()) {
-            String mappedValue = objectWrapper.getMappedValue();
-            URI mappedUri = URI.create(mappedValue);
-            if (config.getObjectPrefixWhitelist().stream().anyMatch(mappedValue::startsWith)) {
-                return;
-            }
-
-            if (objectAccessTokens.containsKey(mappedValue)) {
-                String accessToken = objectAccessTokens.get(mappedValue);
-                log.trace("Object {} requires transfer and matches user supplied access token", mappedValue);
-                String destinationLocation = generateTransferDestination(stagingDirectoryPrefix, mappedUri);
-                objectWrapper.setTransferDestination(destinationLocation);
-                objectWrapper.setSourceDestination(mappedValue);
-                objectWrapper.setMappedValue(destinationLocation);
-                objectWrapper.setRequiresTransfer(true);
-                objectWrapper.setWasMapped(true);
-                objectWrapper.setAccessToken(accessToken);
-
-            } else {
-                Optional<ExternalAccount> optExternalAccount = externalAccounts.stream()
-                    .filter(account -> doesExternalAccountMatch(mappedUri, account)).findFirst();
-
-                if (optExternalAccount.isPresent()) {
-                    ExternalAccount externalAccount = optExternalAccount.get();
-                    log.trace("Object {} requires transfer and an external account with id has been identified", mappedValue, externalAccount
-                        .getExternalAccountId());
-                    String destinationLocation = generateTransferDestination(stagingDirectoryPrefix, mappedUri);
-                    objectWrapper.setTransferDestination(destinationLocation);
-                    objectWrapper.setSourceDestination(mappedValue);
-                    objectWrapper.setMappedValue(destinationLocation);
-                    objectWrapper.setRequiresTransfer(true);
-                    objectWrapper.setWasMapped(true);
-                    objectWrapper.setTransferExternalAccount(externalAccount);
-                }
-            }
+            JsonNode mappedValue = objectWrapper.getMappedvalue();
+            configureNodeForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, mappedValue);
         }
     }
 
-    private boolean doesExternalAccountMatch(URI mappedUri, ExternalAccount externalAccount) {
-        //In this scenario the file is considered a local file
-        if (mappedUri.getHost() == null && mappedUri.getScheme() == null) {
-            return false;
+
+    private void configureNodeForTransfer(String staginDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens, JsonNode node) {
+        if (node.isTextual()) {
+            String objectToTransfer = node.textValue();
+            if (!config.getObjectPrefixWhitelist().stream().anyMatch(objectToTransfer::startsWith)) {
+                try {
+                    URI objectToTransferUri = new URI(objectToTransfer);
+                    if (objectAccessTokens.containsKey(objectToTransfer)) {
+                        String accessToken = objectAccessTokens.get(objectToTransfer);
+                        String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+                        objectsToTransfer.put(objectToTransfer, new String[]{destination, accessToken});
+                        return;
+                    } else {
+                        String hostUri = objectToTransferUri.getScheme() + "://" + objectToTransferUri.getHost();
+                        if (objectAccessTokens.containsKey(hostUri)) {
+                            String accessToken = objectAccessTokens.get(hostUri);
+                            String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+                            objectsToTransfer.put(objectToTransfer, new String[]{destination, accessToken});
+                        }
+                    }
+                } catch (URISyntaxException e) {
+                    // Silently handle thisl
+                }
+            }
+        } else if (node.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) node;
+            arrayNode.forEach((itemNode) -> {
+                configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, itemNode);
+            });
+        } else if (node.isObject()) {
+            ObjectNode objectNode = (ObjectNode) node;
+            objectNode.fields().forEachRemaining(entry -> {
+                configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, entry
+                    .getValue());
+            });
         }
-
-        Map<String, String> info = externalAccount.getInfo();
-        String prefixString = null;
-        if (info.containsKey("bucket")) {
-            prefixString = info.get("bucket");
-        } else if (info.containsKey("hostname")) {
-            prefixString = info.get("hostname");
-        }
-
-        URI prefixUri = URI.create(prefixString);
-        return mappedUri.getScheme().equals(prefixUri.getScheme()) && mappedUri.getHost().equals(prefixUri.getHost());
-
     }
 
     private String generateTransferDestination(String prefix, URI originalUri) {
         String stagingDirectory = config.getStagingDirectory();
         String path = originalUri.getPath();
 
-        if (isCloudBucket(originalUri.getScheme())) {
+        if (originalUri.getHost() != null) {
             prefix = prefix + "/" + originalUri.getHost();
         }
 
         return UriComponentsBuilder.fromUriString(stagingDirectory).path(prefix).path(path).build().toString();
-    }
-
-    private boolean isCloudBucket(String scheme) {
-        return scheme.equalsIgnoreCase("gs") || scheme.equalsIgnoreCase("s3");
     }
 
 }
