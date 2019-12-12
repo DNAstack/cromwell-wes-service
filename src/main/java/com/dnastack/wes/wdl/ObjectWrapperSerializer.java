@@ -9,6 +9,6 @@ public class ObjectWrapperSerializer extends JsonSerializer<ObjectWrapper> {
 
     @Override
     public void serialize(ObjectWrapper value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
-        gen.writeString(value.getMappedValue());
+        gen.writeObject(value.getMappedvalue());
     }
 }
