@@ -1,27 +1,32 @@
-package com.dnastack.wes.model.wdl;
+package com.dnastack.wes.model.drs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
-@Builder
 @Getter
 @Setter
+@Builder
+@ToString
+@EqualsAndHashCode
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
-public class WdlField {
+public class ContentsObject {
 
-    @JsonProperty("name")
-    private String name;
 
-    @JsonProperty("type_name")
-    private String typeName;
 
-    @JsonProperty("type")
-    private WdlTypeRepresentation type;
+    String id;
+
+    String name;
+
+    @JsonProperty("drs_uri")
+    List<String> drsUri;
+
+    List<ContentsObject> contents;
 }

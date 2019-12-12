@@ -17,10 +17,11 @@ public class DrsConfig {
     /**
      * List of supported DRS access types which this WES service can understand. Any DRS object provided which does
      * not have one of these accessTypes will either be ignored or result in an error. A DRS Access type corresponds
-     * to an object Source
+     * to an object Source. The accessTypes will be chosen in priority order
      * @see AccessType
      */
-    List<String> supportedAccessTypes = Arrays.asList(AccessType.file.name());
+    List<AccessType> supportedAccessTypes = Arrays.asList(AccessType.file);
+
 
 
 }
