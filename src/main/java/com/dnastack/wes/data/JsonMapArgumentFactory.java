@@ -1,4 +1,4 @@
-package com.dnastack.wes.service;
+package com.dnastack.wes.data;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

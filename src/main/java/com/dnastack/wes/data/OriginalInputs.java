@@ -1,4 +1,4 @@
-package com.dnastack.wes.model;
+package com.dnastack.wes.data;
 
 import java.util.Map;
 import lombok.AllArgsConstructor;

@@ -3,6 +3,8 @@ package com.dnastack.wes.service;
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.client.CromwellClient;
 import com.dnastack.wes.config.AppConfig;
+import com.dnastack.wes.data.OriginalInputs;
+import com.dnastack.wes.data.OriginalInputsDao;
 import com.dnastack.wes.exception.AuthorizationException;
 import com.dnastack.wes.exception.InvalidRequestException;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
@@ -55,6 +57,7 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -68,18 +71,18 @@ public class CromwellService {
 
     private final static ObjectMapper mapper = new ObjectMapper();
     private final CromwellClient client;
-    private final OriginalInputStore originalInputStore;
+    private final Jdbi jdbi;
     private final DrsObjectResolverFactory drsObjectResolverFactory;
     private final AppConfig config;
     private final TransferService transferService;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, DrsObjectResolverFactory drsObjectResolverFactory, OriginalInputStore originalInputStore, AppConfig appConfig, TransferService transferService) {
+    CromwellService(CromwellClient cromwellClient, DrsObjectResolverFactory drsObjectResolverFactory, Jdbi jdbi, AppConfig appConfig, TransferService transferService) {
         this.client = cromwellClient;
         this.drsObjectResolverFactory = drsObjectResolverFactory;
         this.config = appConfig;
         this.transferService = transferService;
-        this.originalInputStore = originalInputStore;
+        this.jdbi = jdbi;
     }
 
 
@@ -189,7 +192,11 @@ public class CromwellService {
     public RunLog getRun(String runId) {
         authorizeUserForRun(runId);
         CromwellMetadataResponse metadataResponse = client.getMetadata(runId);
-        Map<String, Object> mappedFileObject = originalInputStore.getInputs(runId);
+        Map<String, Object> mappedFileObject = jdbi.withExtension(OriginalInputsDao.class, dao -> {
+            OriginalInputs inputs = dao.getInputs(runId);
+            return inputs == null ? null : inputs.getMapping();
+        });
+
         return CromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject);
     }
 
@@ -304,7 +311,11 @@ public class CromwellService {
                             .getRunId(), objectsToTransfer, null, this::transferCallBack));
 
                 }
-                originalInputStore.saveInputs(runId.getRunId(), originalInputs);
+
+                jdbi.withExtension(OriginalInputsDao.class, dao -> {
+                    dao.saveInputs(new OriginalInputs(runId.getRunId(), originalInputs));
+                    return null;
+                });
 
                 return runId;
             } finally {
@@ -358,7 +369,7 @@ public class CromwellService {
     private void transferCallBack(Throwable throwable, String runId) {
         if (throwable != null) {
             log.error("Encountered error while transferring files. Aborting run {}", runId);
-            log.error(throwable.getMessage(),throwable);
+            log.error(throwable.getMessage(), throwable);
             client.abortWorkflow(runId);
         } else {
             log.info("Transferring files complete, releasing hold on run {}", runId);
@@ -516,7 +527,8 @@ public class CromwellService {
         Map<String, Object> cromwellInputs = new HashMap<>();
         WdlFileProcessor processor = null;
         if (workflowParams != null && !workflowParams.isEmpty()) {
-            processor = new WdlFileProcessor(workflowParams, Arrays.asList(drsObjectResolverFactory.getService(tokens)));
+            processor = new WdlFileProcessor(workflowParams, Arrays
+                .asList(drsObjectResolverFactory.getService(tokens)));
             cromwellInputs.putAll(processor.getProcessedInputs());
         }
         executionRequest.setWorkflowInputs(cromwellInputs);

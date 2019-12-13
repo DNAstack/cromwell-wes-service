@@ -1,6 +1,5 @@
-package com.dnastack.wes.service;
+package com.dnastack.wes.data;
 
-import com.dnastack.wes.model.OriginalInputs;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;

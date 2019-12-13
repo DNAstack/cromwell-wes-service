@@ -1,8 +1,6 @@
-package com.dnastack.wes;
+package com.dnastack.wes.data;
 
 
-import com.dnastack.wes.service.OriginalInputRowMapper;
-import com.dnastack.wes.service.JsonMapArgumentFactory;
 import javax.sql.DataSource;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
