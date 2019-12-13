@@ -18,29 +18,32 @@ public class AuthConfig {
      * The URI to use for authenticated service to service communication. This is expected to be an OIDC compliant token
      * endpoint which will accept {@code client_credentials}
      */
+    @Deprecated
     String serviceAccountAuthenticationUri;
 
     /**
      * The service account client id which will be used to authenticate this service against others
      */
+    @Deprecated
     String serviceAccountClientId;
 
     /**
      * The service account client secret which will be used to authenticate this service against others
      */
+    @Deprecated
     String serviceAccountSecret;
 
 
     /**
-     * TODO Remove this
-     * The development token issuer.
+     * TODO Remove this The development token issuer.
      */
+    @Deprecated
     IssuerConfig devTokenIssuer = null;
 
     /**
      * The list of trusted token issuers for incoming requests. All Tokens must have orignated at at least one of these
-     * configured issues. Validity of the token is determined by a 1) Validity of the JWT (time), 2) Validity of the issuerUri
-     * in the JWT header 3) validity of the audiene if it is present in the issuerConfig 4) validity of the
+     * configured issues. Validity of the token is determined by a 1) Validity of the JWT (time), 2) Validity of the
+     * issuerUri in the JWT header 3) validity of the audiene if it is present in the issuerConfig 4) validity of the
      * configured scopes, if they are pressent in the issuer config
      */
     List<IssuerConfig> tokenIssuers = new ArrayList<>();
