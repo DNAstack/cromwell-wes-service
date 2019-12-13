@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Type;
 import java.sql.Types;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.jdbi.v3.core.argument.Argument;
@@ -13,7 +14,7 @@ import org.jdbi.v3.core.argument.NullArgument;
 import org.jdbi.v3.core.argument.ObjectArgument;
 import org.jdbi.v3.core.config.ConfigRegistry;
 
-public class JsonMapArgumentFactory implements ArgumentFactory {
+public class JsonArrayArgumentFactory implements ArgumentFactory {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Optional<Argument> NULL_ARGUMENT = Optional.of(new NullArgument(Types.VARCHAR));
@@ -21,11 +22,11 @@ public class JsonMapArgumentFactory implements ArgumentFactory {
     @Override
     public Optional<Argument> build(Type type, Object value, ConfigRegistry config) {
         try {
-            if (value instanceof Map) {
+            if (value instanceof List) {
                 return Optional
                     .of(ObjectArgument.of(objectMapper.writeValueAsString(value), Types.VARCHAR));
             }
-            if (value == null && type.getTypeName().equals("java.util.Map")) {
+            if (value == null && type.getTypeName().equals("java.util.List")) {
                 return NULL_ARGUMENT;
             }
         } catch (JsonProcessingException e) {

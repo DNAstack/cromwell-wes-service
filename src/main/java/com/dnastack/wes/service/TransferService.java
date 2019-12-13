@@ -1,7 +1,10 @@
 package com.dnastack.wes.service;
 
-import com.dnastack.wes.client.TransferServiceClient;
+import com.dnastack.wes.client.CromwellClient;
+import com.dnastack.wes.client.TransferServiceClientFactory;
 import com.dnastack.wes.config.TransferConfig;
+import com.dnastack.wes.data.TrackedTransfer;
+import com.dnastack.wes.data.TrackedTransferDao;
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.model.transfer.TransferRequest;
 import com.dnastack.wes.security.AuthenticatedUser;
@@ -12,18 +15,19 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import feign.FeignException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import javax.annotation.PostConstruct;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -31,67 +35,102 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class TransferService {
 
-    private final TransferServiceClient transferServiceClient;
+    private final TransferServiceClientFactory transferServiceClientFactory;
     private final TransferConfig config;
-    private final TaskScheduler taskScheduler;
-    private final BlockingQueue<TransferContext> monitorQueue;
+    private final Jdbi jdbi;
+    private final CromwellClient cromwellClient;
 
 
     @Autowired
-    TransferService(TransferServiceClient transferServiceClient, TaskScheduler taskScheduler, TransferConfig config) {
-        this.transferServiceClient = transferServiceClient;
-        this.taskScheduler = taskScheduler;
+    TransferService(TransferServiceClientFactory transferServiceClientFactory, CromwellClient cromwellClient, Jdbi jdbi, TransferConfig config) {
+        this.transferServiceClientFactory = transferServiceClientFactory;
         this.config = config;
-        this.monitorQueue = new LinkedBlockingQueue<>();
-    }
-
-    @PostConstruct
-    public void init() {
-        if (config.isEnabled()) {
-            for (int i = 0; i < config.getNumMonitoringThreads(); i++) {
-                taskScheduler.scheduleWithFixedDelay(this::monitorTransfer, 13_000L);
-            }
-        }
+        this.cromwellClient = cromwellClient;
+        this.jdbi = jdbi;
     }
 
 
-    private void monitorTransfer() {
-        log.trace("Polling for queued transfer jobs");
-        TransferContext context = monitorQueue.poll();
-        if (context != null) {
-            try {
-                log.trace("Retrieved transfer context for run {}", context.getRunId());
-                List<TransferJob> jobs = context.getTransferJobs();
-                for (TransferJob job : jobs) {
-                    if (!job.isDone()) {
-                        log.trace("Updating transfer job {} state", job.getJobId());
-                        TransferJob updatedJob = transferServiceClient.getTransferJob(job.getJobId());
-                        job.setFileStatus(updatedJob.getFileStatus());
+    @Scheduled(initialDelay = 30_000, fixedDelay = 30_000)
+    public void monitorTransfers() {
+        List<TrackedTransfer> trackedTransfers = jdbi
+            .withExtension(TrackedTransferDao.class, TrackedTransferDao::getTransfers);
+
+        if (trackedTransfers != null) {
+            for (TrackedTransfer trackedTransfer : trackedTransfers) {
+                try {
+                    ZonedDateTime now = ZonedDateTime.now();
+                    ZonedDateTime created = trackedTransfer.getCreated();
+
+                    if (now.minus(config.getMaxTransferWaitTimeMs(), ChronoUnit.MILLIS).isAfter(created)) {
+                        throw new TransferFailedException("Transfer for job " + trackedTransfer.getCromwellId()
+                            + " has exceeded the maximum wait time. Failing the run and considering the transfer to have failed");
                     }
-                }
+                    log.trace("Retrieved transfer context for run {}", trackedTransfer.getCromwellId());
+                    List<TransferJob> jobs = new ArrayList<>();
+                    for (String jobId : trackedTransfer.getTransferJobIds()) {
+                        log.trace("Updating transfer job {} state", jobId);
+                        TransferJob updatedJob = transferServiceClientFactory.getClient().getTransferJob(jobId);
+                        jobs.add(updatedJob);
+                    }
 
-                if (jobs.stream().allMatch(TransferJob::isDone)) {
-                    if (jobs.stream().anyMatch(job -> !job.isSuccessful())) {
-                        log.error("One or more transfer jobs for run {} failed", context.getRunId());
-                        throw new TransferFailedException("Could not complete transfer for run " + context.runId);
+                    if (jobs.stream().allMatch(TransferJob::isDone)) {
+                        if (jobs.stream().anyMatch(job -> !job.isSuccessful())) {
+                            log.error("One or more transfer jobs for run {} failed", trackedTransfer.getCromwellId());
+                            throw new TransferFailedException(
+                                "Could not complete transfer for run " + trackedTransfer.getCromwellId());
+                        } else {
+                            transferSucceeded(trackedTransfer);
+                        }
                     } else {
-                        log.info("Successfully completed transfer for run {}", context.getRunId());
-                        context.complete();
+                        setLastUpdate(trackedTransfer);
                     }
-                } else {
-                    log.debug("One or more transfer jobs is still executing for run {}, adding job back to queue", context
-                        .getRunId());
-                    monitorQueue.add(context);
+                } catch (Exception e) {
+                    transferFailed(e, trackedTransfer);
                 }
-
-            } catch (FeignException e) {
-                log.error(e.contentUTF8());
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                context.fail(e);
             }
+
         }
     }
+
+    private void transferSucceeded(TrackedTransfer transfer) {
+        cromwellClient.releaseHold(transfer.getCromwellId());
+        jdbi.withExtension(TrackedTransferDao.class, dao -> {
+            dao.removeTrackedTransfer(transfer.getCromwellId());
+            return null;
+        });
+    }
+
+    private void transferFailed(Throwable e, TrackedTransfer transfer) {
+        log.error(e.getMessage(), e);
+
+        if (e instanceof FeignException) {
+            if (transfer.getFailureAttempts() >= config.getMaxMonitoringFailures()) {
+                String message = "The number of failure attempts has exceeded the maximum allowed for run: " + transfer
+                    .getCromwellId();
+                transferFailed(new TransferFailedException(message), transfer);
+            } else {
+                jdbi.withExtension(TrackedTransferDao.class, dao -> {
+                    dao.updateTransfeFailureAttempts(ZonedDateTime.now(),
+                        transfer.getFailureAttempts() + 1, transfer.getCromwellId());
+                    return null;
+                });
+            }
+        } else {
+            cromwellClient.abortWorkflow(transfer.getCromwellId());
+            jdbi.withExtension(TrackedTransferDao.class, dao -> {
+                dao.removeTrackedTransfer(transfer.getCromwellId());
+                return null;
+            });
+        }
+    }
+
+    private void setLastUpdate(TrackedTransfer transfer) {
+        jdbi.withExtension(TrackedTransferDao.class, dao -> {
+            dao.updateTransfer(ZonedDateTime.now(), transfer.getCromwellId());
+            return null;
+        });
+    }
+
 
     public void transferFiles(TransferContext context) {
         try {
@@ -99,7 +138,8 @@ public class TransferService {
                 try {
                     performTransfer(context);
                 } catch (Exception e) {
-                    context.callback.callAfterTransfer(e, context.runId);
+                    log.error(e.getMessage(), e);
+                    cromwellClient.abortWorkflow(context.runId);
                 }
             }
         } catch (Exception e) {
@@ -126,18 +166,33 @@ public class TransferService {
             request.getCopyPairs().add(copyPair);
         }
 
-
         List<TransferJob> transfersToMonitor = new ArrayList<>();
         for (TransferRequest request : transferRequests.values()) {
-            TransferJob job = transferServiceClient.submitTransferRequest(request, AuthenticatedUser.getSubject());
+            TransferJob job = transferServiceClientFactory.getClient()
+                .submitTransferRequest(request, AuthenticatedUser.getSubject());
             transfersToMonitor.add(job);
         }
         log.info("Submitting {} transfer jobs for run {}", transfersToMonitor.size(), context.getRunId());
         context.setTransferJobs(transfersToMonitor);
         log.trace("Adding transfer jobs to monitoring queue");
-        monitorQueue.add(context);
+        saveTransferJob(context);
     }
 
+
+    private void saveTransferJob(TransferContext context) {
+        jdbi.withExtension(TrackedTransferDao.class, dao -> {
+            TrackedTransfer transfer = new TrackedTransfer();
+            transfer.setCromwellId(context.getRunId());
+            transfer.setTransferJobIds(context.getTransferJobs().stream().map(TransferJob::getJobId)
+                .collect(Collectors.toList()));
+            transfer.setLastUpdate(ZonedDateTime.now());
+            transfer.setFailureAttempts(0);
+            transfer.setCreated(ZonedDateTime.now());
+            dao.saveTrackedTransfer(transfer);
+            return null;
+        });
+
+    }
 
     public Map<String, String[]> configureObjectsForTransfer(List<ObjectWrapper> objectWrappers, Map<String, String> objectAccessTokens) {
         Map<String, String[]> objectsToTransfer = new HashMap<>();

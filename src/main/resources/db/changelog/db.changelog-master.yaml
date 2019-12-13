@@ -52,3 +52,41 @@ databaseChangeLog:
                   constraintName: pk_original_inputs
                   tableName: original_inputs
                   columnNames: ["id"]
+  - changeSet:
+      id: 4
+      author: Patrick Magee
+      changes:
+        - createTable:
+            tableName: tracked_transfers
+            columns:
+              - column:
+                  name: cromwell_id
+                  type: varchar
+                  constraints:
+                    nullable: false
+                  remarks: |-
+                    The Cromwell Run identifier for these mappings
+              - column:
+                  name: transfer_job_ids
+                  type: jsonb
+                  remarks: |-
+                    An object containing the transfer jobs for this run.
+              - column:
+                  name: failure_attempts
+                  type: integer
+                  remarks: |-
+                    The number of API failures encountered while updating this job
+              - column:
+                  name: last_update
+                  type: timestamp
+                  remarks: |-
+                    The last time this was updated
+              - column:
+                  name: created
+                  type: timestamp
+                  remarks: |-
+                    The last time this was updated
+              - addPrimaryKey:
+                  constraintName: pk_tracked_transfers
+                  tableName: tracked_transfers
+                  columnNames: ["cromwell_id"]

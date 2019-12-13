@@ -68,26 +68,4 @@ public class ClientConfigurations {
 
     }
 
-
-    @Bean
-    public OauthTokenClient oauthTokenClient(AuthConfig authConfig) {
-        Client httpClient = new OkHttpClient();
-        return Feign.builder().client(httpClient).encoder(encoder()).decoder(decoder()).logger(new SimpleLogger())
-            .logLevel(Level.BASIC)
-            .target(OauthTokenClient.class, authConfig.getServiceAccountAuthenticationUri());
-    }
-
-    @Bean
-    public TransferServiceClient transferServiceClient(TransferConfig transferConfig, OAuthTokenCache tokenCache) {
-        Client httpClient = new OkHttpClient();
-        return Feign.builder().client(httpClient).encoder(new JacksonEncoder(mapper)).decoder(decoder())
-            .logger(new SimpleLogger())
-            .logLevel(Level.BASIC)
-            .requestInterceptor((template) -> {
-                AccessToken accessToken = tokenCache.getToken();
-                template.header("Authorization", "Bearer " + accessToken.getToken());
-            })
-            .target(TransferServiceClient.class, transferConfig.getObjectTransferUri());
-    }
-
 }

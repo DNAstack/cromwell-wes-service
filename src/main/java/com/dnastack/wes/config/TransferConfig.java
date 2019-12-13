@@ -45,4 +45,14 @@ public class TransferConfig {
      */
     private String objectTransferUri = null;
 
+    /**
+     * The number of api failures to tolerate while monitoring
+     */
+    private int maxMonitoringFailures = 3;
+
+    /**
+     * The maximum number of milliseconds to wait for a transfer to complete
+     */
+    private long maxTransferWaitTimeMs = ;
+
 }

@@ -18,6 +18,7 @@ public class DatabaseConfiguration {
     public Jdbi jdbi() {
         return Jdbi.create(dataSource)
             .registerArgument(new JsonMapArgumentFactory())
+            .registerArgument(new JsonArrayArgumentFactory())
             .registerRowMapper(new OriginalInputRowMapper())
             .installPlugin(new SqlObjectPlugin());
     }

@@ -10,7 +10,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 public interface OriginalInputsDao {
 
     @Transaction
-    @SqlUpdate("INSERT INTO original_inputs(id,inputs) VALUES(:id,:inputs::jsonb)")
+    @SqlUpdate("INSERT INTO original_inputs(id,inputs) VALUES(:id,:mapping::jsonb)")
     void saveInputs(@BindBean OriginalInputs inputs);
 
 

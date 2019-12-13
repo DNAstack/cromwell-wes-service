@@ -116,9 +116,11 @@ and the bucket/path is a praefix added to all of the transfers. All files being 
 | `WES_TRANSFER_STAGINGDIRECTORY` | `null` | The destination to write all transfer to. This can be a bucket, container, local folder etc |
 | `WES_TRANSFER_OBJECTPREFIXWHITELIST` | `[null]` | An Array of object prefixes that will never be transferred. It is assumed in this case that the caller already has access to them |
 | `WES_TRANSFER_OBJECTTRANSFERURI` | `null` | The URI of the object transfer service |
+| `WES_TRANSFER_MAXMONITORINGFAILURES` | `3` | The total number of API request failures to the transfer service  tolerate before aborting the workflow |
+| `WES_TRANSFER_MAXTRANSFERWAITTIMEMS` | `60_000 * 60 * 24 * 3` | The maximum wait time (ms) that any one job should be on hold while waiting for a transfer. If this waitime is exceeded, then the job will be aborted |
 | `WES_AUTH_SERVICEACCOUNTAUTHENTICATIONURI` | `null` | The URI to obtain an access token from for the transfer service | 
 | `WES_AUTH_SERVICEACCOUNTCLIENTID` | `null` | The client ID to use for obtaining an access token |
-| `WES_AUTH_SERVICEACCOUNTSECRET` | `null` | The secret to use for obtaining an access token | 
+| `WES_AUTH_SERVICEACCOUNTSECRET` | `null` | The secret to use for obtaining an access token |
 
 
 
