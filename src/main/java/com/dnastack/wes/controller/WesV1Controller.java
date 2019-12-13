@@ -2,6 +2,7 @@ package com.dnastack.wes.controller;
 
 
 import com.dnastack.wes.config.AppConfig;
+import com.dnastack.wes.config.TransferConfig;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;
@@ -10,6 +11,7 @@ import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,11 +35,14 @@ public class WesV1Controller {
 
     private CromwellService adapter;
     private AppConfig config;
+    private TransferConfig transferConfig;
+
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config) {
+    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig) {
         this.adapter = adapter;
         this.config = config;
+        this.transferConfig = transferConfig;
     }
 
     @PreAuthorize("permitAll()")
@@ -48,6 +53,13 @@ public class WesV1Controller {
         if (AuthenticatedUser.getSubject() != null) {
             serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
         }
+
+        Map<String, String> tags = serviceInfo.getTags();
+        if (tags == null) {
+            tags = new HashMap<>();
+        }
+
+        tags.put("tranfser-service-enabled", String.valueOf(transferConfig.isEnabled()));
         serviceInfo.setWorkflowEngineVersions(adapter.getEngineVersions());
         return serviceInfo;
     }

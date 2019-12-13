@@ -53,6 +53,6 @@ public class TransferConfig {
     /**
      * The maximum number of milliseconds to wait for a transfer to complete
      */
-    private long maxTransferWaitTimeMs = ;
+    private long maxTransferWaitTimeMs = 60_000 * 60 * 24 * 3;
 
 }

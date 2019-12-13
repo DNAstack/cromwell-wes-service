@@ -5,7 +5,7 @@ import java.util.Set;
 
 public class Constants {
 
-    public static final Long DEFAULT_PAGE_SIZE = 10L;
+    public static final Long DEFAULT_PAGE_SIZE = 20L;
     public static final Long DEFAULT_PAGE = 1L;
 
 
