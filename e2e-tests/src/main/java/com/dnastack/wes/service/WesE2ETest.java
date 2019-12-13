@@ -2,6 +2,7 @@ package com.dnastack.wes.service;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -77,7 +78,7 @@ public class WesE2ETest extends BaseE2eTest {
             .body("workflow_type_versions",hasKey("WDL"))
             .body("workflow_type_versions.WDL",allOf(hasItem("draft-2"),hasItem("1.0")))
             .body("supported_wes_versions",hasItem("1.0.0"))
-            .body("supported_filesystem_protocols",allOf(hasItem("gs"),hasItem("http"),hasItem("drs")))
+            .body("supported_filesystem_protocols",anyOf(hasItem("file"),hasItem("gs"),hasItem("http"),hasItem("drs")))
             .body("$", not(hasKey("system_state_counts")))
             .body("auth_instruction_url",not(isEmptyOrNullString()));
          //@formatter:on
@@ -102,7 +103,7 @@ public class WesE2ETest extends BaseE2eTest {
             .body("workflow_type_versions",hasKey("WDL"))
             .body("workflow_type_versions.WDL",allOf(hasItem("draft-2"),hasItem("1.0")))
             .body("supported_wes_versions",hasItem("1.0.0"))
-            .body("supported_filesystem_protocols",allOf(hasItem("gs"),hasItem("http"),hasItem("drs")))
+            .body("supported_filesystem_protocols",anyOf(hasItem("file"),hasItem("gs"),hasItem("http"),hasItem("drs")))
             .body("$", hasKey("system_state_counts"));
         //@formatter:on
 
