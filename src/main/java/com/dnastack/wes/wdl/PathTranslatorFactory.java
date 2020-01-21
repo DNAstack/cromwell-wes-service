@@ -2,9 +2,11 @@ package com.dnastack.wes.wdl;
 
 import com.dnastack.wes.config.AppConfig;
 import com.dnastack.wes.config.PathTranslationConfig;
+import com.dnastack.wes.config.PathTranslationConfig.PathLocation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -29,14 +31,23 @@ public class PathTranslatorFactory {
                     replacement = "";
                 }
 
-                pathtranslators.add(new PathTranslator(prefix, replacement));
+                pathtranslators.add(new PathTranslator(prefix, replacement, pathConfig.getLocation()));
             }
         }
         translators = Collections.unmodifiableList(pathtranslators);
     }
 
-    public List<PathTranslator> getTranslators() {
-        return translators;
+
+    public List<PathTranslator> getTranslatorsForInputs() {
+        return translators.stream()
+            .filter(t -> t.getLocation().equals(PathLocation.ALL) || t.getLocation().equals(PathLocation.INPUTS))
+            .collect(Collectors.toList());
+    }
+
+    public List<PathTranslator> getTranslatorsForOutputs() {
+        return translators.stream()
+            .filter(t -> t.getLocation().equals(PathLocation.ALL) || t.getLocation().equals(PathLocation.OUTPUTS))
+            .collect(Collectors.toList());
     }
 
 }

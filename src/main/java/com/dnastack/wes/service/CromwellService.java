@@ -203,7 +203,7 @@ public class CromwellService {
         });
 
         return CromwellWesMapper
-            .mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory.getTranslators());
+            .mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory.getTranslatorsForOutputs());
     }
 
     /**
@@ -536,13 +536,12 @@ public class CromwellService {
 
             List<ObjectTranslator> translators = new ArrayList<>();
             translators.add(drsObjectResolverFactory.getService(tokens));
-            translators.addAll(pathTranslatorFactory.getTranslators());
+            translators.addAll(pathTranslatorFactory.getTranslatorsForInputs());
             processor = new WdlFileProcessor(workflowParams, translators);
             cromwellInputs.putAll(processor.getProcessedInputs());
         }
         executionRequest.setWorkflowInputs(cromwellInputs);
         return processor;
-
     }
 
 }

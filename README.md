@@ -113,6 +113,7 @@ Path Translators will also be applied to the task logs (the stderr and stdout) a
 | ------------ | ------- | ----------  |
 | `WES_PATHTRANSLATIONS_[INDEX]_PREFIX` | `null` | The prefix to test inputs and outputs against |
 | `WES_PATHTRANSLATIONS_[INDEX]_REPLACEMENT` | `null` | The replacement string to use instead of the prefix |
+| `WES_PATHTRANSLATIONS_[INDEX]_LOCATION` | `ALL` | The location that this path translation applies to.  values [`ALL`,`INPUTS`,`OUTPUTS`] |
 
 
 

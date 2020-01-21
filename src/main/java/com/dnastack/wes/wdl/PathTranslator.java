@@ -1,5 +1,6 @@
 package com.dnastack.wes.wdl;
 
+import com.dnastack.wes.config.PathTranslationConfig.PathLocation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -9,20 +10,26 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.Getter;
 
 /**
  * Given a path prefix
  */
 public class PathTranslator implements ObjectTranslator {
 
+
+    @Getter
+    private PathLocation location;
     private Pattern prefix;
     private String replacement;
     private ObjectMapper mapper;
 
-    public PathTranslator(String prefixRegex, String replacement) {
+    public PathTranslator(String prefixRegex, String replacement, PathLocation location) {
         prefix = Pattern.compile(prefixRegex);
         this.replacement = replacement;
+        this.location = location;
         mapper = new ObjectMapper();
+
     }
 
     @Override

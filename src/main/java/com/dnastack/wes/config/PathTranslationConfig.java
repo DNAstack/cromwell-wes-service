@@ -14,4 +14,10 @@ public class PathTranslationConfig {
 
     String prefix;
     String replacement;
+    PathLocation location = PathLocation.ALL;
+
+    public enum PathLocation {
+        ALL, INPUTS, OUTPUTS
+    }
+
 }
