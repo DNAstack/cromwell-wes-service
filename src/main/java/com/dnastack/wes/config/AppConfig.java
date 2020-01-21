@@ -2,6 +2,8 @@ package com.dnastack.wes.config;
 
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -28,6 +30,11 @@ public class AppConfig {
      * of who the client is will be returned.
      */
     Boolean enableMultiTenantSupport = false;
+
+    /**
+     *
+     */
+    List<PathTranslationConfig> pathTranslations = new ArrayList<>();
 
 
     public ServiceInfo getServiceInfo() {

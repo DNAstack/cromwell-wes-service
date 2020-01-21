@@ -44,7 +44,13 @@ wes:
       - issuer-uri: https://wallet.staging.dnastack.com
         jwk-set-uri: https://wallet.staging.dnastack.com/oauth/jwks
   enable-multi-tenant-support: false
-
+  path-translations:
+    - prefix: "http://localhost"
+      replacement: "/home/patrick"
+    - prefix: "/home/patrick/tools/cromwell/v42/"
+      replacement: "some-path/"
+    - prefix: "/home/patrick"
+      replacement: "some-path/"
 # App information
 info:
   app:

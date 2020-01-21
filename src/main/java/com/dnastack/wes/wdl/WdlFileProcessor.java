@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -123,7 +125,7 @@ public class WdlFileProcessor {
 
     private Object mapString(JsonNode value) {
         String valueString = value.textValue();
-        if (isUrl(valueString)) {
+        if (isUri(valueString)) {
             ObjectWrapper wrapper = new ObjectWrapper(value);
             mappedObjects.add(wrapper);
             return wrapper;
@@ -131,12 +133,17 @@ public class WdlFileProcessor {
         return value;
     }
 
-    private boolean isUrl(String workflowUrl) {
+    private boolean isUri(String workflowUrl) {
         try {
             URI uri = URI.create(workflowUrl);
-            return uri.getScheme() != null && uri.getHost() != null;
-        } catch (Exception e){
-            return false;
+            return (uri.getScheme() != null && uri.getHost() != null);
+        } catch (Exception e) {
+            try {
+                Path path = Paths.get(workflowUrl);
+                return path.isAbsolute();
+            } catch (Exception e2 ) {
+                return false;
+            }
         }
     }
 

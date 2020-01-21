@@ -94,6 +94,28 @@ object will resolve into an Array. Nested Bundles will result in an N-ary array.
 | ------------ | ------- | ----------  |
 | `WES_DRS_SUPPORTEDACCESSTYPES` | `file` | The access types that are currently supported for Drs. The order of these dictates the order that urls will be resolved |
 
+
+### Configuring Path Translations
+
+It certain circumstances, File input URI's may need to be mapped into a separate internal represenation for cromwell to be able to
+localize the files. A good example of this is with [CromwellOnAzure](https://github.com/microsoft/CromwellOnAzure), which leverages blob fuse
+to mount Blob storage containers to the local file system. Outside of Cromwell/Wes users will interact with the files using the microsoft https
+api, however internally they must specify files using as if they were on the local file system.  
+
+Path Translators, allow you to define a `Regex` pattern for a prefix and a replacement string to use instead. Any number of
+path translators can be provided, and they will be applied in the order they were defined, allowing you to apply multiple translators to the same string
+or object.
+
+Path translators will be applied to the input `params` prior to passing the inputs to cromwell. The original inputs will always be returned to the user. 
+Path Translators will also be applied to the task logs (the stderr and stdout) as well as the outputs.
+
+| Env Variable | Default | Description |
+| ------------ | ------- | ----------  |
+| `WES_PATHTRANSLATIONS_[INDEX]_PREFIX` | `null` | The prefix to test inputs and outputs against |
+| `WES_PATHTRANSLATIONS_[INDEX]_REPLACEMENT` | `null` | The replacement string to use instead of the prefix |
+
+
+
 ### Configuring the Transfer API
 
 The transfer API provides a way to securely stage files which the workflow execution backend does not conventionally 

@@ -11,6 +11,7 @@ import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
+import com.dnastack.wes.wdl.PathTranslator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,21 +40,42 @@ public class CromwellWesMapper {
         return RunStatus.builder().runId(status.getId()).state(mapState(status.getStatus())).build();
     }
 
+
     public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
+        return mapMetadataToRunLog(metadataResponse, originalInputs, null);
+    }
+
+    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs, List<PathTranslator> pathTranslators) {
         RunLog runLog = new RunLog();
         runLog.setRunId(metadataResponse.getId());
         runLog.setState(mapState(metadataResponse.getStatus()));
-        runLog.setOutputs(metadataResponse.getOutputs());
+
+        runLog.setOutputs(translatePaths(new TypeReference<Map<String, Object>>() {
+        }, metadataResponse.getOutputs(), pathTranslators));
 
         String workflowStart = metadataResponse.getStart() == null ? null : metadataResponse.getStart().toString();
         String workflowEnd = metadataResponse.getEnd() == null ? null : metadataResponse.getEnd().toString();
         Log workflowLog = Log.builder().startTime(workflowStart).endTime(workflowEnd)
             .name(metadataResponse.getWorkflowName()).build();
         runLog.setRunLog(workflowLog);
-        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
+        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls(), pathTranslators));
         runLog.setRequest(mapMetadataToRunRequest(metadataResponse, originalInputs));
 
         return runLog;
+    }
+
+    private static <T> T translatePaths(TypeReference<T> typeReference, T objectToTranslate, List<PathTranslator> translators) {
+        if (translators != null && !translators.isEmpty()) {
+            JsonNode node = objectMapper.valueToTree(objectToTranslate);
+
+            for (PathTranslator translator : translators) {
+                if (translator.shouldMapJsonNode(node)) {
+                    node = translator.mapJsonNode(node);
+                }
+            }
+            return objectMapper.convertValue(node, typeReference);
+        }
+        return objectToTranslate;
     }
 
     private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
@@ -126,25 +148,29 @@ public class CromwellWesMapper {
     }
 
 
-    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
+    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls, List<PathTranslator> pathTranslators) {
         List<Log> taskLogs = new ArrayList<>();
 
         if (calls != null) {
             for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
                 for (CromwellTaskCall taskCall : entry.getValue()) {
-                    taskLogs.add(mapTaskCallToLog(entry.getKey(), taskCall));
+                    taskLogs.add(mapTaskCallToLog(entry.getKey(), taskCall, pathTranslators));
                 }
             }
         }
         return taskLogs;
     }
 
-    public static Log mapTaskCallToLog(String name, CromwellTaskCall taskCall) {
+    public static Log mapTaskCallToLog(String name, CromwellTaskCall taskCall, List<PathTranslator> pathTranslators) {
 
         String taskStart = taskCall.getStart() == null ? null : taskCall.getStart().toString();
         String taskEnd = taskCall.getEnd() == null ? null : taskCall.getEnd().toString();
+        String stdout = translatePaths(new TypeReference<String>() {
+        }, taskCall.getStdout(), pathTranslators);
+        String stderr = translatePaths(new TypeReference<String>() {
+        }, taskCall.getStderr(), pathTranslators);
         return Log.builder().name(name).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
-            .startTime(taskStart).endTime(taskEnd).stderr(taskCall.getStderr()).stdout(taskCall.getStdout()).build();
+            .startTime(taskStart).endTime(taskEnd).stderr(stderr).stdout(stdout).build();
 
     }
 

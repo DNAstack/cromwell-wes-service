@@ -20,6 +20,8 @@ import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
 import com.dnastack.wes.security.AuthenticatedUser;
+import com.dnastack.wes.wdl.ObjectTranslator;
+import com.dnastack.wes.wdl.PathTranslatorFactory;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -41,6 +43,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -75,10 +78,12 @@ public class CromwellService {
     private final DrsObjectResolverFactory drsObjectResolverFactory;
     private final AppConfig config;
     private final TransferService transferService;
+    private final PathTranslatorFactory pathTranslatorFactory;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, DrsObjectResolverFactory drsObjectResolverFactory, Jdbi jdbi, AppConfig appConfig, TransferService transferService) {
+    CromwellService(CromwellClient cromwellClient, PathTranslatorFactory pathTranslatorFactory, DrsObjectResolverFactory drsObjectResolverFactory, Jdbi jdbi, AppConfig appConfig, TransferService transferService) {
         this.client = cromwellClient;
+        this.pathTranslatorFactory = pathTranslatorFactory;
         this.drsObjectResolverFactory = drsObjectResolverFactory;
         this.config = appConfig;
         this.transferService = transferService;
@@ -197,7 +202,8 @@ public class CromwellService {
             return inputs == null ? null : inputs.getMapping();
         });
 
-        return CromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject);
+        return CromwellWesMapper
+            .mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory.getTranslators());
     }
 
     /**
@@ -527,8 +533,11 @@ public class CromwellService {
         Map<String, Object> cromwellInputs = new HashMap<>();
         WdlFileProcessor processor = null;
         if (workflowParams != null && !workflowParams.isEmpty()) {
-            processor = new WdlFileProcessor(workflowParams, Arrays
-                .asList(drsObjectResolverFactory.getService(tokens)));
+
+            List<ObjectTranslator> translators = new ArrayList<>();
+            translators.add(drsObjectResolverFactory.getService(tokens));
+            translators.addAll(pathTranslatorFactory.getTranslators());
+            processor = new WdlFileProcessor(workflowParams, translators);
             cromwellInputs.putAll(processor.getProcessedInputs());
         }
         executionRequest.setWorkflowInputs(cromwellInputs);
