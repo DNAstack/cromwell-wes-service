@@ -26,6 +26,21 @@ public class PathTranslatorTest {
     }
 
     @Test
+    public void testPrefixBindsToStart() {
+        String prefix = "to-replace";
+        String replacement = "replaced";
+        String textPath = "invalid-start/to-replace/path/suffix";
+        TextNode node = new TextNode(textPath);
+        PathTranslator translator = new PathTranslator(prefix, replacement);
+
+
+        Assert.assertFalse(translator.shouldMapJsonNode(node));
+        JsonNode translatedNode = translator.mapJsonNode(node);
+        Assert.assertTrue(translatedNode.asText().startsWith(textPath));
+    }
+
+
+    @Test
     public void testSingleStringShouldMap_returnsTrue() {
         String prefix = "/to-replace";
         String replacement = "replaced";

@@ -24,7 +24,16 @@ public class PathTranslator implements ObjectTranslator {
     private String replacement;
     private ObjectMapper mapper;
 
+    public PathTranslator(String prefixRegex, String replacement){
+        this(prefixRegex,replacement,PathLocation.ALL);
+    }
+
     public PathTranslator(String prefixRegex, String replacement, PathLocation location) {
+        //Bind the prefixRegix to the start of the string pattern
+        if (!prefixRegex.startsWith("^")){
+            prefixRegex = "^" + prefixRegex;
+        }
+
         prefix = Pattern.compile(prefixRegex);
         this.replacement = replacement;
         this.location = location;
