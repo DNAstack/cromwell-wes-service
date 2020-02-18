@@ -1,10 +1,7 @@
 package com.dnastack.wes.client;
 
 
-import com.dnastack.wes.config.AuthConfig;
 import com.dnastack.wes.config.CromwellConfig;
-import com.dnastack.wes.config.TransferConfig;
-import com.dnastack.wes.model.oauth.AccessToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Client;
 import feign.Feign;
