@@ -1,34 +1,31 @@
 package com.dnastack.wes.service;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
-
 import com.dnastack.wes.service.utils.AuthorizationClient;
 import com.dnastack.wes.service.utils.WdlSupplier;
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.nimbusds.jose.util.IOUtils;
 import io.restassured.http.ContentType;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
+
+import static io.restassured.RestAssured.given;
+import static java.lang.String.format;
+import static org.hamcrest.Matchers.*;
 
 
 @DisplayName("WES tests")
@@ -50,6 +47,33 @@ public class WesE2ETest extends BaseE2eTest {
         }
     }
 
+    private String getAccessToken() throws IOException {
+        final GoogleCredentials credentials = getCredentials();
+        if (credentials.getAccessToken() != null) {
+            return credentials.getAccessToken().getTokenValue();
+        } else {
+            final AccessToken accessToken = credentials.refreshAccessToken();
+            org.junit.jupiter.api.Assertions.assertNotNull(accessToken, "Unable to obtain access token for test");
+
+            return accessToken.getTokenValue();
+        }
+    }
+
+    private GoogleCredentials getCredentials() throws IOException {
+        final String envCredentials = optionalEnv("E2E_GOOGLE_APPLICATION_CREDENTIALS", null);
+        final GoogleCredentials credentials;
+        if (envCredentials != null) {
+            credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(envCredentials.getBytes()));
+        } else {
+            credentials = GoogleCredentials.getApplicationDefault();
+        }
+
+        if (credentials.createScopedRequired()) {
+            return credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+        } else {
+            return credentials;
+        }
+    }
 
     private static String loadPrivateKey() throws IOException {
         String privKey = optionalEnv("E2E_WES_PRIVATE_KEY", null);
@@ -59,6 +83,38 @@ public class WesE2ETest extends BaseE2eTest {
             privKey = IOUtils.readInputStreamToString(inputStream, Charset.forName("UTF-8"));
         }
         return privKey;
+    }
+
+    @RequiredArgsConstructor
+    @Getter
+    private static class EarlyAbortException extends Exception {
+        private final AssertionError cause;
+    }
+
+    @FunctionalInterface
+    interface Assertions {
+        void run() throws EarlyAbortException;
+    }
+
+    private static void poll(Duration duration, Assertions assertions) throws Exception {
+        final Instant start = Instant.now();
+        try {
+            while (true) {
+                try {
+                    Thread.sleep(500);
+                    assertions.run();
+                    return;
+                } catch (AssertionError ae) {
+                    if (Instant.now().isAfter(start.plus(duration))) {
+                        throw ae;
+                    }
+                } catch (EarlyAbortException e) {
+                    throw e.getCause();
+                }
+            }
+        } finally {
+            System.out.printf("Polling finished after %d seconds\n", Duration.between(start, Instant.now()).getSeconds());
+        }
     }
 
     @Test
@@ -178,6 +234,69 @@ public class WesE2ETest extends BaseE2eTest {
                 .statusCode(200)
                 .body("run_id",is(notNullValue()));
             //@formatter:on
+        }
+
+        @Test
+        @DisplayName("Workflow Run Submission with access token input")
+        public void submitWorkflowRunNeedingObjectTransfer() throws Exception {
+            final String submitPath = getRootPath() + "/runs";
+            final Map<String, String> tags = Collections.singletonMap("WES", "TestRun");
+            final Map<String, String> engineParams = new HashMap<>();
+            final String inputFile = optionalEnv("E2E_WORKFLOW_INPUT", "gs://ddap-e2etest-objects/small_files/SAMPLE_TEST_aligned.sorted.bam");
+            final Map<String, String> inputs = Collections.singletonMap("md5Sum.inputFile", inputFile);
+            final String token = getAccessToken();
+            final String tokens = format("{\"%s\": \"%s\"}", inputFile, token);
+
+
+            //@formatter:off
+            final ExtractableResponse<Response> runSubmitResponse =
+            given()
+                    .log().uri()
+                    .log().method()
+                    .header(authorizationClient.getHeader())
+                    .multiPart("workflow_url", "workflow.wdl")
+                    .multiPart("workflow_attachment", "workflow.wdl", WdlSupplier.MD5_SUM_WDL.getBytes())
+                    .multiPart("workflow_engine_parameters", engineParams, ContentType.JSON.toString())
+                    .multiPart("tags", tags, ContentType.JSON.toString())
+                    .multiPart("workflow_params", inputs, ContentType.JSON.toString())
+                    .multiPart("workflow_attachment", "tokens.json", tokens.getBytes())
+                    .post(submitPath)
+                    .then()
+                    .assertThat()
+                    .statusCode(200)
+                    .body("run_id", is(notNullValue()))
+                    .extract();
+            //@formatter:on
+
+            final String runId = runSubmitResponse.body()
+                                         .jsonPath()
+                                         .getString("run_id");
+            final String runPathStatus = format("%s/%s/status", submitPath, runId);
+
+            poll(Duration.ofMinutes(6), () -> {
+                //@formatter:off
+                final ExtractableResponse<Response> statusResponse =
+                given()
+                        .log().uri()
+                        .log().method()
+                        .header(authorizationClient.getHeader())
+                        .get(runPathStatus)
+                        .then()
+                        .assertThat()
+                        .statusCode(200)
+                        .body("run_id", equalTo(runId))
+                        .extract();
+                //@formatter:on
+                final String state = statusResponse.body()
+                                                   .jsonPath()
+                                                   .getString("state");
+
+                if ("EXECUTION_ERROR".equals(state) || "CANCELED".equals(state)) {
+                    throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
+                } else {
+                    org.junit.jupiter.api.Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", runId));
+                }
+            });
         }
 
         @Test

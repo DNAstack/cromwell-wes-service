@@ -63,6 +63,11 @@
       <artifactId>nimbus-jose-jwt</artifactId>
       <version>6.0.2</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-resourcemanager</artifactId>
+      <version>0.117.1-alpha</version>
+    </dependency>
 
     <dependency>
       <groupId>org.junit.jupiter</groupId>

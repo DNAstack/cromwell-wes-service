@@ -43,7 +43,7 @@ public class PathTranslator implements ObjectTranslator {
 
     @Override
     public JsonNode mapObjects(ObjectWrapper wrapper) {
-        JsonNode node = wrapper.getMappedvalue();
+        JsonNode node = wrapper.getMappedValue();
         return mapJsonNode(node);
     }
 
@@ -129,6 +129,6 @@ public class PathTranslator implements ObjectTranslator {
 
     @Override
     public boolean shouldMap(ObjectWrapper wrapper) {
-        return shouldMapJsonNode(wrapper.getMappedvalue());
+        return shouldMapJsonNode(wrapper.getMappedValue());
     }
 }

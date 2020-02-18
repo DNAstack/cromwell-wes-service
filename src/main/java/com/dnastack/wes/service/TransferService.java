@@ -12,16 +12,13 @@ import com.dnastack.wes.wdl.ObjectWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -203,19 +200,20 @@ public class TransferService {
                 configureObjectForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, wrapper);
             }
         }
+
         return objectsToTransfer;
     }
 
     private void configureObjectForTransfer(String stagingDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens,
         ObjectWrapper objectWrapper) {
         if (config.isEnabled()) {
-            JsonNode mappedValue = objectWrapper.getMappedvalue();
-            configureNodeForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, mappedValue);
+            JsonNode mappedValue = objectWrapper.getMappedValue();
+            configureNodeForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, mappedValue, objectWrapper);
         }
     }
 
 
-    private void configureNodeForTransfer(String staginDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens, JsonNode node) {
+    private void configureNodeForTransfer(String staginDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens, JsonNode node, ObjectWrapper objectWrapper) {
         if (node.isTextual()) {
             String objectToTransfer = node.textValue();
             if (!config.getObjectPrefixWhitelist().stream().anyMatch(objectToTransfer::startsWith)) {
@@ -224,6 +222,7 @@ public class TransferService {
                     if (objectAccessTokens.containsKey(objectToTransfer)) {
                         String accessToken = objectAccessTokens.get(objectToTransfer);
                         String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+                        updateObjectWrapper(objectWrapper, accessToken, destination);
                         objectsToTransfer.put(objectToTransfer, new String[]{destination, accessToken});
                         return;
                     } else {
@@ -231,6 +230,7 @@ public class TransferService {
                         if (objectAccessTokens.containsKey(hostUri)) {
                             String accessToken = objectAccessTokens.get(hostUri);
                             String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+                            updateObjectWrapper(objectWrapper, accessToken, destination);
                             objectsToTransfer.put(objectToTransfer, new String[]{destination, accessToken});
                         }
                     }
@@ -241,15 +241,29 @@ public class TransferService {
         } else if (node.isArray()) {
             ArrayNode arrayNode = (ArrayNode) node;
             arrayNode.forEach((itemNode) -> {
-                configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, itemNode);
+                configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, itemNode, objectWrapper);
             });
         } else if (node.isObject()) {
             ObjectNode objectNode = (ObjectNode) node;
             objectNode.fields().forEachRemaining(entry -> {
                 configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, entry
-                    .getValue());
+                    .getValue(), objectWrapper);
             });
         }
+    }
+
+    /**
+     * Modifies objectWrapper in-place with mapped path for file-transfer.
+     */
+    private void updateObjectWrapper(ObjectWrapper objectWrapper, String accessToken, String destination) {
+        objectWrapper.setAccessToken(accessToken);
+        objectWrapper.setTransferDestination(destination);
+        objectWrapper.setWasMapped(true);
+        if (objectWrapper.getMappedValue() != null) {
+            objectWrapper.setSourceDestination(objectWrapper.getMappedValue().asText());
+        }
+        objectWrapper.setMappedValue(new TextNode(destination));
+        objectWrapper.setRequiresTransfer(true);
     }
 
     private String generateTransferDestination(String prefix, URI originalUri) {

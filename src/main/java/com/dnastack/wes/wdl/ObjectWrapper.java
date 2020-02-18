@@ -43,7 +43,7 @@ public class ObjectWrapper {
     }
 
 
-    public JsonNode getMappedvalue() {
+    public JsonNode getMappedValue() {
         if (mappedValue == null) {
             return originalValue;
         } else {
