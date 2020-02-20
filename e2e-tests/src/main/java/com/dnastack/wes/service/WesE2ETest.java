@@ -237,8 +237,10 @@ public class WesE2ETest extends BaseE2eTest {
         }
 
         @Test
-        @DisplayName("Workflow Run Submission with access token input")
+        @DisplayName("Workflow Run Submission with GCP access token input")
         public void submitWorkflowRunNeedingObjectTransfer() throws Exception {
+            final Boolean testObjectTransfer = Boolean.valueOf(optionalEnv("E2E_TEST_OBJECT_TRANSFER", "true"));
+            Assumptions.assumeTrue(testObjectTransfer, "GCP object transfer test has been disabled");
             final String submitPath = getRootPath() + "/runs";
             final Map<String, String> tags = Collections.singletonMap("WES", "TestRun");
             final Map<String, String> engineParams = new HashMap<>();
