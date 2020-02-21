@@ -279,7 +279,7 @@ public class CromwellService {
      * then, files will be mapped into their final destination and then localized by the object transfer service.
      * </ul>
      */
-    public RunId execute(RunRequest runRequest) {
+    public RunId execute(String subject, RunRequest runRequest) {
         try {
             Path tempDirectory = null;
             try {
@@ -313,7 +313,7 @@ public class CromwellService {
 
                 if (objectsToTransfer != null && !objectsToTransfer.isEmpty()) {
                     transferService
-                        .transferFiles(new TransferContext(runId
+                        .transferFiles(subject, new TransferContext(runId
                             .getRunId(), objectsToTransfer, null, this::transferCallBack));
 
                 }

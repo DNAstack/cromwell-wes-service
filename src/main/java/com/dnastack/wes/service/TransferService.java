@@ -7,7 +7,6 @@ import com.dnastack.wes.data.TrackedTransfer;
 import com.dnastack.wes.data.TrackedTransferDao;
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.model.transfer.TransferRequest;
-import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.wdl.ObjectWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -132,11 +131,11 @@ public class TransferService {
     }
 
 
-    public void transferFiles(TransferContext context) {
+    public void transferFiles(String subject, TransferContext context) {
         try {
             if (config.isEnabled()) {
                 try {
-                    performTransfer(context);
+                    performTransfer(subject, context);
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                     cromwellClient.abortWorkflow(context.runId);
@@ -148,7 +147,7 @@ public class TransferService {
     }
 
 
-    private void performTransfer(TransferContext context) {
+    private void performTransfer(String subject, TransferContext context) {
         Map<String, TransferRequest> transferRequests = new HashMap<>();
         List<TransferSpec> objectsToTransfer = context.getObjectsToTransfer();
         for (TransferSpec transferSpec : objectsToTransfer) {
@@ -156,8 +155,7 @@ public class TransferService {
             String source = transferSpec.getSourceUri();
             String destination = transferSpec.getTargetUri();
             String accessToken = transferSpec.getAccessToken();
-            TransferRequest request;
-            request = transferRequests.computeIfAbsent(accessToken, (k) -> new TransferRequest(accessToken));
+            TransferRequest request = transferRequests.computeIfAbsent(accessToken, (k) -> new TransferRequest(accessToken));
             List<String> copyPair = Arrays.asList(source, destination);
             request.getCopyPairs().add(copyPair);
         }
@@ -165,7 +163,7 @@ public class TransferService {
         List<TransferJob> transfersToMonitor = new ArrayList<>();
         for (TransferRequest request : transferRequests.values()) {
             TransferJob job = transferServiceClientFactory.getClient()
-                .submitTransferRequest(request, AuthenticatedUser.getSubject());
+                .submitTransferRequest(request, subject);
             transfersToMonitor.add(job);
         }
         log.info("Submitting {} transfer jobs for run {}", transfersToMonitor.size(), context.getRunId());

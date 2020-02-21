@@ -80,7 +80,7 @@ public class WesV1Controller {
             .workflowEngineParameters(workflowEngineParams).workflowParams(workflowParams)
             .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments).tags(tags).build();
 
-        return adapter.execute(runRequest);
+        return adapter.execute(AuthenticatedUser.getSubject(), runRequest);
     }
 
 
