@@ -299,7 +299,7 @@ public class CromwellService {
                 Map<String, String> tokens = getObjectAccessTokens(runRequest);
                 WdlFileProcessor processor = setWorkflowInputs(runRequest
                     .getWorkflowParams(), tokens, executionRequest);
-                Map<String, String[]> objectsToTransfer = null;
+                List<TransferSpec> objectsToTransfer = null;
                 if (processor != null) {
                     objectsToTransfer = transferService
                         .configureObjectsForTransfer(processor.getMappedObjects(), tokens);

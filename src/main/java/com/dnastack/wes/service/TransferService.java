@@ -20,6 +20,9 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jdbi.v3.core.Jdbi;
@@ -147,16 +150,12 @@ public class TransferService {
 
     private void performTransfer(TransferContext context) {
         Map<String, TransferRequest> transferRequests = new HashMap<>();
-        Map<String, String[]> objectsToTransfer = context.getObjectsToTransfer();
-        for (Map.Entry<String, String[]> entry : objectsToTransfer.entrySet()) {
+        List<TransferSpec> objectsToTransfer = context.getObjectsToTransfer();
+        for (TransferSpec transferSpec : objectsToTransfer) {
 
-            if (entry.getValue().length != 2) {
-                throw new IllegalArgumentException("Object to transfer must have a destination and an access token");
-            }
-
-            String source = entry.getKey();
-            String destination = entry.getValue()[0];
-            String accessToken = entry.getValue()[1];
+            String source = transferSpec.getSourceUri();
+            String destination = transferSpec.getTargetUri();
+            String accessToken = transferSpec.getAccessToken();
             TransferRequest request;
             request = transferRequests.computeIfAbsent(accessToken, (k) -> new TransferRequest(accessToken));
             List<String> copyPair = Arrays.asList(source, destination);
@@ -191,29 +190,35 @@ public class TransferService {
 
     }
 
-    public Map<String, String[]> configureObjectsForTransfer(List<ObjectWrapper> objectWrappers, Map<String, String> objectAccessTokens) {
-        Map<String, String[]> objectsToTransfer = new HashMap<>();
+    public List<TransferSpec> configureObjectsForTransfer(List<ObjectWrapper> objectWrappers, Map<String, String> objectAccessTokens) {
+        List<TransferSpec> objectsToTransfer = new ArrayList<>();
         if (config.isEnabled() && objectWrappers != null && !objectWrappers.isEmpty()) {
             log.trace("Configuring object transfers for {} objects", objectWrappers.size());
             String stagingDirectoryPrefix = RandomStringUtils.randomAlphanumeric(6);
             for (ObjectWrapper wrapper : objectWrappers) {
-                configureObjectForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, wrapper);
+                configureObjectForTransfer(stagingDirectoryPrefix, objectAccessTokens, wrapper)
+                        .forEach(transferSpec -> {
+                            objectsToTransfer.add(transferSpec);
+                            updateObjectWrapper(wrapper, transferSpec.getAccessToken(), transferSpec.getTargetUri());
+                        });
             }
         }
 
         return objectsToTransfer;
     }
 
-    private void configureObjectForTransfer(String stagingDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens,
-        ObjectWrapper objectWrapper) {
+    private Stream<TransferSpec> configureObjectForTransfer(String stagingDirectoryPrefix, Map<String, String> objectAccessTokens,
+                                                          ObjectWrapper objectWrapper) {
         if (config.isEnabled()) {
             JsonNode mappedValue = objectWrapper.getMappedValue();
-            configureNodeForTransfer(stagingDirectoryPrefix, objectsToTransfer, objectAccessTokens, mappedValue, objectWrapper);
+            return configureNodeForTransfer(stagingDirectoryPrefix, objectAccessTokens, mappedValue, objectWrapper);
+        } else {
+            return Stream.of();
         }
     }
 
 
-    private void configureNodeForTransfer(String staginDirectoryPrefix, Map<String, String[]> objectsToTransfer, Map<String, String> objectAccessTokens, JsonNode node, ObjectWrapper objectWrapper) {
+    private Stream<TransferSpec> configureNodeForTransfer(String staginDirectoryPrefix, Map<String, String> objectAccessTokens, JsonNode node, ObjectWrapper objectWrapper) {
         if (node.isTextual()) {
             String objectToTransfer = node.textValue();
             if (!config.getObjectPrefixWhitelist().stream().anyMatch(objectToTransfer::startsWith)) {
@@ -222,34 +227,32 @@ public class TransferService {
                     if (objectAccessTokens.containsKey(objectToTransfer)) {
                         String accessToken = objectAccessTokens.get(objectToTransfer);
                         String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
-                        updateObjectWrapper(objectWrapper, accessToken, destination);
-                        objectsToTransfer.put(objectToTransfer, new String[]{destination, accessToken});
-                        return;
+
+                        return Stream.of(new TransferSpec(accessToken, objectToTransfer, destination));
                     } else {
                         String hostUri = objectToTransferUri.getScheme() + "://" + objectToTransferUri.getHost();
                         if (objectAccessTokens.containsKey(hostUri)) {
                             String accessToken = objectAccessTokens.get(hostUri);
                             String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
-                            updateObjectWrapper(objectWrapper, accessToken, destination);
-                            objectsToTransfer.put(objectToTransfer, new String[]{destination, accessToken});
+
+                            return Stream.of(new TransferSpec(accessToken, objectToTransfer, destination));
                         }
                     }
                 } catch (URISyntaxException e) {
-                    // Silently handle thisl
+                    // Silently handle this
                 }
             }
         } else if (node.isArray()) {
             ArrayNode arrayNode = (ArrayNode) node;
-            arrayNode.forEach((itemNode) -> {
-                configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, itemNode, objectWrapper);
-            });
+            return StreamSupport.stream(arrayNode.spliterator(), false)
+                                .flatMap(itemNode -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessTokens, itemNode, objectWrapper));
         } else if (node.isObject()) {
             ObjectNode objectNode = (ObjectNode) node;
-            objectNode.fields().forEachRemaining(entry -> {
-                configureNodeForTransfer(staginDirectoryPrefix, objectsToTransfer, objectAccessTokens, entry
-                    .getValue(), objectWrapper);
-            });
+            return StreamSupport.stream(Spliterators.spliteratorUnknownSize(objectNode.fields(), 0), false)
+                                .flatMap(entry -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessTokens, entry.getValue(), objectWrapper));
         }
+
+        return Stream.of();
     }
 
     /**
