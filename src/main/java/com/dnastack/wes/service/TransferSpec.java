@@ -4,7 +4,12 @@ import lombok.Value;
 
 @Value
 public class TransferSpec {
-    private String accessToken;
-    private String sourceUri;
-    private String targetUri;
+    @Value
+    public static class BlobSpec {
+        private String accessToken;
+        private String uri;
+    }
+
+    private BlobSpec sourceSpec;
+    private BlobSpec targetSpec;
 }

@@ -121,6 +121,12 @@
       <version>${feign.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-resourcemanager</artifactId>
+      <version>0.117.1-alpha</version>
+    </dependency>
+
 
     <!--database connections -->
     <dependency>

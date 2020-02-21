@@ -26,10 +26,6 @@ public class ObjectWrapper {
     @Setter
     String sourceDestination;
 
-    @Getter
-    @Setter
-    String accessToken;
-
     @Setter
     @Getter
     Boolean wasMapped = false;

@@ -12,7 +12,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.google.auth.oauth2.GoogleCredentials;
 import feign.FeignException;
+
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZonedDateTime;
@@ -29,6 +32,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import static java.lang.String.format;
 
 @Slf4j
 @Service
@@ -152,10 +157,11 @@ public class TransferService {
         List<TransferSpec> objectsToTransfer = context.getObjectsToTransfer();
         for (TransferSpec transferSpec : objectsToTransfer) {
 
-            String source = transferSpec.getSourceUri();
-            String destination = transferSpec.getTargetUri();
-            String accessToken = transferSpec.getAccessToken();
-            TransferRequest request = transferRequests.computeIfAbsent(accessToken, (k) -> new TransferRequest(accessToken));
+            String source = transferSpec.getSourceSpec().getUri();
+            String destination = transferSpec.getTargetSpec().getUri();
+            String srcAccessToken = transferSpec.getSourceSpec().getAccessToken();
+            String dstAccessToken = transferSpec.getTargetSpec().getAccessToken();
+            TransferRequest request = transferRequests.computeIfAbsent(srcAccessToken, (k) -> new TransferRequest(srcAccessToken, dstAccessToken));
             List<String> copyPair = Arrays.asList(source, destination);
             request.getCopyPairs().add(copyPair);
         }
@@ -197,7 +203,7 @@ public class TransferService {
                 configureObjectForTransfer(stagingDirectoryPrefix, objectAccessTokens, wrapper)
                         .forEach(transferSpec -> {
                             objectsToTransfer.add(transferSpec);
-                            updateObjectWrapper(wrapper, transferSpec.getAccessToken(), transferSpec.getTargetUri());
+                            updateObjectWrapper(wrapper, transferSpec.getTargetSpec().getUri());
                         });
             }
         }
@@ -223,17 +229,21 @@ public class TransferService {
                 try {
                     URI objectToTransferUri = new URI(objectToTransfer);
                     if (objectAccessTokens.containsKey(objectToTransfer)) {
-                        String accessToken = objectAccessTokens.get(objectToTransfer);
+                        String sourceAccessToken = objectAccessTokens.get(objectToTransfer);
                         String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+                        String dstAccessToken = getDestinationAccessToken(destination).orElse(null);
 
-                        return Stream.of(new TransferSpec(accessToken, objectToTransfer, destination));
+                        return Stream.of(new TransferSpec(new TransferSpec.BlobSpec(sourceAccessToken, objectToTransfer),
+                                                          new TransferSpec.BlobSpec(dstAccessToken, destination)));
                     } else {
                         String hostUri = objectToTransferUri.getScheme() + "://" + objectToTransferUri.getHost();
                         if (objectAccessTokens.containsKey(hostUri)) {
-                            String accessToken = objectAccessTokens.get(hostUri);
+                            String sourceAccessToken = objectAccessTokens.get(hostUri);
                             String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+                            String dstAccessToken = getDestinationAccessToken(destination).orElse(null);
 
-                            return Stream.of(new TransferSpec(accessToken, objectToTransfer, destination));
+                            return Stream.of(new TransferSpec(new TransferSpec.BlobSpec(sourceAccessToken, objectToTransfer),
+                                                              new TransferSpec.BlobSpec(dstAccessToken, destination)));
                         }
                     }
                 } catch (URISyntaxException e) {
@@ -253,11 +263,45 @@ public class TransferService {
         return Stream.of();
     }
 
+    private Optional<String> getDestinationAccessToken(String destination) {
+        if (!destination.startsWith(config.getStagingDirectory())) {
+            log.warn("Access token for destination [{}] outside staging directory [{}] may not be be authorized", destination, config.getStagingDirectory());
+        }
+
+        if (destination.startsWith("gs://")) {
+            try {
+                return Optional.of(getOrRefreshGcpAccessToken());
+            } catch (IOException e) {
+                log.debug("Unable to get GCP access token: {}", e.getMessage());
+                log.trace("Detailed info on GCP access token exception", e);
+
+                return Optional.empty();
+            }
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    private String getOrRefreshGcpAccessToken() throws IOException {
+        final GoogleCredentials credentials = getGcpCredentials();
+        credentials.refreshIfExpired();
+
+        return credentials.getAccessToken().getTokenValue();
+    }
+
+    private GoogleCredentials getGcpCredentials() throws IOException {
+        final GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+        if (credentials.createScopedRequired()) {
+            return credentials.createScoped(List.of("https://www.googleapis.com/auth/cloud-platform"));
+        } else {
+            return credentials;
+        }
+    }
+
     /**
      * Modifies objectWrapper in-place with mapped path for file-transfer.
      */
-    private void updateObjectWrapper(ObjectWrapper objectWrapper, String accessToken, String destination) {
-        objectWrapper.setAccessToken(accessToken);
+    private void updateObjectWrapper(ObjectWrapper objectWrapper, String destination) {
         objectWrapper.setTransferDestination(destination);
         objectWrapper.setWasMapped(true);
         if (objectWrapper.getMappedValue() != null) {

@@ -16,11 +16,13 @@ import lombok.ToString;
 public class TransferRequest {
 
     private String srcAccessToken;
-    private List<List<String>> copyPairs;
+    private String dstAccessToken;
+    private List<List<String>> copyPairs = new ArrayList<>();
 
 
-    public TransferRequest(String srcAccessToken) {
+    public TransferRequest(String srcAccessToken, String dstAccessToken) {
         this.srcAccessToken = srcAccessToken;
+        this.dstAccessToken = dstAccessToken;
         copyPairs = new ArrayList<>();
     }
 
