@@ -18,26 +18,21 @@ public class AuthConfig {
      * The URI to use for authenticated service to service communication. This is expected to be an OIDC compliant token
      * endpoint which will accept {@code client_credentials}
      */
-    @Deprecated
     String serviceAccountAuthenticationUri;
 
     /**
      * The service account client id which will be used to authenticate this service against others
      */
-    @Deprecated
     String serviceAccountClientId;
 
     /**
      * The service account client secret which will be used to authenticate this service against others
      */
-    @Deprecated
     String serviceAccountSecret;
-
 
     /**
      * TODO Remove this The development token issuer.
      */
-    @Deprecated
     IssuerConfig devTokenIssuer = null;
 
     /**

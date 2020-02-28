@@ -49,7 +49,7 @@ public class TransferServiceClientFactory {
                     .logger(new SimpleLogger())
                     .logLevel(Level.BASIC)
                     .requestInterceptor((template) -> {
-                        AccessToken accessToken = tokenCache.getToken();
+                        AccessToken accessToken = tokenCache.getToken(transferConfig.getObjectTransferUri());
                         template.header("Authorization", "Bearer " + accessToken.getToken());
                     })
                     .target(TransferServiceClient.class, transferConfig.getObjectTransferUri());

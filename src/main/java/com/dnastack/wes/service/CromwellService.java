@@ -311,17 +311,17 @@ public class CromwellService {
                 CromwellStatus status = client.createWorkflow(executionRequest);
                 RunId runId = RunId.builder().runId(status.getId()).build();
 
+                jdbi.withExtension(OriginalInputsDao.class, dao -> {
+                    dao.saveInputs(new OriginalInputs(runId.getRunId(), originalInputs));
+                    return null;
+                });
+
                 if (objectsToTransfer != null && !objectsToTransfer.isEmpty()) {
                     transferService
                         .transferFiles(subject, new TransferContext(runId
                             .getRunId(), objectsToTransfer, null, this::transferCallBack));
 
                 }
-
-                jdbi.withExtension(OriginalInputsDao.class, dao -> {
-                    dao.saveInputs(new OriginalInputs(runId.getRunId(), originalInputs));
-                    return null;
-                });
 
                 return runId;
             } finally {

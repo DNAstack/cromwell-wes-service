@@ -21,10 +21,14 @@ wes:
       - file
   transfer:
     enabled: false
+    object-transfer-uri: http://localhost:8086
+    # Needs to be set
+    staging-directory:
   auth:
-    service-account-authentication-uri:
-    service-account-client-id:
-    service-account-secret:
+    # Defaults included in wallet dev setup
+    service-account-authentication-uri: http://localhost:8081/oauth/token
+    service-account-client-id: wes-service
+    service-account-secret: wes-service
     dev-token-issuer:
       rsa-public-key: |
         -----BEGIN PUBLIC KEY-----
@@ -43,6 +47,10 @@ wes:
       # Default Token issuer to use
       - issuer-uri: https://wallet.staging.dnastack.com
         jwk-set-uri: https://wallet.staging.dnastack.com/oauth/jwks
+      - issuer-uri: http://localhost:8081
+        jwk-set-uri: http://localhost:8081/oauth/jwks
+        audiences:
+          - http://localhost:8090
   enable-multi-tenant-support: false
   path-translations:
     - prefix: "http://localhost"
