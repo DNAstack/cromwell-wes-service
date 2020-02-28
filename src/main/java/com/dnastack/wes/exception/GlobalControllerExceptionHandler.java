@@ -29,4 +29,9 @@ public class GlobalControllerExceptionHandler {
     public ResponseEntity<ErrorResponse> handle(AuthorizationException ex) {
         return ResponseEntity.status(404).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(404).build());
     }
+
+    @ExceptionHandler(TransferFailedException.class)
+    public ResponseEntity<ErrorResponse> handle(TransferFailedException ex) {
+        return ResponseEntity.status(500).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(500).build());
+    }
 }

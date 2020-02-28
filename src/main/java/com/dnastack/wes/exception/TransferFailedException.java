@@ -1,4 +1,4 @@
-package com.dnastack.wes.service;
+package com.dnastack.wes.exception;
 
 public class TransferFailedException extends RuntimeException {
 
@@ -10,4 +10,7 @@ public class TransferFailedException extends RuntimeException {
         super(message);
     }
 
+    public TransferFailedException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

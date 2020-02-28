@@ -1,8 +1,11 @@
 package com.dnastack.wes.client;
 
 import com.dnastack.wes.config.AuthConfig;
+import com.dnastack.wes.exception.ServiceAccountException;
 import com.dnastack.wes.model.oauth.AccessToken;
 import com.dnastack.wes.model.oauth.OAuthRequest;
+import feign.FeignException;
+
 import java.time.Instant;
 
 
@@ -32,25 +35,32 @@ public class OAuthTokenCache {
     /**
      * Retrieve a token in a thread safe way. If the token exists, make sure the token is not expired within a buffer
      * zone. If the the token has already expired, then retrieve a new token.
+     * @param audience
      */
-    public synchronized AccessToken getToken() {
+    public synchronized AccessToken getToken(String audience) {
         if (token == null) {
-            token = retrieveToken();
+            token = retrieveToken(audience);
         } else if (token.getExpiresIn() + issuedAt < (Instant.now().getEpochSecond() - TOKEN_BUFFER)) {
-            token = retrieveToken();
+            token = retrieveToken(audience);
         }
 
         return token.clone();
 
     }
 
-    private AccessToken retrieveToken() {
+    private AccessToken retrieveToken(String audience) {
         OAuthRequest request = new OAuthRequest();
         request.setClientId(authConfig.getServiceAccountClientId());
         request.setClientSecret(authConfig.getServiceAccountSecret());
         request.setGrantType("client_credentials");
-        AccessToken accessToken = tokenClient.getToken(request);
-        issuedAt = Instant.now().getEpochSecond();
-        return accessToken;
+        request.setAudience(audience);
+        try {
+            AccessToken accessToken = tokenClient.getToken(request);
+            issuedAt = Instant.now().getEpochSecond();
+
+            return accessToken;
+        } catch (FeignException fe) {
+            throw new ServiceAccountException(fe);
+        }
     }
 }

@@ -5,6 +5,8 @@ import com.dnastack.wes.client.TransferServiceClientFactory;
 import com.dnastack.wes.config.TransferConfig;
 import com.dnastack.wes.data.TrackedTransfer;
 import com.dnastack.wes.data.TrackedTransferDao;
+import com.dnastack.wes.exception.ServiceAccountException;
+import com.dnastack.wes.exception.TransferFailedException;
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.model.transfer.TransferRequest;
 import com.dnastack.wes.wdl.ObjectWrapper;
@@ -137,17 +139,36 @@ public class TransferService {
 
 
     public void transferFiles(String subject, TransferContext context) {
-        try {
-            if (config.isEnabled()) {
+        if (config.isEnabled()) {
+            try {
+                performTransfer(subject, context);
+            } catch (RuntimeException e) {
                 try {
-                    performTransfer(subject, context);
-                } catch (Exception e) {
-                    log.error(e.getMessage(), e);
                     cromwellClient.abortWorkflow(context.runId);
+                } catch (RuntimeException e1) {
+                    e.addSuppressed(e1);
+                }
+
+                try {
+                    throw e;
+                } catch (FeignException fe) {
+                    throw new TransferFailedException(format("Failed to start file transfer on run [%s] with status %d: %s",
+                                                             context.getRunId(),
+                                                             fe.status(),
+                                                             fe.contentUTF8()),
+                                                      fe);
+                } catch (ServiceAccountException sae) {
+                    throw new TransferFailedException(format("Error authorizing for object transfer on run [%s]: %s",
+                                                             context.getRunId(),
+                                                             sae.getMessage()),
+                                                      sae);
+                } catch (RuntimeException re) {
+                    throw new TransferFailedException(format("Failed to start file transfer on run [%s]: %s",
+                                                             context.getRunId(),
+                                                             re.getMessage()),
+                                                      re);
                 }
             }
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
         }
     }
 
