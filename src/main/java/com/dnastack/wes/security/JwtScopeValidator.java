@@ -1,5 +1,7 @@
 package com.dnastack.wes.security;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +28,9 @@ public class JwtScopeValidator implements OAuth2TokenValidator<Jwt> {
 
         if (tokenScope != null) {
             Collection scopeCollection;
-            if (!(tokenScope instanceof Collection)) {
+            if (tokenScope instanceof String) {
+                scopeCollection = Arrays.asList(((String) tokenScope).split(" "));
+            } else if (tokenScope instanceof Collection) {
                 scopeCollection = (Collection) tokenScope;
             } else {
                 scopeCollection = Collections.singletonList(tokenScope);
