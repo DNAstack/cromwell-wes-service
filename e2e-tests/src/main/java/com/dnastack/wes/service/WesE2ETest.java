@@ -252,7 +252,7 @@ public class WesE2ETest extends BaseE2eTest {
 
             //@formatter:off
             final ExtractableResponse<Response> runSubmitResponse =
-            given()
+                given()
                     .log().uri()
                     .log().method()
                     .header(authorizationClient.getHeader())
@@ -264,6 +264,8 @@ public class WesE2ETest extends BaseE2eTest {
                     .multiPart("workflow_attachment", "tokens.json", tokens.getBytes())
                     .post(submitPath)
                     .then()
+                    .log().body()
+                    .log().ifValidationFails()
                     .assertThat()
                     .statusCode(200)
                     .body("run_id", is(notNullValue()))
