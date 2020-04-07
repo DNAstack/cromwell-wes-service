@@ -296,6 +296,7 @@ public class WesE2ETest extends BaseE2eTest {
                 final String state = statusResponse.body()
                                                    .jsonPath()
                                                    .getString("state");
+                System.out.println("Workflow Run State: " + state);
 
                 if ("EXECUTION_ERROR".equals(state) || "CANCELED".equals(state)) {
                     throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
@@ -314,7 +315,7 @@ public class WesE2ETest extends BaseE2eTest {
               .log().uri()
               .log().method()
               .header(authorizationClient.getHeader())
-              .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
+              .multiPart("workflow_attachment","echo.wdl", WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
             .post(path)
             .then()
               .assertThat()
