@@ -5,9 +5,12 @@ import com.dnastack.wes.service.utils.WdlSupplier;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.nimbusds.jose.util.IOUtils;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.LogDetail;
 import io.restassured.http.ContentType;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.*;
@@ -41,7 +44,8 @@ public class WesE2ETest extends BaseE2eTest {
     @BeforeAll
     public static void setupTests() {
         try {
-            authorizationClient = new AuthorizationClient(loadPrivateKey());
+            authorizationClient = new AuthorizationClient();
+//            authorizationClient = new AuthorizationClient(loadPrivateKey());
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -249,7 +253,6 @@ public class WesE2ETest extends BaseE2eTest {
             final String token = getAccessToken();
             final String tokens = format("{\"%s\": \"%s\"}", inputFile, token);
 
-
             //@formatter:off
             final ExtractableResponse<Response> runSubmitResponse =
                 given()
@@ -264,8 +267,7 @@ public class WesE2ETest extends BaseE2eTest {
                     .multiPart("workflow_attachment", "tokens.json", tokens.getBytes())
                     .post(submitPath)
                     .then()
-                    .log().body()
-                    .log().ifValidationFails()
+                    .log().ifValidationFails(LogDetail.ALL)
                     .assertThat()
                     .statusCode(200)
                     .body("run_id", is(notNullValue()))
@@ -318,7 +320,6 @@ public class WesE2ETest extends BaseE2eTest {
               .assertThat()
               .statusCode(400);
             //@formatter:on
-
         }
 
         @Test
