@@ -45,7 +45,6 @@ public class WesE2ETest extends BaseE2eTest {
     public static void setupTests() {
         try {
             authorizationClient = new AuthorizationClient();
-//            authorizationClient = new AuthorizationClient(loadPrivateKey());
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -72,11 +71,7 @@ public class WesE2ETest extends BaseE2eTest {
             credentials = GoogleCredentials.getApplicationDefault();
         }
 
-        if (credentials.createScopedRequired()) {
-            return credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
-        } else {
-            return credentials;
-        }
+        return credentials.createScoped("https://www.googleapis.com/auth/cloud-platform", "openid", "email");
     }
 
     private static String loadPrivateKey() throws IOException {
