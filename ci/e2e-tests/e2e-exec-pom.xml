@@ -57,6 +57,7 @@
 
           <!-- Forking doesn't work when we use dependenciesToScan (child VM dies with ClassNotFoundError) -->
           <forkCount>0</forkCount>
+          <trimStackTrace>false</trimStackTrace>
 
         </configuration>
       </plugin>
