@@ -7,6 +7,7 @@ import com.dnastack.wes.data.OriginalInputs;
 import com.dnastack.wes.data.OriginalInputsDao;
 import com.dnastack.wes.exception.AuthorizationException;
 import com.dnastack.wes.exception.InvalidRequestException;
+import com.dnastack.wes.model.CredentialsModel;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
@@ -40,6 +41,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -59,6 +61,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import io.micrometer.core.instrument.util.IOUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -296,13 +300,13 @@ public class CromwellService {
                 } else {
                     setWorkflowSourceAndDependencies(tempDirectory, runRequest, executionRequest);
                 }
-                Map<String, String> tokens = getObjectAccessTokens(runRequest);
-                WdlFileProcessor processor = setWorkflowInputs(runRequest
-                    .getWorkflowParams(), tokens, executionRequest);
+                Map<String, CredentialsModel> credentials = getObjectAccessCredentials(runRequest);
+                WdlFileProcessor processor = setWorkflowInputs(runRequest.getWorkflowParams(), credentials, executionRequest);
+
                 List<TransferSpec> objectsToTransfer = null;
                 if (processor != null) {
                     objectsToTransfer = transferService
-                        .configureObjectsForTransfer(processor.getMappedObjects(), tokens);
+                        .configureObjectsForTransfer(processor.getMappedObjects(), credentials);
                 }
 
                 setWorkflowLabels(runRequest, executionRequest);
@@ -318,8 +322,12 @@ public class CromwellService {
 
                 if (objectsToTransfer != null && !objectsToTransfer.isEmpty()) {
                     transferService
-                        .transferFiles(subject, new TransferContext(runId
-                            .getRunId(), objectsToTransfer, null, this::transferCallBack));
+                        .transferFiles(subject, new TransferContext(
+                            runId.getRunId(),
+                            objectsToTransfer,
+                            null,
+                            this::transferCallBack
+                        ));
 
                 }
 
@@ -340,22 +348,21 @@ public class CromwellService {
     }
 
 
-    private Map<String, String> getObjectAccessTokens(RunRequest runRequest) throws IOException {
-        Map<String, String> objectAccessTokens;
+    private Map<String, CredentialsModel> getObjectAccessCredentials(RunRequest runRequest) throws IOException {
+        Map<String, CredentialsModel> objectAccessCredentials;
 
-        Optional<MultipartFile> objectAccessTokenFile =
+        Optional<MultipartFile> objectAccessCredentialsFile =
             Stream.of(runRequest.getWorkflowAttachments())
                 .filter(attachment -> attachment.getOriginalFilename() != null && attachment.getOriginalFilename()
-                    .equals(Constants.OBJECT_ACCESS_TOKEN_FILE)).findFirst();
+                    .equals(Constants.OBJECT_ACCESS_CREDENTIALS_FILE)).findFirst();
 
-        TypeReference<Map<String, String>> typeReference = new TypeReference<>() {
-        };
-        if (objectAccessTokenFile.isPresent()) {
-            objectAccessTokens = mapper.readValue(objectAccessTokenFile.get().getInputStream(), typeReference);
+        TypeReference<Map<String, CredentialsModel>> typeReference = new TypeReference<>() {};
+        if (objectAccessCredentialsFile.isPresent()) {
+            objectAccessCredentials = mapper.readValue(objectAccessCredentialsFile.get().getInputStream(), typeReference);
         } else {
-            objectAccessTokens = Collections.emptyMap();
+            objectAccessCredentials = Collections.emptyMap();
         }
-        return objectAccessTokens;
+        return objectAccessCredentials;
     }
 
     private void authorizeUserForRun(String runId) {
@@ -529,13 +536,17 @@ public class CromwellService {
     }
 
 
-    private WdlFileProcessor setWorkflowInputs(Map<String, Object> workflowParams, Map<String, String> tokens, CromwellExecutionRequest executionRequest) {
+    private WdlFileProcessor setWorkflowInputs(
+        Map<String, Object> workflowParams,
+        Map<String, CredentialsModel> credentials,
+        CromwellExecutionRequest executionRequest
+    ) {
         Map<String, Object> cromwellInputs = new HashMap<>();
         WdlFileProcessor processor = null;
         if (workflowParams != null && !workflowParams.isEmpty()) {
 
             List<ObjectTranslator> translators = new ArrayList<>();
-            translators.add(drsObjectResolverFactory.getService(tokens));
+            translators.add(drsObjectResolverFactory.getService(credentials));
             translators.addAll(pathTranslatorFactory.getTranslatorsForInputs());
             processor = new WdlFileProcessor(workflowParams, translators);
             cromwellInputs.putAll(processor.getProcessedInputs());

@@ -13,7 +13,7 @@ public class Constants {
     public static final String WORKFLOW_URL_LABEL = "workflow_url";
     public static final String OPTIONS_FILE = "options.json";
     public static final String DEPENDENCIES_FILE = "dependencies.zip";
-    public static final String OBJECT_ACCESS_TOKEN_FILE = "tokens.json";
+    public static final String OBJECT_ACCESS_CREDENTIALS_FILE = "credentials.json";
 
     public static final Set<String> VALID_CROMWELL_OPTIONS = cromwellOptions();
 

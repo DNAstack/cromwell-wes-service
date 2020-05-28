@@ -3,6 +3,7 @@ package com.dnastack.wes.service;
 import com.dnastack.wes.client.ClientConfigurations.SimpleLogger;
 import com.dnastack.wes.client.DrsClient;
 import com.dnastack.wes.config.DrsConfig;
+import com.dnastack.wes.model.CredentialsModel;
 import feign.Client;
 import feign.Feign;
 import feign.Logger.Level;
@@ -28,11 +29,11 @@ public class DrsObjectResolverFactory {
         this.drsConfig = drsConfig;
     }
 
-    public DrsObjectResolver getService(Map<String, String> tokens) {
-        return new DrsObjectResolver(drsConfig, getClient(tokens));
+    public DrsObjectResolver getService(Map<String, CredentialsModel> credentials) {
+        return new DrsObjectResolver(drsConfig, getClient(credentials));
     }
 
-    private DrsClient getClient(Map<String, String> tokens) {
+    private DrsClient getClient(Map<String, CredentialsModel> credentials) {
         Client httpClient = new OkHttpClient();
         return Feign.builder().client(httpClient).encoder(new JacksonEncoder()).decoder(new JacksonDecoder())
             .logger(new SimpleLogger())
@@ -40,8 +41,8 @@ public class DrsObjectResolverFactory {
             .requestInterceptor(template -> {
                 String requestUrl = template.url();
                 String token = null;
-                if (tokens.containsKey(requestUrl)) {
-                    token = tokens.get(requestUrl);
+                if (credentials.containsKey(requestUrl)) {
+                    token = credentials.get(requestUrl).getAccessToken();
                 } else {
                     URI uri = URI.create(requestUrl);
                     String host = "drs://" + uri.getHost();
@@ -49,10 +50,10 @@ public class DrsObjectResolverFactory {
 
                     String drsUri = host + "/" + id;
 
-                    if (tokens.containsKey(drsUri)) {
-                        token = tokens.get(drsUri);
-                    } else if (tokens.containsKey(host)) {
-                        token = tokens.get(host);
+                    if (credentials.containsKey(drsUri)) {
+                        token = credentials.get(drsUri).getAccessToken();
+                    } else if (credentials.containsKey(host)) {
+                        token = credentials.get(host).getAccessToken();
                     }
 
                 }

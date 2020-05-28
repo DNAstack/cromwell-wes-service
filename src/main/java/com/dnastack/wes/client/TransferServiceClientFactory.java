@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class TransferServiceClientFactory {
 
-
     private final AuthConfig authConfig;
     private final TransferConfig transferConfig;
     private final Encoder encoder;
@@ -32,11 +31,9 @@ public class TransferServiceClientFactory {
         this.decoder = decoder;
     }
 
-
     private TransferServiceClient instance;
 
     public TransferServiceClient getClient() {
-
         if (transferConfig.isEnabled()) {
             if (instance == null) {
                 OauthTokenClient oauthTokenClient = Feign.builder().client(new OkHttpClient()).encoder(encoder)

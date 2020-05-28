@@ -7,6 +7,7 @@ import com.dnastack.wes.data.TrackedTransfer;
 import com.dnastack.wes.data.TrackedTransferDao;
 import com.dnastack.wes.exception.ServiceAccountException;
 import com.dnastack.wes.exception.TransferFailedException;
+import com.dnastack.wes.model.CredentialsModel;
 import com.dnastack.wes.model.transfer.TransferJob;
 import com.dnastack.wes.model.transfer.TransferRequest;
 import com.dnastack.wes.wdl.ObjectWrapper;
@@ -177,14 +178,21 @@ public class TransferService {
         Map<String, TransferRequest> transferRequests = new HashMap<>();
         List<TransferSpec> objectsToTransfer = context.getObjectsToTransfer();
         for (TransferSpec transferSpec : objectsToTransfer) {
-
+            String srcAccessToken = transferSpec.getSourceSpec().getAccessToken();
+            TransferRequest request = transferRequests.computeIfAbsent(srcAccessToken, (k) -> {
+                return TransferRequest.builder()
+                    .srcAccessKeyId(transferSpec.getSourceSpec().getAccessKeyId())
+                    .srcAccessToken(srcAccessToken)
+                    .srcSessionToken(transferSpec.getSourceSpec().getSessionToken())
+                    .dstAccessKeyId(transferSpec.getTargetSpec().getAccessKeyId())
+                    .dstAccessToken(transferSpec.getTargetSpec().getAccessToken())
+                    .dstSessionToken(transferSpec.getTargetSpec().getSessionToken())
+                    .build();
+            });
             String source = transferSpec.getSourceSpec().getUri();
             String destination = transferSpec.getTargetSpec().getUri();
-            String srcAccessToken = transferSpec.getSourceSpec().getAccessToken();
-            String dstAccessToken = transferSpec.getTargetSpec().getAccessToken();
-            TransferRequest request = transferRequests.computeIfAbsent(srcAccessToken, (k) -> new TransferRequest(srcAccessToken, dstAccessToken));
-            List<String> copyPair = Arrays.asList(source, destination);
-            request.getCopyPairs().add(copyPair);
+
+            request.getCopyPairs().add(Arrays.asList(source, destination));
         }
 
         List<TransferJob> transfersToMonitor = new ArrayList<>();
@@ -215,13 +223,16 @@ public class TransferService {
 
     }
 
-    public List<TransferSpec> configureObjectsForTransfer(List<ObjectWrapper> objectWrappers, Map<String, String> objectAccessTokens) {
+    public List<TransferSpec> configureObjectsForTransfer(
+        List<ObjectWrapper> objectWrappers,
+        Map<String, CredentialsModel> objectAccessCredentials
+    ) {
         List<TransferSpec> objectsToTransfer = new ArrayList<>();
         if (config.isEnabled() && objectWrappers != null && !objectWrappers.isEmpty()) {
             log.trace("Configuring object transfers for {} objects", objectWrappers.size());
             String stagingDirectoryPrefix = RandomStringUtils.randomAlphanumeric(6);
             for (ObjectWrapper wrapper : objectWrappers) {
-                configureObjectForTransfer(stagingDirectoryPrefix, objectAccessTokens, wrapper)
+                configureObjectForTransfer(stagingDirectoryPrefix, objectAccessCredentials, wrapper)
                         .forEach(transferSpec -> {
                             objectsToTransfer.add(transferSpec);
                             updateObjectWrapper(wrapper, transferSpec.getTargetSpec().getUri());
@@ -232,39 +243,39 @@ public class TransferService {
         return objectsToTransfer;
     }
 
-    private Stream<TransferSpec> configureObjectForTransfer(String stagingDirectoryPrefix, Map<String, String> objectAccessTokens,
-                                                          ObjectWrapper objectWrapper) {
+    private Stream<TransferSpec> configureObjectForTransfer(
+        String stagingDirectoryPrefix,
+        Map<String, CredentialsModel> objectAccessCredentials,
+        ObjectWrapper objectWrapper
+    ) {
         if (config.isEnabled()) {
             JsonNode mappedValue = objectWrapper.getMappedValue();
-            return configureNodeForTransfer(stagingDirectoryPrefix, objectAccessTokens, mappedValue, objectWrapper);
+            return configureNodeForTransfer(stagingDirectoryPrefix, objectAccessCredentials, mappedValue, objectWrapper);
         } else {
             return Stream.of();
         }
     }
 
 
-    private Stream<TransferSpec> configureNodeForTransfer(String staginDirectoryPrefix, Map<String, String> objectAccessTokens, JsonNode node, ObjectWrapper objectWrapper) {
+    private Stream<TransferSpec> configureNodeForTransfer(
+        String staginDirectoryPrefix,
+        Map<String, CredentialsModel> objectAccessCredentials,
+        JsonNode node,
+        ObjectWrapper objectWrapper
+    ) {
         if (node.isTextual()) {
             String objectToTransfer = node.textValue();
             if (!config.getObjectPrefixWhitelist().stream().anyMatch(objectToTransfer::startsWith)) {
                 try {
                     URI objectToTransferUri = new URI(objectToTransfer);
-                    if (objectAccessTokens.containsKey(objectToTransfer)) {
-                        String sourceAccessToken = objectAccessTokens.get(objectToTransfer);
-                        String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
-                        String dstAccessToken = getDestinationAccessToken(destination).orElse(null);
-
-                        return Stream.of(new TransferSpec(new TransferSpec.BlobSpec(sourceAccessToken, objectToTransfer),
-                                                          new TransferSpec.BlobSpec(dstAccessToken, destination)));
+                    if (objectAccessCredentials.containsKey(objectToTransfer)) {
+                        CredentialsModel sourceCredentials = objectAccessCredentials.get(objectToTransfer);
+                        return getTransferSpecs(sourceCredentials, objectToTransfer, objectToTransferUri, staginDirectoryPrefix);
                     } else {
                         String hostUri = objectToTransferUri.getScheme() + "://" + objectToTransferUri.getHost();
-                        if (objectAccessTokens.containsKey(hostUri)) {
-                            String sourceAccessToken = objectAccessTokens.get(hostUri);
-                            String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
-                            String dstAccessToken = getDestinationAccessToken(destination).orElse(null);
-
-                            return Stream.of(new TransferSpec(new TransferSpec.BlobSpec(sourceAccessToken, objectToTransfer),
-                                                              new TransferSpec.BlobSpec(dstAccessToken, destination)));
+                        if (objectAccessCredentials.containsKey(hostUri)) {
+                            CredentialsModel sourceCredentials = objectAccessCredentials.get(hostUri);
+                            return getTransferSpecs(sourceCredentials, objectToTransfer, objectToTransferUri, staginDirectoryPrefix);
                         }
                     }
                 } catch (URISyntaxException e) {
@@ -274,14 +285,34 @@ public class TransferService {
         } else if (node.isArray()) {
             ArrayNode arrayNode = (ArrayNode) node;
             return StreamSupport.stream(arrayNode.spliterator(), false)
-                                .flatMap(itemNode -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessTokens, itemNode, objectWrapper));
+                                .flatMap(itemNode -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessCredentials, itemNode, objectWrapper));
         } else if (node.isObject()) {
             ObjectNode objectNode = (ObjectNode) node;
             return StreamSupport.stream(Spliterators.spliteratorUnknownSize(objectNode.fields(), 0), false)
-                                .flatMap(entry -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessTokens, entry.getValue(), objectWrapper));
+                                .flatMap(entry -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessCredentials, entry.getValue(), objectWrapper));
         }
 
         return Stream.of();
+    }
+
+    private Stream<TransferSpec> getTransferSpecs(CredentialsModel sourceCredentials, String objectToTransfer, URI objectToTransferUri, String staginDirectoryPrefix) {
+        String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
+        String dstAccessToken = getDestinationAccessToken(destination).orElse(null);
+
+        return Stream.of(TransferSpec.builder()
+            .sourceSpec(new TransferSpec.BlobSpec(
+                sourceCredentials.getAccessKeyId(),
+                sourceCredentials.getAccessToken(),
+                sourceCredentials.getSessionToken(),
+                objectToTransfer
+            ))
+            .targetSpec(new TransferSpec.BlobSpec(
+                null,
+                dstAccessToken,
+                null,
+                destination
+            ))
+            .build());
     }
 
     private Optional<String> getDestinationAccessToken(String destination) {
