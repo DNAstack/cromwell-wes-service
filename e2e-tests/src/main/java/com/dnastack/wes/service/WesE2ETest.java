@@ -13,6 +13,7 @@ import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
@@ -246,7 +247,10 @@ public class WesE2ETest extends BaseE2eTest {
             final String inputFile = optionalEnv("E2E_WORKFLOW_INPUT", "gs://ddap-e2etest-objects/small_files/SAMPLE_TEST_aligned.sorted.bam");
             final Map<String, String> inputs = Collections.singletonMap("md5Sum.inputFile", inputFile);
             final String token = getAccessToken();
-            final String tokens = format("{\"%s\": \"%s\"}", inputFile, token);
+
+            final Map<String, String> objectAccessCredentials = Collections.singletonMap("accessToken", token);
+            JSONObject credentials = new JSONObject();
+            credentials.put(inputFile, objectAccessCredentials);
 
             //@formatter:off
             final ExtractableResponse<Response> runSubmitResponse =
@@ -259,7 +263,7 @@ public class WesE2ETest extends BaseE2eTest {
                     .multiPart("workflow_engine_parameters", engineParams, ContentType.JSON.toString())
                     .multiPart("tags", tags, ContentType.JSON.toString())
                     .multiPart("workflow_params", inputs, ContentType.JSON.toString())
-                    .multiPart("workflow_attachment", "tokens.json", tokens.getBytes())
+                    .multiPart("workflow_attachment", "credentials.json", credentials.toJSONString().getBytes())
                     .post(submitPath)
                     .then()
                     .log().ifValidationFails(LogDetail.ALL)
