@@ -1,0 +1,38 @@
+{
+  "x.s": "ggggggg",
+  "x.p": {
+    "name": "jonas",
+    "age": 42,
+    "info": {
+      "id": "1-87-99",
+      "created": "",
+      "size": 12123,
+      "check_sums": [
+        {
+          "checksum": "1urM1pz5IYA+ZusrZ98CLw==",
+          "type": "md5"
+        }
+      ],
+      "access_methods": [
+        {
+          "access_url": {
+            "url": "/home/patrick/development/dnastack/wdl-validator/scripts/wdl/string.txt"
+          },
+          "type": "file"
+        },
+        {
+          "access_url": {
+            "url": "gs://genomics-public-data/references/README"
+          },
+          "type": "gs"
+        }
+      ]
+    },
+    "children": [
+      {
+        "name": "charlie",
+        "age": 7
+      }
+    ]
+  }
+}

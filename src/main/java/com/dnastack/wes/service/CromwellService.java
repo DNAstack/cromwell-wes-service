@@ -7,12 +7,14 @@ import com.dnastack.wes.data.OriginalInputs;
 import com.dnastack.wes.data.OriginalInputsDao;
 import com.dnastack.wes.exception.AuthorizationException;
 import com.dnastack.wes.exception.InvalidRequestException;
+import com.dnastack.wes.exception.NotFoundException;
 import com.dnastack.wes.model.CredentialsModel;
 import com.dnastack.wes.model.cromwell.CromwellExecutionRequest;
 import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
 import com.dnastack.wes.model.cromwell.CromwellResponse;
 import com.dnastack.wes.model.cromwell.CromwellSearch;
 import com.dnastack.wes.model.cromwell.CromwellStatus;
+import com.dnastack.wes.model.cromwell.CromwellTaskCall;
 import com.dnastack.wes.model.cromwell.CromwellVersion;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
@@ -21,6 +23,7 @@ import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.State;
 import com.dnastack.wes.security.AuthenticatedUser;
+import com.dnastack.wes.storage.client.BlobStorageClient;
 import com.dnastack.wes.wdl.ObjectTranslator;
 import com.dnastack.wes.wdl.PathTranslatorFactory;
 import com.dnastack.wes.wdl.WdlFileProcessor;
@@ -33,15 +36,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,8 +65,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import io.micrometer.core.instrument.util.IOUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,6 +80,7 @@ public class CromwellService {
 
     private final static ObjectMapper mapper = new ObjectMapper();
     private final CromwellClient client;
+    private final BlobStorageClient storageClient;
     private final Jdbi jdbi;
     private final DrsObjectResolverFactory drsObjectResolverFactory;
     private final AppConfig config;
@@ -85,13 +88,14 @@ public class CromwellService {
     private final PathTranslatorFactory pathTranslatorFactory;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, PathTranslatorFactory pathTranslatorFactory, DrsObjectResolverFactory drsObjectResolverFactory, Jdbi jdbi, AppConfig appConfig, TransferService transferService) {
+    CromwellService(CromwellClient cromwellClient, BlobStorageClient storageClient, PathTranslatorFactory pathTranslatorFactory, DrsObjectResolverFactory drsObjectResolverFactory, Jdbi jdbi, AppConfig appConfig, TransferService transferService) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
         this.drsObjectResolverFactory = drsObjectResolverFactory;
         this.config = appConfig;
         this.transferService = transferService;
         this.jdbi = jdbi;
+        this.storageClient = storageClient;
     }
 
 
@@ -200,14 +204,15 @@ public class CromwellService {
      */
     public RunLog getRun(String runId) {
         authorizeUserForRun(runId);
-        CromwellMetadataResponse metadataResponse = client.getMetadata(runId);
+        CromwellMetadataResponse metadataResponse = getMetadata(runId);
         Map<String, Object> mappedFileObject = jdbi.withExtension(OriginalInputsDao.class, dao -> {
             OriginalInputs inputs = dao.getInputs(runId);
             return inputs == null ? null : inputs.getMapping();
         });
 
         return CromwellWesMapper
-            .mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory.getTranslatorsForOutputs());
+            .mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory
+                .getTranslatorsForOutputs());
     }
 
     /**
@@ -218,7 +223,7 @@ public class CromwellService {
      */
     public RunStatus getRunStatus(String runId) {
         authorizeUserForRun(runId);
-        CromwellStatus status = client.getStatus(runId);
+        CromwellStatus status = getStatus(runId);
         return CromwellWesMapper.mapCromwellStatusToRunStatus(status);
     }
 
@@ -232,6 +237,63 @@ public class CromwellService {
         authorizeUserForRun(runId);
         client.abortWorkflow(runId);
         return RunId.builder().runId(runId).build();
+    }
+
+
+    public void getLogBytes(OutputStream outputStream, String runId, String taskName, int index, String logKey) throws IOException {
+        String logPath = getLogPath(runId, taskName, index, logKey);
+        storageClient.getAndWriteBytes(outputStream, logPath, null, null);
+    }
+
+    public void getLogBytes(OutputStream outputStream, String runId) throws IOException {
+        CromwellMetadataResponse response = client.getMetadata(runId);
+        if (response.getFailures() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            outputStream.write(mapper.writeValueAsBytes(response.getFailures()));
+        }
+    }
+
+    private String getLogPath(String runId, String taskName, int index, String logKey) throws IOException {
+        CromwellMetadataResponse metadataResponse = getMetadata(runId);
+        Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
+        if (calls == null) {
+            throw new FileNotFoundException(
+                "Could not read " + logKey + " for task " + taskName + "in run " + runId + ", it does not exist");
+        } else if (!calls.containsKey(taskName) || calls.size() <= index) {
+            throw new FileNotFoundException(
+                "Could not read " + logKey + " for task " + taskName + "in run " + runId + ", it does not exist");
+        }
+
+        CromwellTaskCall taskCall = calls.get(taskName).get(index);
+        if (logKey.equals("stderr")) {
+            return taskCall.getStderr();
+        } else {
+            return taskCall.getStdout();
+        }
+    }
+
+    private CromwellMetadataResponse getMetadata(String runId){
+        try {
+            return client.getMetadata(runId);
+        } catch (FeignException e){
+            if (e.status() == 400 || e.status() == 404) {
+                throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private CromwellStatus getStatus(String runId){
+        try {
+            return client.getStatus(runId);
+        } catch (FeignException e){
+            if (e.status() == 400 || e.status() == 404) {
+                throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
+            } else {
+                throw e;
+            }
+        }
     }
 
 
@@ -301,7 +363,8 @@ public class CromwellService {
                     setWorkflowSourceAndDependencies(tempDirectory, runRequest, executionRequest);
                 }
                 Map<String, CredentialsModel> credentials = getObjectAccessCredentials(runRequest);
-                WdlFileProcessor processor = setWorkflowInputs(runRequest.getWorkflowParams(), credentials, executionRequest);
+                WdlFileProcessor processor = setWorkflowInputs(runRequest
+                    .getWorkflowParams(), credentials, executionRequest);
 
                 List<TransferSpec> objectsToTransfer = null;
                 if (processor != null) {
@@ -356,9 +419,11 @@ public class CromwellService {
                 .filter(attachment -> attachment.getOriginalFilename() != null && attachment.getOriginalFilename()
                     .equals(Constants.OBJECT_ACCESS_CREDENTIALS_FILE)).findFirst();
 
-        TypeReference<Map<String, CredentialsModel>> typeReference = new TypeReference<>() {};
+        TypeReference<Map<String, CredentialsModel>> typeReference = new TypeReference<>() {
+        };
         if (objectAccessCredentialsFile.isPresent()) {
-            objectAccessCredentials = mapper.readValue(objectAccessCredentialsFile.get().getInputStream(), typeReference);
+            objectAccessCredentials = mapper
+                .readValue(objectAccessCredentialsFile.get().getInputStream(), typeReference);
         } else {
             objectAccessCredentials = Collections.emptyMap();
         }

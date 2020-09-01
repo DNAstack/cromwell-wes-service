@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Slf4j
 public class CromwellWesMapper {
@@ -57,8 +58,11 @@ public class CromwellWesMapper {
         String workflowEnd = metadataResponse.getEnd() == null ? null : metadataResponse.getEnd().toString();
         Log workflowLog = Log.builder().startTime(workflowStart).endTime(workflowEnd)
             .name(metadataResponse.getWorkflowName()).build();
+        if (metadataResponse.getFailures() != null){
+            workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs","stderr").build().toString());
+        }
         runLog.setRunLog(workflowLog);
-        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls(), pathTranslators));
+        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
         runLog.setRequest(mapMetadataToRunRequest(metadataResponse, originalInputs));
 
         return runLog;
@@ -148,27 +152,31 @@ public class CromwellWesMapper {
     }
 
 
-    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls, List<PathTranslator> pathTranslators) {
+    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
         List<Log> taskLogs = new ArrayList<>();
 
         if (calls != null) {
             for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
-                for (CromwellTaskCall taskCall : entry.getValue()) {
-                    taskLogs.add(mapTaskCallToLog(entry.getKey(), taskCall, pathTranslators));
+                List<CromwellTaskCall> taskCalls = entry.getValue();
+                for (int i = 0; i < taskCalls.size(); i++) {
+                    CromwellTaskCall taskCall = taskCalls.get(i);
+
+                    taskLogs.add(mapTaskCallToLog( entry.getKey(), i, taskCall));
                 }
             }
         }
         return taskLogs;
     }
 
-    public static Log mapTaskCallToLog(String name, CromwellTaskCall taskCall, List<PathTranslator> pathTranslators) {
+    public static Log mapTaskCallToLog(String name, Integer index, CromwellTaskCall taskCall) {
 
         String taskStart = taskCall.getStart() == null ? null : taskCall.getStart().toString();
         String taskEnd = taskCall.getEnd() == null ? null : taskCall.getEnd().toString();
-        String stdout = translatePaths(new TypeReference<String>() {
-        }, taskCall.getStdout(), pathTranslators);
-        String stderr = translatePaths(new TypeReference<String>() {
-        }, taskCall.getStderr(), pathTranslators);
+        String stdout = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
+            .pathSegment("logs", "task",name, index.toString(), "stdout").toUriString();
+        String stderr = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
+            .pathSegment("logs","task", name, index.toString(), "stderr").toUriString();
+
         return Log.builder().name(name).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
             .startTime(taskStart).endTime(taskEnd).stderr(stderr).stdout(stdout).build();
 

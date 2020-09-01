@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
 
 @Getter
@@ -30,6 +31,7 @@ public class AppConfig {
      * of who the client is will be returned.
      */
     Boolean enableMultiTenantSupport = false;
+
 
     /**
      *

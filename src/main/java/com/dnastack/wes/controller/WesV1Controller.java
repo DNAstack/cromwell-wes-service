@@ -3,6 +3,8 @@ package com.dnastack.wes.controller;
 
 import com.dnastack.wes.config.AppConfig;
 import com.dnastack.wes.config.TransferConfig;
+import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
+import com.dnastack.wes.model.cromwell.CromwellTaskCall;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;
@@ -11,8 +13,15 @@ import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
+import com.dnastack.wes.storage.client.BlobStorageClient;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -95,7 +104,7 @@ public class WesV1Controller {
     @PreAuthorize("isFullyAuthenticated()")
     @GetMapping(value = "/runs/{run_id}", produces = {MediaType.APPLICATION_JSON_VALUE,
         MediaType.APPLICATION_JSON_UTF8_VALUE})
-    public RunLog getRun(@PathVariable("run_id") String runId) {
+    public RunLog getRun(HttpServletRequest request, @PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
@@ -114,5 +123,26 @@ public class WesV1Controller {
     public RunId cancelRun(@PathVariable("runId") String runId) {
         return adapter.cancel(runId);
     }
+
+    @PreAuthorize("isFullyAuthenticated()")
+    @GetMapping("/runs/{runId}/logs/stderr")
+    public void getStderr(HttpServletResponse response, @PathVariable String runId) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(),runId);
+    }
+
+    @PreAuthorize("isFullyAuthenticated()")
+    @GetMapping("/runs/{runId}/logs/task/{taskName}/{index}/stderr")
+    public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(),runId,taskName,index,"stderr");
+    }
+
+    @PreAuthorize("isFullyAuthenticated()")
+    @GetMapping("/runs/{runId}/logs/task/{taskName}/{index}/stdout")
+    public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(),runId,taskName,index,"stdout");
+    }
+
+
+
 
 }

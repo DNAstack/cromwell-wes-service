@@ -1,22 +1,30 @@
 package com.dnastack.wes.service;
 
+import static io.restassured.RestAssured.given;
+import static java.lang.String.format;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+
 import com.dnastack.wes.service.utils.AuthorizationClient;
-import com.dnastack.wes.service.utils.WdlSupplier;
+import com.dnastack.wes.service.wdl.WdlSupplier;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.nimbusds.jose.util.IOUtils;
-import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.LogDetail;
 import io.restassured.http.ContentType;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import net.minidev.json.JSONObject;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,10 +34,17 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import static io.restassured.RestAssured.given;
-import static java.lang.String.format;
-import static org.hamcrest.Matchers.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import net.minidev.json.JSONObject;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 
 
 @DisplayName("WES tests")
@@ -37,6 +52,7 @@ public class WesE2ETest extends BaseE2eTest {
 
     private static final String DEFAULT_PRIVATE_KEY_FILE = "jwt.pem";
     private static AuthorizationClient authorizationClient;
+    private static WdlSupplier supplier = new WdlSupplier();
 
     private String getRootPath() {
         return "/ga4gh/wes/v1";
@@ -57,7 +73,7 @@ public class WesE2ETest extends BaseE2eTest {
             return credentials.getAccessToken().getTokenValue();
         } else {
             final AccessToken accessToken = credentials.refreshAccessToken();
-            org.junit.jupiter.api.Assertions.assertNotNull(accessToken, "Unable to obtain access token for test");
+            Assertions.assertNotNull(accessToken, "Unable to obtain access token for test");
 
             return accessToken.getTokenValue();
         }
@@ -92,17 +108,17 @@ public class WesE2ETest extends BaseE2eTest {
     }
 
     @FunctionalInterface
-    interface Assertions {
+    interface CustomAssertions {
         void run() throws EarlyAbortException;
     }
 
-    private static void poll(Duration duration, Assertions assertions) throws Exception {
+    private static void poll(Duration duration, CustomAssertions customAssertions) throws Exception {
         final Instant start = Instant.now();
         try {
             while (true) {
                 try {
                     Thread.sleep(500);
-                    assertions.run();
+                    customAssertions.run();
                     return;
                 } catch (AssertionError ae) {
                     if (Instant.now().isAfter(start.plus(duration))) {
@@ -224,7 +240,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .log().method()
                 .header(authorizationClient.getHeader())
                 .multiPart("workflow_url","echo.wdl")
-                .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
+                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
                 .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
                 .multiPart("tags", tags,ContentType.JSON.toString())
                 .multiPart("workflow_params", inputs,ContentType.JSON.toString())
@@ -259,7 +275,7 @@ public class WesE2ETest extends BaseE2eTest {
                     .log().method()
                     .header(authorizationClient.getHeader())
                     .multiPart("workflow_url", "workflow.wdl")
-                    .multiPart("workflow_attachment", "workflow.wdl", WdlSupplier.MD5_SUM_WDL.getBytes())
+                    .multiPart("workflow_attachment", "workflow.wdl", supplier.getFileContent(WdlSupplier.MD5_SUM_WORKFLOW).getBytes())
                     .multiPart("workflow_engine_parameters", engineParams, ContentType.JSON.toString())
                     .multiPart("tags", tags, ContentType.JSON.toString())
                     .multiPart("workflow_params", inputs, ContentType.JSON.toString())
@@ -297,7 +313,7 @@ public class WesE2ETest extends BaseE2eTest {
                                                    .getString("state");
                 System.out.println("Workflow Run State: " + state);
 
-                if ("EXECUTION_ERROR".equals(state) || "CANCELED".equals(state)) {
+                if ("EXECUTOR_ERROR".equals(state) || "CANCELED".equals(state) || "CANCELINGSTATE".equals(state) || "SYSTEMERROR".equals(state)) {
                     throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
                 } else {
                     org.junit.jupiter.api.Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", runId));
@@ -314,7 +330,7 @@ public class WesE2ETest extends BaseE2eTest {
               .log().uri()
               .log().method()
               .header(authorizationClient.getHeader())
-              .multiPart("workflow_attachment","echo.wdl", WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
+              .multiPart("workflow_attachment","echo.wdl", supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
             .post(path)
             .then()
               .assertThat()
@@ -326,16 +342,17 @@ public class WesE2ETest extends BaseE2eTest {
         @DisplayName("Workflow Run Submission with valid multiple attachments should succeed")
         public void submitValidWorkflowRunWithMultipleAttachments() {
             String path = getRootPath() + "/runs";
-
+            ObjectMapper mapper = new ObjectMapper();
+            supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_INPUTS);
             //@formatter:off
             given()
                 .log().uri()
                 .log().method()
                 .header(authorizationClient.getHeader())
                 .multiPart("workflow_url","echo.wdl")
-                .multiPart("workflow_attachment","echo.wdl",WdlSupplier.ECHO_WITH_IMPORT_WDL.getBytes())
-                .multiPart("workflow_attachment","struct_test.wdl",WdlSupplier.STRUCT_TEST_WDL.getBytes())
-                .multiPart("workflow_params", WdlSupplier.ECHO_WITH_IMPORT_INPUTS,ContentType.JSON.toString())
+                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_1).getBytes())
+                .multiPart("workflow_attachment",WdlSupplier.WORKFLOW_WITH_IMPORTS_2,supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_2).getBytes())
+                .multiPart("workflow_params", "inputs.json",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_INPUTS).getBytes(),ContentType.JSON.toString())
             .post(path)
             .then()
                 .assertThat()
@@ -358,7 +375,7 @@ public class WesE2ETest extends BaseE2eTest {
               .log().method()
               .header(authorizationClient.getHeader())
               .multiPart("workflow_url","echo.wdl")
-              .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
+              .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
               .multiPart("workflow_attachment", "options.json",engineParams,ContentType.JSON.toString())
               .multiPart("tags", tags,ContentType.JSON.toString())
               .multiPart("workflow_params", inputs,ContentType.JSON.toString())
@@ -395,7 +412,7 @@ public class WesE2ETest extends BaseE2eTest {
                   .log().method()
                   .header(authorizationClient.getHeader())
                   .multiPart("workflow_url","echo.wdl")
-                  .multiPart("workflow_attachment","echo.wdl",WdlSupplier.WORKFLOW_WITHOUT_FILE.getBytes())
+                  .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
                   .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
                   .multiPart("tags", tags,ContentType.JSON.toString())
                   .multiPart("workflow_params", inputs,ContentType.JSON.toString())
@@ -496,6 +513,7 @@ public class WesE2ETest extends BaseE2eTest {
             }
 
 
+
             @Test
             @DisplayName("List Runs includes current job")
             public void listRunsReturnsReturnsNonEmptyCollection() {
@@ -515,9 +533,162 @@ public class WesE2ETest extends BaseE2eTest {
                     .body("runs.findAll { it.run_id == /" + workflowJobId +"/ }",notNullValue());
                 //@formatter:on
             }
-
         }
 
     }
 
+    @DisplayName("Test Workflow Log Access")
+    @Nested
+    @TestInstance(Lifecycle.PER_CLASS)
+    public class WorkflowLogAccess {
+        String workflowJobId;
+
+        @BeforeAll
+        public void setup() throws Exception {
+            String path = getRootPath() + "/runs";
+            Map<String, String> tags = Collections.singletonMap("WES", "TestRun");
+            Map<String, Boolean> engineParams = Collections.singletonMap("write_to_cache", false);
+            Map<String, String> inputs = Collections.singletonMap("hello_world.name", "Frank");
+
+            //@formatter:off
+            workflowJobId = given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+                .multiPart("workflow_url","echo.wdl")
+                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
+                .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
+                .multiPart("tags", tags,ContentType.JSON.toString())
+                .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+            .post(path)
+            .then()
+                .assertThat()
+                .statusCode(200)
+                .body("run_id",is(notNullValue()))
+                .extract()
+                .jsonPath()
+                .getString("run_id");
+            //@formatter:on
+            final String runPathStatus = format("%s/%s/status", path, workflowJobId);
+
+            poll(Duration.ofMinutes(6), () -> {
+                //@formatter:off
+                final ExtractableResponse<Response> statusResponse =
+                    given()
+                        .log().uri()
+                        .log().method()
+                        .header(authorizationClient.getHeader())
+                        .get(runPathStatus)
+                        .then()
+                        .assertThat()
+                        .statusCode(200)
+                        .body("run_id", equalTo(workflowJobId))
+                        .extract();
+                //@formatter:on
+                final String state = statusResponse.body()
+                    .jsonPath()
+                    .getString("state");
+                System.out.println("Workflow Run State: " + state);
+
+                if ("EXECUTOR_ERROR".equals(state) || "CANCELED".equals(state) || "CANCELINGSTATE".equals(state) || "SYSTEMERROR".equals(state)) {
+                    throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
+                } else {
+                    Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", workflowJobId));
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("Get Stdout and Stderr for task")
+        public void getStdoutForTaskReturnsSuccessfully() {
+            String path = getRootPath() + "/runs/" + workflowJobId;
+            //@formatter:off
+            Map<String,String> taskLogs = given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+                .accept(ContentType.JSON)
+            .get(path)
+            .then()
+                .assertThat()
+                .statusCode(200)
+                .body("run_id",equalTo(workflowJobId))
+                .body("state",equalTo("COMPLETE"))
+                .extract()
+                .jsonPath()
+                .getMap("task_logs[0]",String.class,String.class);
+            //@formatter:on
+
+
+            Assertions.assertNotNull(taskLogs.get("stderr"));
+            Assertions.assertNotNull(taskLogs.get("stdout"));
+            Assertions.assertTrue(taskLogs.get("stderr").endsWith( path + "/logs/task/" + taskLogs.get("name") + "/0/stderr"));
+            Assertions.assertTrue(taskLogs.get("stdout").endsWith( path + "/logs/task/" + taskLogs.get("name") + "/0/stdout"));
+
+            //@formatter:off
+            String body = given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+            .get(taskLogs.get("stdout"))
+            .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("Hello Frank\n",body);
+
+            //@formatter:on
+
+            //@formatter:off
+            body = given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+            .get(taskLogs.get("stderr"))
+            .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("Goodbye Frank\n",body);
+            //@formatter:on
+        }
+
+        @Test
+        @DisplayName("Get Stdout and Stderr for task")
+        public void unauthenticatedUserCannotAccessLogs() {
+            String path = getRootPath() + "/runs/" + workflowJobId;
+            //@formatter:off
+            Map<String,String> taskLogs = given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+                .accept(ContentType.JSON)
+            .get(path)
+            .then()
+                .assertThat()
+                .statusCode(200)
+                .body("run_id",equalTo(workflowJobId))
+                .body("state",equalTo("COMPLETE"))
+                .extract()
+                .jsonPath()
+                .getMap("task_logs[0]",String.class,String.class);
+            //@formatter:on
+            //@formatter:off
+            given()
+                .log().uri()
+                .log().method()
+            .get(taskLogs.get("stdout"))
+            .then()
+                .statusCode(401);
+
+            given()
+                .log().uri()
+                .log().method()
+            .get(taskLogs.get("stderr"))
+            .then()
+                .statusCode(401);
+            //@formatter:on
+
+        }
+    }
 }
