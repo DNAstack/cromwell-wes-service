@@ -34,9 +34,11 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.minidev.json.JSONObject;
+import org.hamcrest.core.AnyOf;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -476,9 +478,9 @@ public class WesE2ETest extends BaseE2eTest {
 
 
             @Test
-            @DisplayName("Get Run Status for non-existent run fails with status 404")
+            @DisplayName("Get Run Status for non-existent run fails with status 401 or 404")
             public void getRunStatusForNonExistentRunShouldFail() {
-                String path = getRootPath() + "/runs/" + -1 + "/status";
+                String path = getRootPath() + "/runs/" + UUID.randomUUID() + "/status";
 
                 //@formatter:off
                 given()
@@ -489,15 +491,15 @@ public class WesE2ETest extends BaseE2eTest {
                 .get(path)
                 .then()
                     .assertThat()
-                    .statusCode(404);
+                    .statusCode(anyOf(equalTo(404),equalTo(401)));
                 //@formatter:on
             }
 
 
             @Test
-            @DisplayName("Get Run Log for non-existent run fails with status 404")
+            @DisplayName("Get Run Log for non-existent run fails with status 401 or 404")
             public void getRunLogForNonExistentRunShouldFail() {
-                String path = getRootPath() + "/runs/" + -1;
+                String path = getRootPath() + "/runs/" + UUID.randomUUID();
 
                 //@formatter:off
                 given()
@@ -508,7 +510,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .get(path)
                 .then()
                     .assertThat()
-                    .statusCode(404);
+                    .statusCode(anyOf(equalTo(404),equalTo(401)));
                 //@formatter:on
             }
 
