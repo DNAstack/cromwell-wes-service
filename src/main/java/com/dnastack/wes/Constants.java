@@ -1,6 +1,8 @@
 package com.dnastack.wes;
 
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class Constants {
@@ -15,6 +17,7 @@ public class Constants {
     public static final String DEPENDENCIES_FILE = "dependencies.zip";
     public static final String OBJECT_ACCESS_CREDENTIALS_FILE = "credentials.json";
 
+    public static final List<String> FILES_TO_IGNORE_FOR_STAGING = Arrays.asList(OPTIONS_FILE,DEPENDENCIES_FILE,OBJECT_ACCESS_CREDENTIALS_FILE);
     public static final Set<String> VALID_CROMWELL_OPTIONS = cromwellOptions();
 
     private static Set<String> cromwellOptions() {

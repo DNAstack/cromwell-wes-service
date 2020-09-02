@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static java.lang.String.format;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -38,7 +37,6 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.minidev.json.JSONObject;
-import org.hamcrest.core.AnyOf;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -106,11 +104,13 @@ public class WesE2ETest extends BaseE2eTest {
     @RequiredArgsConstructor
     @Getter
     private static class EarlyAbortException extends Exception {
+
         private final AssertionError cause;
     }
 
     @FunctionalInterface
     interface CustomAssertions {
+
         void run() throws EarlyAbortException;
     }
 
@@ -131,7 +131,8 @@ public class WesE2ETest extends BaseE2eTest {
                 }
             }
         } finally {
-            System.out.printf("Polling finished after %d seconds\n", Duration.between(start, Instant.now()).getSeconds());
+            System.out
+                .printf("Polling finished after %d seconds\n", Duration.between(start, Instant.now()).getSeconds());
         }
     }
 
@@ -292,35 +293,10 @@ public class WesE2ETest extends BaseE2eTest {
             //@formatter:on
 
             final String runId = runSubmitResponse.body()
-                                         .jsonPath()
-                                         .getString("run_id");
+                .jsonPath()
+                .getString("run_id");
             final String runPathStatus = format("%s/%s/status", submitPath, runId);
-
-            poll(Duration.ofMinutes(6), () -> {
-                //@formatter:off
-                final ExtractableResponse<Response> statusResponse =
-                given()
-                        .log().uri()
-                        .log().method()
-                        .header(authorizationClient.getHeader())
-                        .get(runPathStatus)
-                        .then()
-                        .assertThat()
-                        .statusCode(200)
-                        .body("run_id", equalTo(runId))
-                        .extract();
-                //@formatter:on
-                final String state = statusResponse.body()
-                                                   .jsonPath()
-                                                   .getString("state");
-                System.out.println("Workflow Run State: " + state);
-
-                if ("EXECUTOR_ERROR".equals(state) || "CANCELED".equals(state) || "CANCELINGSTATE".equals(state) || "SYSTEMERROR".equals(state)) {
-                    throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
-                } else {
-                    org.junit.jupiter.api.Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", runId));
-                }
-            });
+            pollUntilJobCompletes(runId);
         }
 
         @Test
@@ -391,6 +367,55 @@ public class WesE2ETest extends BaseE2eTest {
                 .getString("run_id");
             //@formatter:on
 
+        }
+
+        @Test
+        @DisplayName("Uploading attachment file can be used as workflow input")
+        public void uploadWorkflowAttachmentWithRunSubmission() throws Exception {
+            String path = getRootPath() + "/runs";
+            Map<String, String> tags = Collections.singletonMap("WES", "TestRun");
+            Map<String, Boolean> engineParams = Collections.singletonMap("write_to_cache", false);
+            Map<String, String> inputs = Collections.singletonMap("test.input_file", "name.txt");
+
+            //@formatter:off
+            String workflowJobId = given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+                .multiPart("workflow_url","echo.wdl")
+                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.CAT_FILE_WORKFLOW).getBytes())
+                .multiPart("workflow_attachment","name.txt","Frank".getBytes())
+                .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
+                .multiPart("tags", tags,ContentType.JSON.toString())
+                .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+            .post(path)
+            .then()
+                .assertThat()
+                .statusCode(200)
+                .body("run_id",is(notNullValue()))
+                .extract()
+                .jsonPath()
+                .getString("run_id");
+            //@formatter:on
+            final String runPathStatus = format("%s/%s/status", path, workflowJobId);
+
+            pollUntilJobCompletes(workflowJobId);
+
+            path = getRootPath() + "/runs/" + workflowJobId;
+            //@formatter:off
+            given()
+                .log().uri()
+                .log().method()
+                .header(authorizationClient.getHeader())
+                .accept(ContentType.JSON)
+                .get(path)
+            .then()
+            .assertThat()
+                .statusCode(200)
+                .body("run_id",equalTo(workflowJobId))
+                .body("state",equalTo("COMPLETE"))
+                .body("run_log",not(isEmptyOrNullString()))
+                .body("outputs[\"test.o\"]",equalTo("Frank"));
         }
 
 
@@ -515,7 +540,6 @@ public class WesE2ETest extends BaseE2eTest {
             }
 
 
-
             @Test
             @DisplayName("List Runs includes current job")
             public void listRunsReturnsReturnsNonEmptyCollection() {
@@ -543,6 +567,7 @@ public class WesE2ETest extends BaseE2eTest {
     @Nested
     @TestInstance(Lifecycle.PER_CLASS)
     public class WorkflowLogAccess {
+
         String workflowJobId;
 
         @BeforeAll
@@ -572,32 +597,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .getString("run_id");
             //@formatter:on
             final String runPathStatus = format("%s/%s/status", path, workflowJobId);
-
-            poll(Duration.ofMinutes(6), () -> {
-                //@formatter:off
-                final ExtractableResponse<Response> statusResponse =
-                    given()
-                        .log().uri()
-                        .log().method()
-                        .header(authorizationClient.getHeader())
-                        .get(runPathStatus)
-                        .then()
-                        .assertThat()
-                        .statusCode(200)
-                        .body("run_id", equalTo(workflowJobId))
-                        .extract();
-                //@formatter:on
-                final String state = statusResponse.body()
-                    .jsonPath()
-                    .getString("state");
-                System.out.println("Workflow Run State: " + state);
-
-                if ("EXECUTOR_ERROR".equals(state) || "CANCELED".equals(state) || "CANCELINGSTATE".equals(state) || "SYSTEMERROR".equals(state)) {
-                    throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
-                } else {
-                    Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", workflowJobId));
-                }
-            });
+            pollUntilJobCompletes(workflowJobId);
         }
 
         @Test
@@ -621,11 +621,12 @@ public class WesE2ETest extends BaseE2eTest {
                 .getMap("task_logs[0]",String.class,String.class);
             //@formatter:on
 
-
             Assertions.assertNotNull(taskLogs.get("stderr"));
             Assertions.assertNotNull(taskLogs.get("stdout"));
-            Assertions.assertTrue(taskLogs.get("stderr").endsWith( path + "/logs/task/" + taskLogs.get("name") + "/0/stderr"));
-            Assertions.assertTrue(taskLogs.get("stdout").endsWith( path + "/logs/task/" + taskLogs.get("name") + "/0/stdout"));
+            Assertions
+                .assertTrue(taskLogs.get("stderr").endsWith(path + "/logs/task/" + taskLogs.get("name") + "/0/stderr"));
+            Assertions
+                .assertTrue(taskLogs.get("stdout").endsWith(path + "/logs/task/" + taskLogs.get("name") + "/0/stdout"));
 
             //@formatter:off
             String body = given()
@@ -692,5 +693,35 @@ public class WesE2ETest extends BaseE2eTest {
             //@formatter:on
 
         }
+    }
+
+    private void pollUntilJobCompletes(String workflowJobId) throws Exception {
+        String runPathStatus = getRootPath() + "/runs/" + workflowJobId + "/status";
+        poll(Duration.ofMinutes(6), () -> {
+            //@formatter:off
+            final ExtractableResponse<Response> statusResponse =
+                given()
+                    .log().uri()
+                    .log().method()
+                    .header(authorizationClient.getHeader())
+                    .get(runPathStatus)
+                    .then()
+                    .assertThat()
+                    .statusCode(200)
+                    .body("run_id", equalTo(workflowJobId))
+                    .extract();
+            //@formatter:on
+            final String state = statusResponse.body()
+                .jsonPath()
+                .getString("state");
+            System.out.println("Workflow Run State: " + state);
+
+            if ("EXECUTOR_ERROR".equals(state) || "CANCELED".equals(state) || "CANCELINGSTATE".equals(state)
+                || "SYSTEMERROR".equals(state)) {
+                throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
+            } else {
+                Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", workflowJobId));
+            }
+        });
     }
 }

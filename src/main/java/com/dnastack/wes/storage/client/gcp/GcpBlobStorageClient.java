@@ -1,34 +1,51 @@
 package com.dnastack.wes.storage.client.gcp;
 
+import com.dnastack.wes.config.ConfigurationException;
 import com.dnastack.wes.config.GcpBlobStorageConfig;
 import com.dnastack.wes.storage.client.BlobStorageClient;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.ReadChannel;
+import com.google.cloud.WriteChannel;
 import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Blob.BlobSourceOption;
 import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.HttpMethod;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.Storage.BlobWriteOption;
 import com.google.cloud.storage.Storage.SignUrlOption;
 import com.google.cloud.storage.StorageOptions;
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 public class GcpBlobStorageClient implements BlobStorageClient {
 
     private Storage client;
     private long ttl;
+    private URI stagingLocation;
+    private String project;
 
     public GcpBlobStorageClient(GcpBlobStorageConfig config) throws IOException {
-        StorageOptions.Builder builder = null;
+        StorageOptions.Builder builder;
+
+        if (config.getProject() == null) {
+            throw new ConfigurationException("GCP project for blob storage client cannot be null");
+        } else if (config.getStagingLocation() == null) {
+            throw new ConfigurationException("GCP staging location for blob storage client cannot be null");
+        }
+
         if (config.getServiceAccountJson() != null) {
             builder = StorageOptions.newBuilder().setCredentials(ServiceAccountCredentials
                 .fromStream(new ByteArrayInputStream(config.getServiceAccountJson().getBytes())));
@@ -38,6 +55,8 @@ public class GcpBlobStorageClient implements BlobStorageClient {
 
         client = builder.setProjectId(config.getProject()).build().getService();
         ttl = config.getSigndUrlTtl().toMillis();
+        stagingLocation = config.getStagingLocation();
+        project = config.getProject();
     }
 
 
@@ -50,11 +69,35 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     }
 
     @Override
-    public void getAndWriteBytes(OutputStream outputStream, String blobUri, Long rangeStart, Long rangeEnd) throws IOException {
+    public String writeBytes(InputStream blobStream, String stagingFolder, String blobName) throws IOException {
+        String blobUri = UriComponentsBuilder.fromUri(stagingLocation).pathSegment(stagingFolder, blobName)
+            .toUriString();
+        BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
+        Blob blob = client.get(blobId);
+        if (blob != null && blob.exists()) {
+            throw new IOException("An in the current staging directory with the name: " + blobName
+                + " already exists. Could not overrwrite file");
+        }
+
+        blob = client.create(BlobInfo.newBuilder(blobId).build());
+        try (WriteChannel writeChannel = blob.writer(BlobWriteOption.userProject(project))) {
+            ByteBuffer byteBuffer = ByteBuffer.allocate(64 * 1024);
+            while (blobStream.available() > 0) {
+                byteBuffer.put(blobStream.readNBytes(64 * 1024));
+                byteBuffer.flip();
+                writeChannel.write(byteBuffer);
+            }
+            blobStream.close();
+        }
+        return blobUri;
+    }
+
+    @Override
+    public void readBytes(OutputStream outputStream, String blobUri, Long rangeStart, Long rangeEnd) throws IOException {
         BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
         Blob blob = client.get(blobId);
 
-        if (blob == null || !blob.exists()){
+        if (blob == null || !blob.exists()) {
             throw new FileNotFoundException("Could not open open file: " + blobUri + " it does not appear to exist");
         }
 
@@ -72,7 +115,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         if (totalBytesToRead <= bufferSize) {
             outputStream.write(blob.getContent());
         } else {
-            try (ReadChannel reader = blob.reader()) {
+            try (ReadChannel reader = blob.reader(BlobSourceOption.userProject(project))) {
                 reader.seek(rangeStart);
                 WritableByteChannel writer = Channels.newChannel(outputStream);
                 long maxRead = totalBytesToRead - bufferSize;

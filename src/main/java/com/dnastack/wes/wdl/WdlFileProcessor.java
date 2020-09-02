@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 
 
@@ -46,11 +47,14 @@ public class WdlFileProcessor {
     private List<ObjectWrapper> mappedObjects;
     private final List<ObjectTranslator> translators;
 
-    public WdlFileProcessor(Map<String, Object> inputs, List<ObjectTranslator> translators) {
+    private Set<String> uploadedAttachments;
+
+    public WdlFileProcessor(Map<String, Object> inputs, Set<String> uploadedAttachments, List<ObjectTranslator> translators) {
         this.inputs = inputs;
         this.mapper = new ObjectMapper();
         this.mappedObjects = new ArrayList<>();
         this.translators = translators;
+        this.uploadedAttachments = uploadedAttachments;
         processInputs();
         applyTranslators();
     }
@@ -135,13 +139,17 @@ public class WdlFileProcessor {
 
     private boolean isUri(String workflowUrl) {
         try {
-            URI uri = URI.create(workflowUrl);
-            return (uri.getScheme() != null && uri.getHost() != null);
+            if (uploadedAttachments.contains(workflowUrl)) {
+                return true;
+            } else {
+                URI uri = URI.create(workflowUrl);
+                return (uri.getScheme() != null && uri.getHost() != null);
+            }
         } catch (Exception e) {
             try {
                 Path path = Paths.get(workflowUrl);
                 return path.isAbsolute();
-            } catch (Exception e2 ) {
+            } catch (Exception e2) {
                 return false;
             }
         }

@@ -59,6 +59,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -242,7 +244,7 @@ public class CromwellService {
 
     public void getLogBytes(OutputStream outputStream, String runId, String taskName, int index, String logKey) throws IOException {
         String logPath = getLogPath(runId, taskName, index, logKey);
-        storageClient.getAndWriteBytes(outputStream, logPath, null, null);
+        storageClient.readBytes(outputStream, logPath, null, null);
     }
 
     public void getLogBytes(OutputStream outputStream, String runId) throws IOException {
@@ -272,10 +274,10 @@ public class CromwellService {
         }
     }
 
-    private CromwellMetadataResponse getMetadata(String runId){
+    private CromwellMetadataResponse getMetadata(String runId) {
         try {
             return client.getMetadata(runId);
-        } catch (FeignException e){
+        } catch (FeignException e) {
             if (e.status() == 400 || e.status() == 404) {
                 throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
             } else {
@@ -284,10 +286,10 @@ public class CromwellService {
         }
     }
 
-    private CromwellStatus getStatus(String runId){
+    private CromwellStatus getStatus(String runId) {
         try {
             return client.getStatus(runId);
-        } catch (FeignException e){
+        } catch (FeignException e) {
             if (e.status() == 400 || e.status() == 404) {
                 throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
             } else {
@@ -362,9 +364,12 @@ public class CromwellService {
                 } else {
                     setWorkflowSourceAndDependencies(tempDirectory, runRequest, executionRequest);
                 }
+
                 Map<String, CredentialsModel> credentials = getObjectAccessCredentials(runRequest);
                 WdlFileProcessor processor = setWorkflowInputs(runRequest
-                    .getWorkflowParams(), credentials, executionRequest);
+                    .getWorkflowParams(), credentials, runRequest.getWorkflowAttachments(), executionRequest);
+
+                uploadAttachments(runRequest, processor);
 
                 List<TransferSpec> objectsToTransfer = null;
                 if (processor != null) {
@@ -410,6 +415,31 @@ public class CromwellService {
         }
     }
 
+
+    private void uploadAttachments(RunRequest runRequest, WdlFileProcessor processor) throws IOException {
+        String stagingFolder = UUID.randomUUID().toString();
+        List<MultipartFile> attachmentFiles =
+            Stream.of(runRequest.getWorkflowAttachments())
+                .filter(attachment -> attachment.getOriginalFilename() != null)
+                .filter(attachment -> !Constants.FILES_TO_IGNORE_FOR_STAGING.contains(attachment.getOriginalFilename()))
+                .filter(attachment -> !attachment.getOriginalFilename().endsWith("wdl"))
+                .collect(Collectors.toList());
+
+        Map<String, String> mappedFiles = new HashMap<>();
+        for (MultipartFile attachment : attachmentFiles) {
+            String stagingBlobLocation = storageClient
+                .writeBytes(attachment.getInputStream(), stagingFolder, attachment.getOriginalFilename());
+            mappedFiles.put(attachment.getOriginalFilename(), stagingBlobLocation);
+        }
+
+        processor.getMappedObjects()
+            .stream().forEach(objectWrapper -> {
+            JsonNode node = objectWrapper.getMappedValue();
+            if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
+                objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
+            }
+        });
+    }
 
     private Map<String, CredentialsModel> getObjectAccessCredentials(RunRequest runRequest) throws IOException {
         Map<String, CredentialsModel> objectAccessCredentials;
@@ -604,16 +634,20 @@ public class CromwellService {
     private WdlFileProcessor setWorkflowInputs(
         Map<String, Object> workflowParams,
         Map<String, CredentialsModel> credentials,
+        MultipartFile[] uploadedAttachments,
         CromwellExecutionRequest executionRequest
     ) {
         Map<String, Object> cromwellInputs = new HashMap<>();
         WdlFileProcessor processor = null;
+        Set<String> uploadFileNames = Stream.of(uploadedAttachments)
+            .filter(attachment -> attachment.getOriginalFilename() != null)
+            .map(MultipartFile::getOriginalFilename).collect(Collectors.toSet());
         if (workflowParams != null && !workflowParams.isEmpty()) {
 
             List<ObjectTranslator> translators = new ArrayList<>();
             translators.add(drsObjectResolverFactory.getService(credentials));
             translators.addAll(pathTranslatorFactory.getTranslatorsForInputs());
-            processor = new WdlFileProcessor(workflowParams, translators);
+            processor = new WdlFileProcessor(workflowParams, uploadFileNames, translators);
             cromwellInputs.putAll(processor.getProcessedInputs());
         }
         executionRequest.setWorkflowInputs(cromwellInputs);

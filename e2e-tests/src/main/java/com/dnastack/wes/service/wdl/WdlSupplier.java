@@ -13,6 +13,7 @@ public class WdlSupplier {
     public static final String WORKFLOW_WITH_IMPORTS_2 = "workflow_with_imports_1.wdl";
     public static final String WORKFLOW_WITH_IMPORTS_INPUTS = "workflow_with_imports.json";
     public static final String MD5_SUM_WORKFLOW = "md5sum.wdl";
+    public static final String CAT_FILE_WORKFLOW = "cat_file.wdl";
 
     public String getFileContent(String fileName) {
         InputStream inputStream = this.getClass().getResourceAsStream(fileName);
