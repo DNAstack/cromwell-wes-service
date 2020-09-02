@@ -29,9 +29,9 @@ public class GcpBlobStorageClient implements BlobStorageClient {
 
     public GcpBlobStorageClient(GcpBlobStorageConfig config) throws IOException {
         StorageOptions.Builder builder = null;
-        if (config.getGcpServiceAccountJson() != null) {
+        if (config.getServiceAccountJson() != null) {
             builder = StorageOptions.newBuilder().setCredentials(ServiceAccountCredentials
-                .fromStream(new ByteArrayInputStream(config.getGcpServiceAccountJson().getBytes())));
+                .fromStream(new ByteArrayInputStream(config.getServiceAccountJson().getBytes())));
         } else {
             builder = StorageOptions.getDefaultInstance().toBuilder();
         }

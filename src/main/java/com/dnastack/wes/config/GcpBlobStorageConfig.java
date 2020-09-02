@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class GcpBlobStorageConfig {
 
-    private String gcpServiceAccountJson = null;
+    private String serviceAccountJson = null;
     private String project;
     private Duration signdUrlTtl = Duration.ofDays(1);
 }

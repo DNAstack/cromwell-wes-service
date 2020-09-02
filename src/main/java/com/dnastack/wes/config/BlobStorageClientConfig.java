@@ -9,6 +9,14 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties("wes.blob-storage-client")
 public class BlobStorageClientConfig {
 
-    private GcpBlobStorageConfig gcp = null;
+
+    private ClientName name;
+
+    private GcpBlobStorageConfig gcp = new GcpBlobStorageConfig();
+
+
+    public enum ClientName  {
+        GCP
+    }
 
 }
