@@ -16,18 +16,22 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import com.dnastack.wes.service.utils.AuthorizationClient;
 import com.dnastack.wes.service.wdl.WdlSupplier;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.nimbusds.jose.util.IOUtils;
+import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.filter.log.LogDetail;
 import io.restassured.http.ContentType;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
+import io.restassured.specification.MultiPartSpecification;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -242,11 +246,11 @@ public class WesE2ETest extends BaseE2eTest {
                 .log().uri()
                 .log().method()
                 .header(authorizationClient.getHeader())
-                .multiPart("workflow_url","echo.wdl")
-                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
-                .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
-                .multiPart("tags", tags,ContentType.JSON.toString())
-                .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+                .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
+                .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
+                .multiPart(getJsonMultipart("tags", tags))
+                .multiPart(getJsonMultipart("workflow_params", inputs))
             .post(path)
             .then()
                 .assertThat()
@@ -277,14 +281,14 @@ public class WesE2ETest extends BaseE2eTest {
                     .log().uri()
                     .log().method()
                     .header(authorizationClient.getHeader())
-                    .multiPart("workflow_url", "workflow.wdl")
-                    .multiPart("workflow_attachment", "workflow.wdl", supplier.getFileContent(WdlSupplier.MD5_SUM_WORKFLOW).getBytes())
-                    .multiPart("workflow_engine_parameters", engineParams, ContentType.JSON.toString())
-                    .multiPart("tags", tags, ContentType.JSON.toString())
-                    .multiPart("workflow_params", inputs, ContentType.JSON.toString())
-                    .multiPart("workflow_attachment", "credentials.json", credentials.toJSONString().getBytes())
-                    .post(submitPath)
-                    .then()
+                    .multiPart(getWorkflowUrlMultipart( "workflow.wdl"))
+                    .multiPart(getMultipartAttachment( "workflow.wdl", supplier.getFileContent(WdlSupplier.MD5_SUM_WORKFLOW).getBytes()))
+                    .multiPart(getMultipartAttachment( "credentials.json", credentials.toJSONString().getBytes()))
+                    .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
+                    .multiPart(getJsonMultipart("tags", tags))
+                    .multiPart(getJsonMultipart("workflow_params", inputs))
+                .post(submitPath)
+                .then()
                     .log().ifValidationFails(LogDetail.ALL)
                     .assertThat()
                     .statusCode(200)
@@ -318,19 +322,22 @@ public class WesE2ETest extends BaseE2eTest {
 
         @Test
         @DisplayName("Workflow Run Submission with valid multiple attachments should succeed")
-        public void submitValidWorkflowRunWithMultipleAttachments() {
+        public void submitValidWorkflowRunWithMultipleAttachments() throws IOException {
             String path = getRootPath() + "/runs";
             ObjectMapper mapper = new ObjectMapper();
-            supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_INPUTS);
+            TypeReference<Map<String, Object>> typeReference = new TypeReference<Map<String, Object>>() {
+            };
+            Map<String, Object> inputs = mapper
+                .readValue(supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_INPUTS), typeReference);
             //@formatter:off
             given()
                 .log().uri()
                 .log().method()
                 .header(authorizationClient.getHeader())
-                .multiPart("workflow_url","echo.wdl")
-                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_1).getBytes())
-                .multiPart("workflow_attachment",WdlSupplier.WORKFLOW_WITH_IMPORTS_2,supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_2).getBytes())
-                .multiPart("workflow_params", "inputs.json",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_INPUTS).getBytes(),ContentType.JSON.toString())
+                .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_1).getBytes()))
+                .multiPart(getMultipartAttachment(WdlSupplier.WORKFLOW_WITH_IMPORTS_2,supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_2).getBytes()))
+                .multiPart(getJsonMultipart("workflow_params", inputs))
             .post(path)
             .then()
                 .assertThat()
@@ -352,11 +359,11 @@ public class WesE2ETest extends BaseE2eTest {
               .log().uri()
               .log().method()
               .header(authorizationClient.getHeader())
-              .multiPart("workflow_url","echo.wdl")
-              .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
-              .multiPart("workflow_attachment", "options.json",engineParams,ContentType.JSON.toString())
-              .multiPart("tags", tags,ContentType.JSON.toString())
-              .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+              .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+              .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
+              .multiPart(getMultipartAttachment( "options.json",engineParams))
+              .multiPart(getJsonMultipart("tags", tags))
+              .multiPart(getJsonMultipart("workflow_params", inputs))
             .post(path)
             .then()
                 .assertThat()
@@ -380,14 +387,14 @@ public class WesE2ETest extends BaseE2eTest {
             //@formatter:off
             String workflowJobId = given()
                 .log().uri()
-                .log().method()
+                .log().everything()
                 .header(authorizationClient.getHeader())
-                .multiPart("workflow_url","echo.wdl")
-                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.CAT_FILE_WORKFLOW).getBytes())
-                .multiPart("workflow_attachment","name.txt","Frank".getBytes())
-                .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
-                .multiPart("tags", tags,ContentType.JSON.toString())
-                .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+                .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.CAT_FILE_WORKFLOW).getBytes()))
+                .multiPart(getMultipartAttachment("name.txt","Frank".getBytes()))
+                .multiPart(getJsonMultipart("workflow_engine_parameters",engineParams))
+                .multiPart(getJsonMultipart("tags",tags))
+                .multiPart(getJsonMultipart("workflow_params",inputs))
             .post(path)
             .then()
                 .assertThat()
@@ -397,8 +404,6 @@ public class WesE2ETest extends BaseE2eTest {
                 .jsonPath()
                 .getString("run_id");
             //@formatter:on
-            final String runPathStatus = format("%s/%s/status", path, workflowJobId);
-
             pollUntilJobCompletes(workflowJobId);
 
             path = getRootPath() + "/runs/" + workflowJobId;
@@ -438,11 +443,11 @@ public class WesE2ETest extends BaseE2eTest {
                   .log().uri()
                   .log().method()
                   .header(authorizationClient.getHeader())
-                  .multiPart("workflow_url","echo.wdl")
-                  .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
-                  .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
-                  .multiPart("tags", tags,ContentType.JSON.toString())
-                  .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+                  .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                  .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
+                  .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
+                  .multiPart(getJsonMultipart("tags", tags))
+                  .multiPart(getJsonMultipart("workflow_params", inputs))
                 .post(path)
                 .then()
                     .assertThat()
@@ -582,11 +587,11 @@ public class WesE2ETest extends BaseE2eTest {
                 .log().uri()
                 .log().method()
                 .header(authorizationClient.getHeader())
-                .multiPart("workflow_url","echo.wdl")
-                .multiPart("workflow_attachment","echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
-                .multiPart("workflow_engine_parameters", engineParams,ContentType.JSON.toString())
-                .multiPart("tags", tags,ContentType.JSON.toString())
-                .multiPart("workflow_params", inputs,ContentType.JSON.toString())
+                .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
+                .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
+                .multiPart(getJsonMultipart("tags", tags))
+                .multiPart(getJsonMultipart("workflow_params", inputs))
             .post(path)
             .then()
                 .assertThat()
@@ -723,5 +728,42 @@ public class WesE2ETest extends BaseE2eTest {
                 Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", workflowJobId));
             }
         });
+    }
+
+    private MultiPartSpecification getWorkflowUrlMultipart(String inputString) {
+        return new MultiPartSpecBuilder(inputString)
+            .controlName("workflow_url")
+            .mimeType(ContentType.TEXT.toString())
+            .charset(StandardCharsets.UTF_8)
+            .emptyFileName()
+            .build();
+    }
+
+    private MultiPartSpecification getJsonMultipart(String controlName, Map<String, ?> content) {
+        return new MultiPartSpecBuilder(content)
+            .controlName(controlName)
+            .mimeType(ContentType.JSON.toString())
+            .charset(StandardCharsets.UTF_8)
+            .emptyFileName()
+            .build();
+    }
+
+    private MultiPartSpecification getMultipartAttachment(String fileName, Map<String, ?> content) {
+        return new MultiPartSpecBuilder(content)
+            .controlName("workflow_attachment")
+            .fileName(fileName)
+            .mimeType(ContentType.JSON.toString())
+            .charset(StandardCharsets.UTF_8)
+            .emptyFileName()
+            .build();
+    }
+
+    private MultiPartSpecification getMultipartAttachment(String fileName, byte[] content) {
+        return new MultiPartSpecBuilder(content)
+            .controlName("workflow_attachment")
+            .mimeType(ContentType.BINARY.toString())
+            .charset(StandardCharsets.UTF_8)
+            .fileName(fileName)
+            .build();
     }
 }

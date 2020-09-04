@@ -3,8 +3,6 @@ package com.dnastack.wes.controller;
 
 import com.dnastack.wes.config.AppConfig;
 import com.dnastack.wes.config.TransferConfig;
-import com.dnastack.wes.model.cromwell.CromwellMetadataResponse;
-import com.dnastack.wes.model.cromwell.CromwellTaskCall;
 import com.dnastack.wes.model.wes.RunId;
 import com.dnastack.wes.model.wes.RunListResponse;
 import com.dnastack.wes.model.wes.RunLog;
@@ -13,12 +11,11 @@ import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
-import com.dnastack.wes.storage.client.BlobStorageClient;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
+import java.io.InputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -45,18 +42,18 @@ public class WesV1Controller {
     private CromwellService adapter;
     private AppConfig config;
     private TransferConfig transferConfig;
-
+    private ObjectMapper mapper;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig) {
+    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig, ObjectMapper mapper) {
         this.adapter = adapter;
         this.config = config;
         this.transferConfig = transferConfig;
+        this.mapper = mapper;
     }
 
     @PreAuthorize("permitAll()")
-    @GetMapping(value = "/service-info", produces = {MediaType.APPLICATION_JSON_VALUE,
-        MediaType.APPLICATION_JSON_UTF8_VALUE})
+    @GetMapping(value = "/service-info", produces = {MediaType.APPLICATION_JSON_VALUE})
     public ServiceInfo getServiceInfo() {
         ServiceInfo serviceInfo = config.getServiceInfo();
         if (AuthenticatedUser.getSubject() != null) {
@@ -75,26 +72,28 @@ public class WesV1Controller {
 
 
     @PreAuthorize("isFullyAuthenticated()")
-    @PostMapping(value = "/runs", produces = {MediaType.APPLICATION_JSON_VALUE,
-        MediaType.APPLICATION_JSON_UTF8_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/runs", produces = {
+        MediaType.APPLICATION_JSON_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
         @RequestPart(name = "workflow_type", required = false) String workflowType,
         @RequestPart(name = "workflow_type_version", required = false) String workflowTypeVersion,
-        @RequestPart(name = "workflow_engine_parameters", required = false) Map<String, String> workflowEngineParams,
-        @RequestPart(name = "workflow_params", required = false) Map<String, Object> workflowParams,
-        @RequestPart(name = "workflow_attachment", required = false) MultipartFile[] workflowAttachments,
-        @RequestPart(name = "tags", required = false) Map<String, String> tags) {
+        @RequestPart(name = "workflow_engine_parameters", required = false) Map<String,String> workflowEngineParams,
+        @RequestPart(name = "workflow_params", required = false) Map<String,Object> workflowParams,
+        @RequestPart(name = "tags", required = false) Map<String,String> tags,
+        @RequestPart(name = "workflow_attachment", required = false) MultipartFile[] workflowAttachments) throws IOException {
 
         RunRequest runRequest = RunRequest.builder().workflowUrl(workflowUrl).workflowType(workflowType)
-            .workflowEngineParameters(workflowEngineParams).workflowParams(workflowParams)
-            .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments).tags(tags).build();
+            .workflowEngineParameters(workflowEngineParams)
+            .workflowParams(workflowParams)
+            .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments)
+            .tags(tags).build();
 
         return adapter.execute(AuthenticatedUser.getSubject(), runRequest);
     }
 
 
     @PreAuthorize("isFullyAuthenticated()")
-    @GetMapping(path = "/runs", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(path = "/runs", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunListResponse getRuns(@RequestParam(value = "page_size", required = false) Integer pageSize,
         @RequestParam(value = "page_token", required = false) String pageToken) {
         return adapter.listRuns(pageSize, pageToken);
@@ -102,47 +101,55 @@ public class WesV1Controller {
 
 
     @PreAuthorize("isFullyAuthenticated()")
-    @GetMapping(value = "/runs/{run_id}", produces = {MediaType.APPLICATION_JSON_VALUE,
-        MediaType.APPLICATION_JSON_UTF8_VALUE})
+    @GetMapping(value = "/runs/{run_id}", produces = {MediaType.APPLICATION_JSON_VALUE})
     public RunLog getRun(HttpServletRequest request, @PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
 
     @PreAuthorize("isFullyAuthenticated()")
-    @GetMapping(value = "/runs/{run_id}/status", produces = {MediaType.APPLICATION_JSON_VALUE,
-        MediaType.APPLICATION_JSON_UTF8_VALUE})
+    @GetMapping(value = "/runs/{run_id}/status", produces = {MediaType.APPLICATION_JSON_VALUE})
     public RunStatus getRunStatus(@PathVariable("run_id") String runId) {
         return adapter.getRunStatus(runId);
     }
 
 
     @PreAuthorize("isFullyAuthenticated()")
-    @PostMapping(path = "/runs/{runId}/cancel", produces =
-        MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PostMapping(path = "/runs/{runId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunId cancelRun(@PathVariable("runId") String runId) {
         return adapter.cancel(runId);
     }
 
     @PreAuthorize("isFullyAuthenticated()")
-    @GetMapping("/runs/{runId}/logs/stderr")
+    @GetMapping(value = "/runs/{runId}/logs/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @PathVariable String runId) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(),runId);
+        adapter.getLogBytes(response.getOutputStream(), runId);
     }
 
     @PreAuthorize("isFullyAuthenticated()")
-    @GetMapping("/runs/{runId}/logs/task/{taskName}/{index}/stderr")
+    @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(),runId,taskName,index,"stderr");
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr");
     }
 
     @PreAuthorize("isFullyAuthenticated()")
-    @GetMapping("/runs/{runId}/logs/task/{taskName}/{index}/stdout")
+    @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(),runId,taskName,index,"stdout");
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout");
     }
-
-
+//
+//    private <T> Map<String, T> readFileIntoMap(MultipartFile file) throws IOException {
+//        if (file == null) {
+//            return null;
+//        } else {
+//            try (InputStream stream = file.getInputStream() ){
+//                TypeReference<Map<String, T>> reference = new TypeReference<>() {
+//
+//                };
+//                return mapper.readValue(stream, reference);
+//            }
+//        }
+//    }
 
 
 }
