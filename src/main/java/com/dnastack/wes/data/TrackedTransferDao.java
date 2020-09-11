@@ -25,7 +25,7 @@ public interface TrackedTransferDao {
     void updateTransfer(@Bind("lastUpdate") ZonedDateTime lastUpdate, @Bind("cromwellId") String cromwellId);
 
     @Transaction
-    @SqlUpdate("UPDATE tracked_transfers SET last_update = :lastUpdate  failure_attempts = :failureAttempts WHERE cromwell_id = :cromwellId")
+    @SqlUpdate("UPDATE tracked_transfers SET last_update = :lastUpdate, failure_attempts = :failureAttempts WHERE cromwell_id = :cromwellId")
     void updateTransfeFailureAttempts(@Bind("lastUpdate") ZonedDateTime lastUpdate, @Bind("failureAttempts") int failureAttempts, @Bind("cromwellId") String cromwellId);
 
     @SqlQuery("SELECT * FROM tracked_transfers")
