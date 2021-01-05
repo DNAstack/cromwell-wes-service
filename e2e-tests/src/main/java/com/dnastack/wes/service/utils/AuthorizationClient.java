@@ -31,8 +31,10 @@ public class AuthorizationClient {
     private static String tokenUri = requiredEnv("E2E_TOKEN_URI");
     private static String clientId = requiredEnv("E2E_CLIENT_ID");
     private static String clientSecret = requiredEnv("E2E_CLIENT_SECRET");
+
     private static String audience = optionalEnv("E2E_CLIENT_AUDIENCE", null);
     private static String scopes = optionalEnv("E2E_CLIENT_SCOPES", null);
+    private static String resources = optionalEnv("E2E_CLIENT_RESOURCES", null);
 
     private String getAccessToken() {
         RequestSpecification specification = new RequestSpecBuilder()
@@ -50,6 +52,9 @@ public class AuthorizationClient {
         }
         if (scopes != null) {
             request.formParam("scope", scopes);
+        }
+        if (resources != null) {
+            request.formParam("resource", resources);
         }
 
         return request.auth()

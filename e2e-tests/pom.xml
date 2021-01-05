@@ -15,7 +15,7 @@
   <description>E2E tests for DNAstack WES Translator</description>
 
   <properties>
-    <java.version>1.8</java.version>
+    <java.version>11</java.version>
     <keycloak.version>3.2.1.Final</keycloak.version>
     <jfairy.version>0.5.3</jfairy.version>
     <surefire.version>2.22.1</surefire.version>

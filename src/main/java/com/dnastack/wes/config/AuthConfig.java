@@ -36,10 +36,10 @@ public class AuthConfig {
     IssuerConfig devTokenIssuer = null;
 
     /**
-     * The list of trusted token issuers for incoming requests. All Tokens must have orignated at at least one of these
+     * The list of trusted token issuers for incoming requests. All Tokens must have originated at at least one of these
      * configured issues. Validity of the token is determined by a 1) Validity of the JWT (time), 2) Validity of the
-     * issuerUri in the JWT header 3) validity of the audiene if it is present in the issuerConfig 4) validity of the
-     * configured scopes, if they are pressent in the issuer config
+     * issuerUri in the JWT header 3) validity of the audience if it is present in the issuerConfig 4) validity of the
+     * configured scopes, if they are present in the issuer config
      */
     List<IssuerConfig> tokenIssuers = new ArrayList<>();
 

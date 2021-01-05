@@ -51,6 +51,7 @@ wes:
         jwk-set-uri: http://localhost:8081/oauth/jwks
         audiences:
           - http://localhost:8090
+          - http://wes-service.local
   enable-multi-tenant-support: false
   path-translations:
     - prefix: "http://localhost"
@@ -64,6 +65,7 @@ info:
   app:
     name: "wes-service"
     description: "Interface Layering WES API ontop of an execution engine"
+    url: http://localhost:${server.port}
     version: "${project.version}"
 
 server:
