@@ -38,6 +38,7 @@ The service requires a postgres database. By default it expects postgres to be r
 only). Postgres can be configured through env variables
 
 | Env Variable | Default | Description |
+| ------------ | ------- | ----------- |
 | `SPRING_DATASOURCE_USERNAME` | `wes-service` | The username to authenticate to postgres with |
 | `SPRING_DATASOURCE_PASSWORD` | `""` | The password to authenticate to postgres with |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost/wes-service` | The Postgres url to connect to |
@@ -52,7 +53,14 @@ staging) however any valid OIDC token issuer can be configured in place.
 
 | Env Variable | Default | Description |
 | ------------ | ------- | ----------  |
-| `WES_ENABLEMULTITENANTSUPPORT` | `false` | If enabled, users will only be able to see workflows they submitted. Identity is defined by the `sub` of the token | 
+| `WES_ENABLEMULTITENANTSUPPORT` | `false` | If enabled, users will only be able to see workflows they submitted. Identity is defined by the `sub` of the token |
+| `E2E_BASE_URI` | `http://localhost:8090` | The base uri for the e2e tests |
+| `E2E_CLIENT_ID` | `wes-service-development-client` | WES client id for development |
+| `E2E_CLIENT_SECRET` | `wes-service-development-secret` | WES client secret for development |
+| `E2E_TOKEN_URI` | `http://localhost:8081/oauth/token` | The endpoint to get access token from wallet |
+| `E2E_CLIENT_AUDIENCE` | `http://localhost:8090` | The audience of the access token received from wallet |
+| `E2E_CLIENT_SCOPE` | `read:execution write:execution` | The scope of the access token received from wallet |
+| `E2E_CLIENT_RESOURCES` | `http://localhost:8090/ga4gh/wes/v1/runs/` | The resources accessible with the access token received from wallet |
 
 #### Service Info
 

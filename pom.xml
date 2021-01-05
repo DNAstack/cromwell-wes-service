@@ -28,6 +28,7 @@
     <springfox-swagger.version>2.9.2</springfox-swagger.version>
     <jsonwebtoken.version>0.9.1</jsonwebtoken.version>
     <org.jdbi.version>3.6.0</org.jdbi.version>
+    <wallet-token-validator.version>1.0-30-ge874fa2</wallet-token-validator.version>
   </properties>
 
   <repositories>
@@ -86,6 +87,11 @@
       <optional>true</optional>
     </dependency>
     <!--Security-->
+    <dependency>
+      <groupId>com.dnastack</groupId>
+      <artifactId>java-wallet-token-validator</artifactId>
+      <version>${wallet-token-validator.version}</version>
+    </dependency>
     <dependency>
       <!-- Starter for using Spring Security -->
       <groupId>org.springframework.boot</groupId>
