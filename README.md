@@ -19,21 +19,33 @@ This repo contains a spring boot application which provides a fully featured [Wo
 ./ci/build-docker-e2e-image wes-service-e2e:$(git describe) wes-service-e2e $(git describe)
 ```
 
+
+
+# Building and Running Test
+
+```bash
+docker run --network host -it wes-service-e2e:$(git describe)
+```
+
+| Env Variable | Default | Description |
+| ------------ | ------- | ----------  |
+| `E2E_BASE_URI` | `http://localhost:8090` | The base uri for the e2e tests |
+| `E2E_TOKEN_URI` | `http://localhost:8081/oauth/token` | The endpoint to get access token from wallet |
+| `E2E_CLIENT_ID` | `wes-service-development-client` | WES client id for development |
+| `E2E_CLIENT_SECRET` | `wes-service-development-secret` | WES client secret for development |
+| `E2E_CLIENT_AUDIENCE` | `http://localhost:8090` | The audience of the access token received from wallet |
+| `E2E_CLIENT_SCOPE` | `read:execution write:execution` | The scope of the access token received from wallet |
+| `E2E_CLIENT_RESOURCES` | `http://localhost:8090/ga4gh/wes/v1/runs/` | The resources accessible with the access token received from wallet |
+
 # Running
 
 ```bash
 java -jar target/weservice-1.0-SNAPSHOT.jar
 ```
 
-# Building and Running Test
-
-```bash
-docker run --network host -e E2E_BASE_URI=localhost:8090 -it wes-service-e2e:$(git describe)
-```
-
 ### Postgres
 
-The service requires a postgres database. By default it expects postgres to be running at 
+The service requires a postgres database. By default, it expects postgres to be running at 
 `jdbc:postgresql://localhost/wes-service` with username `wes-service` with no credentials set (ie allowing localhost 
 only). Postgres can be configured through env variables
 
@@ -47,20 +59,13 @@ only). Postgres can be configured through env variables
 
 The WES Service has basic configuration for interacting with a local cromwell instance out of the box and provides 
 support for the File object type without any subsequent configuration. In this setup, object transfer and multi-tenancy
-are disabled. By default the API is protected by [wallet](https://wallet.staging.dnastack.com) (deployed in 
+are disabled. By default, the API is protected by [wallet](https://wallet.staging.dnastack.com) (deployed in 
 staging) however any valid OIDC token issuer can be configured in place.
 
 
 | Env Variable | Default | Description |
 | ------------ | ------- | ----------  |
 | `WES_ENABLEMULTITENANTSUPPORT` | `false` | If enabled, users will only be able to see workflows they submitted. Identity is defined by the `sub` of the token |
-| `E2E_BASE_URI` | `http://localhost:8090` | The base uri for the e2e tests |
-| `E2E_CLIENT_ID` | `wes-service-development-client` | WES client id for development |
-| `E2E_CLIENT_SECRET` | `wes-service-development-secret` | WES client secret for development |
-| `E2E_TOKEN_URI` | `http://localhost:8081/oauth/token` | The endpoint to get access token from wallet |
-| `E2E_CLIENT_AUDIENCE` | `http://localhost:8090` | The audience of the access token received from wallet |
-| `E2E_CLIENT_SCOPE` | `read:execution write:execution` | The scope of the access token received from wallet |
-| `E2E_CLIENT_RESOURCES` | `http://localhost:8090/ga4gh/wes/v1/runs/` | The resources accessible with the access token received from wallet |
 
 #### Service Info
 
@@ -71,8 +76,8 @@ for more information
 
 ### Configuring Cromwell
 
-The WES service can be layered on top of any cromwell API (only versions greater then 38 have been tested) to provide a 
-fully featured WES API. By default a cromwell instance on localhost is used however this can be easily configured 
+The WES service can be layered on top of any cromwell API (only versions greater than 38 have been tested) to provide a 
+fully featured WES API. By default, a cromwell instance on localhost is used however this can be easily configured 
 through environment variables.
 
 
@@ -86,7 +91,7 @@ through environment variables.
 ### Configuring DRS
 
 The WES service is able to resolve `DrsUri`'s passed into it through the `workflow_params` of a new run. At the moment
-this support is limited and has the following beahaviou:
+this support is limited and has the following behaviour:
 
 1. All `DrsUri`'s must be publicly resolvable unless included in the `tokens.json` for a run request
   - If the `drs://<server>` or `drs://<server>/<id>` is included in the `tokens.json` the request will use that token
