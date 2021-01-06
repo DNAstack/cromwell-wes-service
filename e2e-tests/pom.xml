@@ -19,6 +19,7 @@
     <keycloak.version>3.2.1.Final</keycloak.version>
     <jfairy.version>0.5.3</jfairy.version>
     <surefire.version>2.22.1</surefire.version>
+    <wallet-token-validator.version>1.0-30-ge874fa2</wallet-token-validator.version>
   </properties>
 
   <dependencyManagement>
@@ -40,6 +41,8 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
+      <version>1.18.16</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -86,6 +89,11 @@
       <artifactId>spring-security-jwt</artifactId>
       <version>1.0.10.RELEASE</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.dnastack</groupId>
+      <artifactId>java-wallet-token-validator</artifactId>
+      <version>${wallet-token-validator.version}</version>
     </dependency>
   </dependencies>
 

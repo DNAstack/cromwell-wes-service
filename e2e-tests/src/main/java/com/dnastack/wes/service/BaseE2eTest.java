@@ -19,7 +19,7 @@ public abstract class BaseE2eTest {
     public static String requiredEnv(String name) {
         String val = System.getenv(name);
         if (val == null) {
-            fail("Environnment variable `" + name + "` is required");
+            fail("Environment variable `" + name + "` is required");
         }
         return val;
     }

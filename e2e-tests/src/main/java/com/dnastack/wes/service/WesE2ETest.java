@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.nimbusds.jose.util.IOUtils;
+import io.restassured.RestAssured;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.filter.log.LogDetail;
 import io.restassured.http.ContentType;
@@ -34,10 +35,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.minidev.json.JSONObject;
@@ -205,6 +204,44 @@ public class WesE2ETest extends BaseE2eTest {
             .statusCode(401);
         //@formatter:on
 
+    }
+
+
+    @Test
+    @DisplayName("Listing all runs with incorrect scope in access token returns 403 response")
+    public void listingRunsIncorrectScopeError() {
+        String path = getRootPath() + "/runs";
+        String resources = RestAssured.baseURI + "/ga4gh/wes/v1/runs/";
+        Set<String> scopes = Set.of("write:execution");
+
+        given()
+            .log().uri()
+            .log().method()
+            .accept(ContentType.JSON)
+            .header(authorizationClient.getHeader(resources, scopes))
+        .get(path)
+        .then()
+            .assertThat()
+            .statusCode(403);
+    }
+
+
+    @Test
+    @DisplayName("Listing all runs with incorrect resource in access token returns 403 response")
+    public void listingRunsIncorrectResourceError() {
+        String path = getRootPath() + "/runs";
+        String resources = RestAssured.baseURI + "/ga4gh/wes/v1";
+        Set<String> scopes = Set.of("read:execution");
+
+        given()
+                .log().uri()
+                .log().method()
+                .accept(ContentType.JSON)
+                .header(authorizationClient.getHeader(resources, scopes))
+                .get(path)
+                .then()
+                .assertThat()
+                .statusCode(403);
     }
 
 

@@ -1,30 +1,16 @@
 package com.dnastack.wes.service.utils;
 
-import static com.dnastack.wes.service.BaseE2eTest.optionalEnv;
-import static com.dnastack.wes.service.BaseE2eTest.requiredEnv;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.LogDetail;
 import io.restassured.http.Header;
-import java.security.KeyPair;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.util.Date;
-import java.util.UUID;
-
 import io.restassured.specification.RequestSpecification;
-import org.hamcrest.CoreMatchers;
+
+import java.util.Objects;
+import java.util.Set;
+
+import static com.dnastack.wes.service.BaseE2eTest.optionalEnv;
+import static com.dnastack.wes.service.BaseE2eTest.requiredEnv;
+import static io.restassured.RestAssured.given;
 
 public class AuthorizationClient {
 
@@ -70,8 +56,50 @@ public class AuthorizationClient {
         //formatter:on
     }
 
+    private String getAccessToken(String requiredResources, Set<String> requiredScopes) {
+        Objects.requireNonNull(requiredResources);
+        Objects.requireNonNull(requiredScopes);
+
+        RequestSpecification specification = new RequestSpecBuilder()
+                .setBaseUri(tokenUri)
+                .build();
+
+        //formatter:off
+        RequestSpecification request = given(specification)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("grant_type", "client_credentials")
+                .formParam("client_id", clientId)
+                .formParam("client_secret", clientSecret);
+
+        if (audience != null) {
+            request.formParam("audience", audience);
+        }
+        if (!requiredResources.isBlank()) {
+            request.formParam("resource", requiredResources);
+        }
+        if (!requiredScopes.isEmpty()) {
+            request.formParam("scope", String.join(" ", requiredScopes));
+        }
+
+        return request.auth()
+                .basic(clientId, clientSecret)
+                .post()
+                .then()
+                .log().ifValidationFails(LogDetail.ALL)
+                .assertThat()
+                .statusCode(200)
+                .extract()
+                .jsonPath()
+                .getString("access_token");
+        //formatter:on
+    }
+
     public Header getHeader() {
         return new Header("Authorization", "Bearer " + getAccessToken());
+    }
+
+    public Header getHeader(String requiredResources, Set<String> requiredScopes) {
+        return new Header("Authorization", "Bearer " + getAccessToken(requiredResources, requiredScopes));
     }
 
 }
