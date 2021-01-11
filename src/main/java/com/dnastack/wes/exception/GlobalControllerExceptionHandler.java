@@ -4,6 +4,7 @@ import com.dnastack.wes.model.wes.ErrorResponse;
 import feign.FeignException;
 import java.io.FileNotFoundException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -25,6 +26,10 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(404).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(404).build());
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handle(AccessDeniedException ex) {
+        return ResponseEntity.status(403).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(403).build());
+    }
 
     @ExceptionHandler(FeignException.class)
     public ResponseEntity<ErrorResponse> handle(FeignException ex) {
