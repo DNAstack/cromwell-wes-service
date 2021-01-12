@@ -47,6 +47,9 @@ wes:
       # Default Token issuer to use
       - issuer-uri: https://wallet.staging.dnastack.com
         jwk-set-uri: https://wallet.staging.dnastack.com/oauth/jwks
+        audiences:
+          - http://localhost:8090
+          - http://wes-service.local
       - issuer-uri: http://localhost:8081
         jwk-set-uri: http://localhost:8081/oauth/jwks
         audiences:

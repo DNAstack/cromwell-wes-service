@@ -26,9 +26,9 @@
     <lombok.plugin.version>1.18.0.0</lombok.plugin.version>
     <spring-cloud.version>Hoxton.SR5</spring-cloud.version>
     <springfox-swagger.version>2.9.2</springfox-swagger.version>
-    <jsonwebtoken.version>0.9.1</jsonwebtoken.version>
+    <jwt.version>0.11.2</jwt.version>
     <org.jdbi.version>3.6.0</org.jdbi.version>
-    <wallet-token-validator.version>1.0-30-ge874fa2</wallet-token-validator.version>
+    <wallet-token-validator.version>1.0-37-gaac7e3b</wallet-token-validator.version>
   </properties>
 
   <repositories>
@@ -109,15 +109,20 @@
       <groupId>org.springframework.security.oauth.boot</groupId>
       <artifactId>spring-security-oauth2-autoconfigure</artifactId>
     </dependency>
+    <!-- JSON Web Token Support -->
     <dependency>
-      <!-- JSON Web Token Support -->
       <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt</artifactId>
-      <version>${jsonwebtoken.version}</version>
+      <artifactId>jjwt-impl</artifactId>
+      <version>${jwt.version}</version>
+      <scope>runtime</scope>
     </dependency>
-    <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt-jackson</artifactId>
+      <version>${jwt.version}</version>
+      <scope>runtime</scope>
+    </dependency>
     <!--Feign-->
-
     <dependency>
       <groupId>org.springframework.cloud</groupId>
       <artifactId>spring-cloud-starter-openfeign</artifactId>
@@ -183,7 +188,8 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <optional>true</optional>
+      <version>1.18.16</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
