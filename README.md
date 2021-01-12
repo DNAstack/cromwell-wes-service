@@ -21,7 +21,7 @@ This repo contains a spring boot application which provides a fully featured [Wo
 
 
 
-# Building and Running Test
+# Building and Running Tests
 
 ```bash
 docker run --network host -it wes-service-e2e:$(git describe)
