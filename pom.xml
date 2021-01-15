@@ -37,6 +37,15 @@
       <name>Spring Milestones</name>
       <url>https://repo.spring.io/milestone</url>
     </repository>
+    <repository>
+      <!--
+        Private dependencies hosted in our DNAstack nexus are resolved using credentials pulled from settings.xml
+        in cloud build environment. ID of repository must match ID of server in settings.xml
+      -->
+      <id>dnastack-releases</id>
+      <name>NexusDnastackReleases</name>
+      <url>https://nexus.dnastack.com/content/repositories/releases/</url>
+    </repository>
   </repositories>
 
   <dependencyManagement>
