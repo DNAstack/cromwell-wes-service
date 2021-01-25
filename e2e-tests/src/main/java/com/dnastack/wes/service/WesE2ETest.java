@@ -211,7 +211,7 @@ public class WesE2ETest extends BaseE2eTest {
     @DisplayName("Listing all runs with incorrect scope in access token returns 403 response")
     public void listingRunsIncorrectScopeError() {
         String path = getRootPath() + "/runs";
-        String resources = RestAssured.baseURI + "/ga4gh/wes/v1/runs/";
+        String resources = requiredEnv("E2E_CLIENT_AUDIENCE") + "/ga4gh/wes/v1/runs/";
         Set<String> scopes = Set.of("write:execution");
 
         given()
@@ -230,7 +230,7 @@ public class WesE2ETest extends BaseE2eTest {
     @DisplayName("Listing all runs with incorrect resource in access token returns 403 response")
     public void listingRunsIncorrectResourceError() {
         String path = getRootPath() + "/runs";
-        String resources = RestAssured.baseURI + "/ga4gh/wes/v1";
+        String resources = requiredEnv("E2E_CLIENT_AUDIENCE") +  "/ga4gh/wes/v1";
         Set<String> scopes = Set.of("read:execution");
 
         given()

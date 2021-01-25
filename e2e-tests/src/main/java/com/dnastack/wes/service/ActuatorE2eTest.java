@@ -26,7 +26,6 @@ public class ActuatorE2eTest extends BaseE2eTest {
         .then()
             .log().ifValidationFails()
             .statusCode(200)
-            .body("app.name", equalTo("wes-service"))
             .body("app.version", notNullValue());
         //@formatter:on
   }

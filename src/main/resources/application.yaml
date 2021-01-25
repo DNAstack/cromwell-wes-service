@@ -19,6 +19,12 @@ wes:
   drs:
     supported-access-types:
       - file
+  blob-storage-client:
+    name: GCP
+    gcp:
+      project: striking-effort-817
+      stagingLocation: gs://workspaces-cromwell-execution/wes-staging
+
   transfer:
     enabled: false
     object-transfer-uri: http://localhost:8086
