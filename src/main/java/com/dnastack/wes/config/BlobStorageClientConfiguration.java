@@ -2,6 +2,7 @@ package com.dnastack.wes.config;
 
 import com.dnastack.wes.config.BlobStorageClientConfig.ClientName;
 import com.dnastack.wes.storage.client.BlobStorageClient;
+import com.dnastack.wes.storage.client.abs.AzureBlobStorageClient;
 import com.dnastack.wes.storage.client.gcp.GcpBlobStorageClient;
 import java.io.IOException;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +15,8 @@ public class BlobStorageClientConfiguration {
     public BlobStorageClient blobStorageClient(BlobStorageClientConfig config) throws IOException {
         if (config.getName().equals(ClientName.GCP)) {
             return new GcpBlobStorageClient(config.getGcp());
+        } else if (config.getName().equals(ClientName.ABS)){
+            return new AzureBlobStorageClient(config.getAbs());
         } else {
             throw new RuntimeException("Could not configure blob storage client, please specify at least one configuration");
         }

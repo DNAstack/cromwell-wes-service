@@ -9,7 +9,7 @@ public interface BlobStorageClient {
 
     URL getSignedUrl(String blobUri);
 
-    String writeBytes(InputStream stream, String stagingFolder, String fileName) throws IOException;
+    String writeBytes(InputStream stream, long uploadSize, String stagingFolder, String fileName) throws IOException;
 
     default void getBytes(OutputStream outputStream, String blobUri) throws IOException {
         readBytes(outputStream, blobUri, null, null);

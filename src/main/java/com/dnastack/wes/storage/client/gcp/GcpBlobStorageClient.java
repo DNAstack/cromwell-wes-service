@@ -69,7 +69,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     }
 
     @Override
-    public String writeBytes(InputStream blobStream, String stagingFolder, String blobName) throws IOException {
+    public String writeBytes(InputStream blobStream,long size, String stagingFolder, String blobName) throws IOException {
         String blobUri = UriComponentsBuilder.fromUri(stagingLocation).pathSegment(stagingFolder, blobName)
             .toUriString();
         BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);

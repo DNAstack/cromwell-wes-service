@@ -428,7 +428,7 @@ public class CromwellService {
         Map<String, String> mappedFiles = new HashMap<>();
         for (MultipartFile attachment : attachmentFiles) {
             String stagingBlobLocation = storageClient
-                .writeBytes(attachment.getInputStream(), stagingFolder, attachment.getOriginalFilename());
+                .writeBytes(attachment.getInputStream(),attachment.getSize(), stagingFolder, attachment.getOriginalFilename());
             mappedFiles.put(attachment.getOriginalFilename(), stagingBlobLocation);
         }
 

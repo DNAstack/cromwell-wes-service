@@ -24,6 +24,11 @@ wes:
     gcp:
       project: striking-effort-817
       stagingLocation: gs://workspaces-cromwell-execution/wes-staging
+    abs:
+      container:
+      connection-string:
+      staging-path:
+
 
   transfer:
     enabled: false
@@ -61,6 +66,8 @@ wes:
         audiences:
           - http://localhost:8090
           - http://wes-service.local
+          - http://wes.local
+          - wes.local
   enable-multi-tenant-support: false
   path-translations:
     - prefix: "http://localhost"

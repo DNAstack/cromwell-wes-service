@@ -11,10 +11,7 @@ import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
@@ -42,14 +39,12 @@ public class WesV1Controller {
     private CromwellService adapter;
     private AppConfig config;
     private TransferConfig transferConfig;
-    private ObjectMapper mapper;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig, ObjectMapper mapper) {
+    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig) {
         this.adapter = adapter;
         this.config = config;
         this.transferConfig = transferConfig;
-        this.mapper = mapper;
     }
 
     @PreAuthorize("permitAll()")
@@ -76,9 +71,9 @@ public class WesV1Controller {
     public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
         @RequestPart(name = "workflow_type", required = false) String workflowType,
         @RequestPart(name = "workflow_type_version", required = false) String workflowTypeVersion,
-        @RequestPart(name = "workflow_engine_parameters", required = false) Map<String,String> workflowEngineParams,
-        @RequestPart(name = "workflow_params", required = false) Map<String,Object> workflowParams,
-        @RequestPart(name = "tags", required = false) Map<String,String> tags,
+        @RequestPart(name = "workflow_engine_parameters", required = false) Map<String, String> workflowEngineParams,
+        @RequestPart(name = "workflow_params", required = false) Map<String, Object> workflowParams,
+        @RequestPart(name = "tags", required = false) Map<String, String> tags,
         @RequestPart(name = "workflow_attachment", required = false) MultipartFile[] workflowAttachments) throws IOException {
 
         RunRequest runRequest = RunRequest.builder().workflowUrl(workflowUrl).workflowType(workflowType)
@@ -132,19 +127,6 @@ public class WesV1Controller {
     public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout");
     }
-//
-//    private <T> Map<String, T> readFileIntoMap(MultipartFile file) throws IOException {
-//        if (file == null) {
-//            return null;
-//        } else {
-//            try (InputStream stream = file.getInputStream() ){
-//                TypeReference<Map<String, T>> reference = new TypeReference<>() {
-//
-//                };
-//                return mapper.readValue(stream, reference);
-//            }
-//        }
-//    }
 
 
 }

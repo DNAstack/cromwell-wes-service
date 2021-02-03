@@ -15,8 +15,10 @@ public class BlobStorageClientConfig {
     private GcpBlobStorageConfig gcp = new GcpBlobStorageConfig();
 
 
+    private AzureBlobStorageClientConfig abs = new AzureBlobStorageClientConfig();
+
     public enum ClientName  {
-        GCP
+        GCP,ABS
     }
 
 }

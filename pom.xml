@@ -28,6 +28,7 @@
     <springfox-swagger.version>2.9.2</springfox-swagger.version>
     <jwt.version>0.11.2</jwt.version>
     <org.jdbi.version>3.6.0</org.jdbi.version>
+    <azurestorage.version>12.9.0</azurestorage.version>
     <wallet-token-validator.version>1.0-37-gaac7e3b</wallet-token-validator.version>
   </properties>
 
@@ -110,7 +111,7 @@
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-oauth2-jose</artifactId>
     </dependency>
-    <dependency>
+    <dependency>I
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-oauth2-resource-server</artifactId>
     </dependency>
@@ -194,6 +195,14 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
     </dependency>
+
+    <!-- Azure Dependencies -->
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-storage-blob</artifactId>
+      <version>${azurestorage.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
