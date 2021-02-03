@@ -9,11 +9,13 @@ import com.dnastack.wes.model.wes.RunLog;
 import com.dnastack.wes.model.wes.RunRequest;
 import com.dnastack.wes.model.wes.RunStatus;
 import com.dnastack.wes.model.wes.ServiceInfo;
+import com.dnastack.wes.security.AccessEvaluator;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.service.CromwellService;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -39,19 +41,22 @@ public class WesV1Controller {
     private CromwellService adapter;
     private AppConfig config;
     private TransferConfig transferConfig;
+    private AccessEvaluator accessEvaluator;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig) {
+    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig, AccessEvaluator accessEvaluator) {
         this.adapter = adapter;
         this.config = config;
         this.transferConfig = transferConfig;
+        this.accessEvaluator = accessEvaluator;
     }
 
     @PreAuthorize("permitAll()")
     @GetMapping(value = "/service-info", produces = {MediaType.APPLICATION_JSON_VALUE})
     public ServiceInfo getServiceInfo() {
         ServiceInfo serviceInfo = config.getServiceInfo();
-        if (AuthenticatedUser.getSubject() != null) {
+        if (AuthenticatedUser.getSubject() != null && accessEvaluator
+            .canAccessResource("/ga4gh/wes/v1/service-info", Set.of("wes:runs:read"), Set.of("wes"))) {
             serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
         }
 
@@ -65,7 +70,7 @@ public class WesV1Controller {
         return serviceInfo;
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:write', 'write:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:runs:read', 'wes')")
     @PostMapping(value = "/runs", produces = {
         MediaType.APPLICATION_JSON_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
@@ -85,44 +90,44 @@ public class WesV1Controller {
         return adapter.execute(AuthenticatedUser.getSubject(), runRequest);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:read', 'read:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:execute', 'wes')")
     @GetMapping(path = "/runs", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunListResponse getRuns(@RequestParam(value = "page_size", required = false) Integer pageSize,
         @RequestParam(value = "page_token", required = false) String pageToken) {
         return adapter.listRuns(pageSize, pageToken);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:read', 'read:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/'+#runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}", produces = {MediaType.APPLICATION_JSON_VALUE})
     public RunLog getRun(HttpServletRequest request, @PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:read', 'read:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}/status", produces = {MediaType.APPLICATION_JSON_VALUE})
     public RunStatus getRunStatus(@PathVariable("run_id") String runId) {
         return adapter.getRunStatus(runId);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:write', 'write:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:cancel', 'wes')")
     @PostMapping(path = "/runs/{runId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunId cancelRun(@PathVariable("runId") String runId) {
         return adapter.cancel(runId);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:read', 'read:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @PathVariable String runId) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:read', 'read:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr");
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/', 'runs:read', 'read:execution')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout");

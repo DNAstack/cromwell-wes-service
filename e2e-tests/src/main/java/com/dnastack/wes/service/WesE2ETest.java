@@ -14,14 +14,11 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
-import com.dnastack.wes.service.utils.AuthorizationClient;
 import com.dnastack.wes.service.wdl.WdlSupplier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.nimbusds.jose.util.IOUtils;
-import io.restassured.RestAssured;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.filter.log.LogDetail;
 import io.restassured.http.ContentType;
@@ -30,13 +27,14 @@ import io.restassured.response.Response;
 import io.restassured.specification.MultiPartSpecification;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
-
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.minidev.json.JSONObject;
@@ -53,22 +51,16 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 @DisplayName("WES tests")
 public class WesE2ETest extends BaseE2eTest {
 
-    private static final String DEFAULT_PRIVATE_KEY_FILE = "jwt.pem";
-    private static AuthorizationClient authorizationClient;
     private static WdlSupplier supplier = new WdlSupplier();
 
     private String getRootPath() {
         return "/ga4gh/wes/v1";
     }
 
-    @BeforeAll
-    public static void setupTests() {
-        try {
-            authorizationClient = new AuthorizationClient();
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
+    private String getResource(String path){
+        return resourceUrl + path;
     }
+
 
     private String getAccessToken() throws IOException {
         final GoogleCredentials credentials = getCredentials();
@@ -92,16 +84,6 @@ public class WesE2ETest extends BaseE2eTest {
         }
 
         return credentials.createScoped("https://www.googleapis.com/auth/cloud-platform", "openid", "email");
-    }
-
-    private static String loadPrivateKey() throws IOException {
-        String privKey = optionalEnv("E2E_WES_PRIVATE_KEY", null);
-
-        if (privKey == null) {
-            InputStream inputStream = WesE2ETest.class.getResourceAsStream(DEFAULT_PRIVATE_KEY_FILE);
-            privKey = IOUtils.readInputStreamToString(inputStream, Charset.forName("UTF-8"));
-        }
-        return privKey;
     }
 
     @RequiredArgsConstructor
@@ -173,7 +155,7 @@ public class WesE2ETest extends BaseE2eTest {
             .log().uri()
             .log().method()
             .accept(ContentType.JSON)
-            .header(authorizationClient.getHeader())
+            .header(getHeader(getResource(path)))
         .get(path)
         .then()
             .assertThat()
@@ -208,36 +190,15 @@ public class WesE2ETest extends BaseE2eTest {
 
 
     @Test
-    @DisplayName("Listing all runs with incorrect scope in access token returns 403 response")
-    public void listingRunsIncorrectScopeError() {
-        String path = getRootPath() + "/runs";
-        String resources = requiredEnv("E2E_CLIENT_AUDIENCE") + "/ga4gh/wes/v1/runs/";
-        Set<String> scopes = Set.of("write:execution");
-
-        given()
-            .log().uri()
-            .log().method()
-            .accept(ContentType.JSON)
-            .header(authorizationClient.getHeader(resources, scopes))
-        .get(path)
-        .then()
-            .assertThat()
-            .statusCode(403);
-    }
-
-
-    @Test
     @DisplayName("Listing all runs with incorrect resource in access token returns 403 response")
     public void listingRunsIncorrectResourceError() {
         String path = getRootPath() + "/runs";
-        String resources = requiredEnv("E2E_CLIENT_AUDIENCE") +  "/ga4gh/wes/v1";
-        Set<String> scopes = Set.of("read:execution");
 
         given()
                 .log().uri()
                 .log().method()
                 .accept(ContentType.JSON)
-                .header(authorizationClient.getHeader(resources, scopes))
+                .header(getHeader(getResource(getRootPath() + "/service-info")))
                 .get(path)
                 .then()
                 .assertThat()
@@ -253,7 +214,7 @@ public class WesE2ETest extends BaseE2eTest {
         given()
             .log().uri()
             .log().method()
-            .header(authorizationClient.getHeader())
+            .header(getHeader(getResource(path)))
             .queryParam("page_size",5)
             .accept(ContentType.JSON)
         .get(path)
@@ -282,7 +243,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .multiPart(getWorkflowUrlMultipart("echo.wdl"))
                 .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
                 .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
@@ -317,7 +278,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(submitPath)))
                     .multiPart(getWorkflowUrlMultipart( "workflow.wdl"))
                     .multiPart(getMultipartAttachment( "workflow.wdl", supplier.getFileContent(WdlSupplier.MD5_SUM_WORKFLOW).getBytes()))
                     .multiPart(getMultipartAttachment( "credentials.json", credentials.toJSONString().getBytes()))
@@ -348,7 +309,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
               .log().uri()
               .log().method()
-              .header(authorizationClient.getHeader())
+              .header(getHeader(getResource(path)))
               .multiPart("workflow_attachment","echo.wdl", supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes())
             .post(path)
             .then()
@@ -370,7 +331,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .multiPart(getWorkflowUrlMultipart("echo.wdl"))
                 .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_1).getBytes()))
                 .multiPart(getMultipartAttachment(WdlSupplier.WORKFLOW_WITH_IMPORTS_2,supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_2).getBytes()))
@@ -395,7 +356,7 @@ public class WesE2ETest extends BaseE2eTest {
             String runId = given()
               .log().uri()
               .log().method()
-              .header(authorizationClient.getHeader())
+              .header(getHeader(getResource(path)))
               .multiPart(getWorkflowUrlMultipart("echo.wdl"))
               .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
               .multiPart(getMultipartAttachment( "options.json",engineParams))
@@ -425,7 +386,7 @@ public class WesE2ETest extends BaseE2eTest {
             String workflowJobId = given()
                 .log().uri()
                 .log().everything()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .multiPart(getWorkflowUrlMultipart("echo.wdl"))
                 .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.CAT_FILE_WORKFLOW).getBytes()))
                 .multiPart(getMultipartAttachment("name.txt","Frank".getBytes()))
@@ -448,7 +409,7 @@ public class WesE2ETest extends BaseE2eTest {
             given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .accept(ContentType.JSON)
                 .get(path)
             .then()
@@ -479,7 +440,7 @@ public class WesE2ETest extends BaseE2eTest {
                 workflowJobId = given()
                   .log().uri()
                   .log().method()
-                  .header(authorizationClient.getHeader())
+                  .header(getHeader(getResource(path)))
                   .multiPart(getWorkflowUrlMultipart("echo.wdl"))
                   .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
                   .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
@@ -508,7 +469,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -532,7 +493,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(getRootPath() + "/runs/" + workflowJobId )))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -547,13 +508,14 @@ public class WesE2ETest extends BaseE2eTest {
             @Test
             @DisplayName("Get Run Status for non-existent run fails with status 401 or 404")
             public void getRunStatusForNonExistentRunShouldFail() {
-                String path = getRootPath() + "/runs/" + UUID.randomUUID() + "/status";
+                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
+                String path = resourcePath + "/status";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(resourcePath)))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -572,7 +534,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -591,7 +553,7 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -623,7 +585,7 @@ public class WesE2ETest extends BaseE2eTest {
             workflowJobId = given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .multiPart(getWorkflowUrlMultipart("echo.wdl"))
                 .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITHOUT_FILE).getBytes()))
                 .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
@@ -650,7 +612,7 @@ public class WesE2ETest extends BaseE2eTest {
             Map<String,String> taskLogs = given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .accept(ContentType.JSON)
             .get(path)
             .then()
@@ -674,7 +636,7 @@ public class WesE2ETest extends BaseE2eTest {
             String body = given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
             .get(taskLogs.get("stdout"))
             .then()
                 .statusCode(200)
@@ -688,7 +650,7 @@ public class WesE2ETest extends BaseE2eTest {
             body = given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
             .get(taskLogs.get("stderr"))
             .then()
                 .statusCode(200)
@@ -706,7 +668,7 @@ public class WesE2ETest extends BaseE2eTest {
             Map<String,String> taskLogs = given()
                 .log().uri()
                 .log().method()
-                .header(authorizationClient.getHeader())
+                .header(getHeader(getResource(path)))
                 .accept(ContentType.JSON)
             .get(path)
             .then()
@@ -738,14 +700,15 @@ public class WesE2ETest extends BaseE2eTest {
     }
 
     private void pollUntilJobCompletes(String workflowJobId) throws Exception {
-        String runPathStatus = getRootPath() + "/runs/" + workflowJobId + "/status";
+        String resourceUrl =  getRootPath() + "/runs/" + workflowJobId;
+        String runPathStatus = resourceUrl + "/status";
         poll(Duration.ofMinutes(6), () -> {
             //@formatter:off
             final ExtractableResponse<Response> statusResponse =
                 given()
                     .log().uri()
                     .log().method()
-                    .header(authorizationClient.getHeader())
+                    .header(getHeader(getResource(resourceUrl)))
                     .get(runPathStatus)
                     .then()
                     .assertThat()
