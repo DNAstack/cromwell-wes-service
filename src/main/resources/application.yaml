@@ -20,19 +20,21 @@ wes:
     supported-access-types:
       - file
   blob-storage-client:
-    name: GCP
+    name: LOCAL
     gcp:
-      project: striking-effort-817
-      stagingLocation: gs://workspaces-cromwell-execution/wes-staging
+      project:
+      stagingLocation:
     abs:
       container:
       connection-string:
       staging-path:
+    local:
+      staging-path: /home/patrick/tools/cromwell/v54/uploads
 
 
   transfer:
     enabled: false
-    object-transfer-uri: http://localhost:8086
+    object-transfer-uri:
     # Needs to be set
     staging-directory:
   auth:
@@ -40,20 +42,6 @@ wes:
     service-account-authentication-uri: http://localhost:8081/oauth/token
     service-account-client-id: wes-service
     service-account-secret: wes-service
-    dev-token-issuer:
-      rsa-public-key: |
-        -----BEGIN PUBLIC KEY-----
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxySDfhuXD+0khrgMX4Zq
-        K4JBrexDoEK7gooBI6E1oYlX8nrQm6Z7G6QJtyFOTt04z9HR0fwGUDgaU9abBWzf
-        /wJdABPTIUwlwB9yFAelF6jY9k2nVe/Agpbdlx4ylu2MbQ3ybCW8ma33UmQSK9/N
-        R1R1aw3bKj5gvKF9/aWNLeObeipqXKZ/T3nD5/2O1BD8xzNZ+eQ6qWJKtWvVsq42
-        B5Z9DNuvgmYYmPAc2OUQc9qhdsO1Jw8J58ZxBIFNC0h1/yaaeUuUtKMaw1VMOZqT
-        7EjteeEujFVG4zqUPXaJNiFLd7kFkL65JEbxlCxFfh0b6SjJESNcwDHbSZt6EitG
-        5QIDAQAB
-        -----END PUBLIC KEY-----
-      audiences:
-        - wes-e2e-test
-      issuer-uri: "https://testing.dnastack.com"
     token-issuers:
       # Default Token issuer to use
       - issuer-uri: https://wallet.staging.dnastack.com
