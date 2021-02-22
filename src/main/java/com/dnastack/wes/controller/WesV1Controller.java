@@ -70,7 +70,7 @@ public class WesV1Controller {
         return serviceInfo;
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:runs:read', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:execute', 'wes')")
     @PostMapping(value = "/runs", produces = {
         MediaType.APPLICATION_JSON_VALUE}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public RunId submitRun(@RequestPart("workflow_url") String workflowUrl,
@@ -90,7 +90,7 @@ public class WesV1Controller {
         return adapter.execute(AuthenticatedUser.getSubject(), runRequest);
     }
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:execute', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:runs:read', 'wes')")
     @GetMapping(path = "/runs", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunListResponse getRuns(@RequestParam(value = "page_size", required = false) Integer pageSize,
         @RequestParam(value = "page_token", required = false) String pageToken) {
