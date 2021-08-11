@@ -1,12 +1,14 @@
 package com.dnastack.wes.storage.client.local;
 
-import com.dnastack.wes.config.LocalBlobStorageClientConfig;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+
+import com.dnastack.wes.storage.LocalBlobStorageClient;
+import com.dnastack.wes.storage.LocalBlobStorageClientConfig;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

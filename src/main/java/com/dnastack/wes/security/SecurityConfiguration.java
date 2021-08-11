@@ -7,7 +7,6 @@ import com.dnastack.auth.PermissionCheckerFactory;
 import com.dnastack.auth.keyresolver.CachingIssuerPubKeyJwksResolver;
 import com.dnastack.auth.keyresolver.IssuerPubKeyStaticResolver;
 import com.dnastack.auth.model.IssuerInfo;
-import com.dnastack.wes.config.AuthConfig;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwsHeader;
