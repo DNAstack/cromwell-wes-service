@@ -2,6 +2,7 @@ package com.dnastack.wes.api;
 
 
 import com.dnastack.audit.aspect.AuditActionUri;
+import com.dnastack.audit.aspect.AuditIgnore;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.cromwell.CromwellService;
 import com.dnastack.wes.security.AccessEvaluator;
@@ -61,7 +62,7 @@ public class WesV1Controller {
         return serviceInfo;
     }
 
-    @AuditActionUri("wes:execute")
+    @AuditIgnore
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:execute', 'wes')")
     @PostMapping(value = "/runs", produces = {
         MediaType.APPLICATION_JSON_VALUE

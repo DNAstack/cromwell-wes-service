@@ -1,5 +1,7 @@
 package com.dnastack.wes.cromwell;
 
+import com.dnastack.audit.logger.AuditEventLogger;
+import com.dnastack.audit.model.*;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.api.*;
@@ -28,6 +30,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.*;
 import java.net.*;
@@ -59,6 +62,8 @@ public class CromwellService {
     private final AppConfig config;
     private final TransferService transferService;
     private final PathTranslatorFactory pathTranslatorFactory;
+    private final CromwellConfig cromwellConfig;
+    private final AuditEventLogger auditEventLogger;
 
     @Autowired
     CromwellService(
@@ -68,7 +73,9 @@ public class CromwellService {
         DrsObjectResolverFactory drsObjectResolverFactory,
         Jdbi jdbi,
         AppConfig appConfig,
-        TransferService transferService
+        TransferService transferService,
+        CromwellConfig config,
+        AuditEventLogger auditEventLogger
     ) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
@@ -77,6 +84,8 @@ public class CromwellService {
         this.transferService = transferService;
         this.jdbi = jdbi;
         this.storageClient = storageClient;
+        this.cromwellConfig = config;
+        this.auditEventLogger = auditEventLogger;
     }
 
 
@@ -343,6 +352,18 @@ public class CromwellService {
      * </ul>
      */
     public RunId execute(String subject, RunRequest runRequest) {
+        final String resourceUri = ServletUriComponentsBuilder.fromCurrentServletMapping()
+            .path("/ga4gh/wes/v1")
+            .toUriString();
+        auditEventLogger.log(AuditEventBody.builder()
+            .action(AuditedAction.builder().uri("wes:execute").build())
+            .resource(AuditedResource.builder().uri(resourceUri).build())
+            .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.STARTED).build())
+            .context(AuditedContext.builder().build())
+            .extraArguments(Map.of(
+                "cromwell_url",cromwellConfig.getUrl(),
+                "workflow_url", runRequest.getWorkflowUrl()
+            )).build());
         try {
             Path tempDirectory = null;
             try {
@@ -394,6 +415,17 @@ public class CromwellService {
 
                 }
 
+                auditEventLogger.log(AuditEventBody.builder()
+                    .action(AuditedAction.builder().uri("wes:execute").build())
+                    .resource(AuditedResource.builder().uri(resourceUri).build())
+                    .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.COMPLETED).build())
+                    .context(AuditedContext.builder().build())
+                    .extraArguments(Map.of(
+                        "cromwell_url",cromwellConfig.getUrl(),
+                        "workflow_url", runRequest.getWorkflowUrl(),
+                        "run_id", runId.getRunId()
+                    )).build());
+
                 return runId;
             } finally {
                 if (tempDirectory != null && tempDirectory.toFile().exists()) {
@@ -401,12 +433,19 @@ public class CromwellService {
                         .forEach(File::delete);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | FeignException e) {
+            auditEventLogger.log(AuditEventBody.builder()
+                .action(AuditedAction.builder().uri("wes:execute").build())
+                .resource(AuditedResource.builder().uri(resourceUri).build())
+                .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.FAILED).build())
+                .context(AuditedContext.builder().build())
+                .extraArguments(Map.of(
+                    "cromwell_url",cromwellConfig.getUrl(),
+                    "workflow_url", runRequest.getWorkflowUrl(),
+                    "failure_reason",e.getMessage()
+                )).build());
             throw new InvalidRequestException(e.getMessage(), e);
-        } catch (FeignException e) {
-            log.error(e.contentUTF8());
-            log.error(e.getMessage(), e);
-            throw new InvalidRequestException(e.getMessage(), e);
+
         }
     }
 
@@ -426,13 +465,15 @@ public class CromwellService {
             mappedFiles.put(attachment.getOriginalFilename(), stagingBlobLocation);
         }
 
-        processor.getMappedObjects()
-            .stream().forEach(objectWrapper -> {
-            JsonNode node = objectWrapper.getMappedValue();
-            if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
-                objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
-            }
-        });
+        if (processor != null) {
+            processor.getMappedObjects()
+                .stream().forEach(objectWrapper -> {
+                JsonNode node = objectWrapper.getMappedValue();
+                if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
+                    objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
+                }
+            });
+        }
     }
 
     private Map<String, CredentialsModel> getObjectAccessCredentials(RunRequest runRequest) throws IOException {
@@ -482,6 +523,11 @@ public class CromwellService {
     private void setWorkflowOptions(RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) throws IOException {
         Map<String, String> engineParams = runRequest.getWorkflowEngineParameters();
         Map<String, Object> cromwellOptions = new HashMap<>();
+
+        if (cromwellConfig.getDefaultWorkflowOptions() != null) {
+            cromwellOptions.putAll(cromwellConfig.getDefaultWorkflowOptions());
+        }
+
         Optional<MultipartFile> optionsFile = Stream.of(runRequest.getWorkflowAttachments())
             .filter((file) -> file.getOriginalFilename().endsWith(Constants.OPTIONS_FILE)).findFirst();
         TypeReference<Map<String, Object>> typeReference = new TypeReference<>() {

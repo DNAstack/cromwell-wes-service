@@ -31,7 +31,6 @@ wes:
     local:
       staging-path: /home/patrick/tools/cromwell/v54/uploads
 
-
   transfer:
     enabled: false
     object-transfer-uri:
@@ -55,6 +54,10 @@ wes:
       policy-evaluation-requester: ${info.app.url}
       policy-evaluation-uri: ${wes.auth.token-issuers[0].issuer-uri}/policies/evaluations
   enable-multi-tenant-support: false
+  cromwell:
+    defaultWorkflowOptions:
+      write_to_cache: false
+      read_from_cache: false
 # Auditing
 auditing:
   enabled: true
