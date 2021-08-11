@@ -21,7 +21,7 @@ public class OAuthRequest {
     @FormProperty("client_secret")
     String clientSecret;
 
-    @FormProperty("audience")
-    String audience;
+    @FormProperty("resource")
+    String resource;
 
 }

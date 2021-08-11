@@ -27,4 +27,5 @@ public class TrackedTransfer {
     @JsonProperty("failure_attempts")
     private int failureAttempts;
 
+
 }

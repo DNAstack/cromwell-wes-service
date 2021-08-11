@@ -20,11 +20,11 @@ public class TrackedTransferRowMapper implements RowMapper<TrackedTransfer> {
     @Override
     public TrackedTransfer map(ResultSet rs, StatementContext ctx) throws SQLException {
         return new TrackedTransfer(
+            rs.getTimestamp("last_update").toLocalDateTime().atZone(ZoneOffset.UTC),
+            rs.getTimestamp("created").toLocalDateTime().atZone(ZoneOffset.UTC),
             rs.getString("cromwell_id"),
             getJsonOrEmpty(rs.getString("transfer_job_ids")),
-            rs.getInt("failure_attempts"),
-            rs.getTimestamp("last_update").toLocalDateTime().atZone(ZoneOffset.UTC),
-            rs.getTimestamp("created").toLocalDateTime().atZone(ZoneOffset.UTC));
+            rs.getInt("failure_attempts"));
     }
 
     private List<String> getJsonOrEmpty(String json) throws SQLException {

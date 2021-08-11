@@ -48,7 +48,7 @@ public class OAuthTokenCache {
         request.setClientId(authConfig.getServiceAccountClientId());
         request.setClientSecret(authConfig.getServiceAccountSecret());
         request.setGrantType("client_credentials");
-        request.setAudience(audience);
+        request.setResource(audience);
         try {
             AccessToken accessToken = tokenClient.getToken(request);
             issuedAt = Instant.now().getEpochSecond();

@@ -92,8 +92,8 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Bean
     public PermissionChecker permissionChecker(
         List<IssuerInfo> allowedIssuers,
-        @Value("${app.validator.policy-evaluation-requester}") String policyEvaluationRequester,
-        @Value("${app.validator.policy-evaluation-uri}") String policyEvaluationUri,
+        @Value("${wes.auth.validator.policy-evaluation-requester}") String policyEvaluationRequester,
+        @Value("${wes.auth.validator.policy-evaluation-uri}") String policyEvaluationUri,
         Tracing tracing
     ) {
         return PermissionCheckerFactory.create(allowedIssuers, policyEvaluationRequester, policyEvaluationUri, tracing);

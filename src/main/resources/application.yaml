@@ -1,6 +1,6 @@
 wes:
   service-info:
-    auth-instruction-url: "https://wallet.staging.dnastack.com/.well-known/openid-configuration"
+    auth-instruction-url: "${wes.auth.token-issuers[0].issuer-uri}/.well-known/openid-configuration"
     supported-wes-versions:
       - "1.0.0"
     supported-file-system-protocols:
@@ -44,11 +44,6 @@ wes:
     service-account-secret: wes-service
     token-issuers:
       # Default Token issuer to use
-      - issuer-uri: https://wallet.staging.dnastack.com
-        jwk-set-uri: https://wallet.staging.dnastack.com/oauth/jwks
-        audiences:
-          - http://localhost:8080
-          - http://workspaces-wes.staging
       - issuer-uri: http://localhost:8081
         jwk-set-uri: http://localhost:8081/oauth/jwks
         audiences:
@@ -56,14 +51,36 @@ wes:
           - http://wes-service.local
           - http://wes.local
           - wes.local
+    validator:
+      policy-evaluation-requester: ${info.app.url}
+      policy-evaluation-uri: ${wes.auth.token-issuers[0].issuer-uri}/policies/evaluations
   enable-multi-tenant-support: false
-  path-translations:
-    - prefix: "http://localhost"
-      replacement: "/home/patrick"
-    - prefix: "/home/patrick/tools/cromwell/v42/"
-      replacement: "some-path/"
-    - prefix: "/home/patrick"
-      replacement: "some-path/"
+# Auditing
+auditing:
+  enabled: true
+  service-client-id: wes-service
+  batch-processing-enabled: false
+  scheduling:
+    batch-emit:
+      cron: 0/2 * * ? * *
+  publisher:
+    events-uri: ${auditing.oauth-client.audience}/events
+    events-batch-uri: ${auditing.oauth-client.audience}/events/batch
+    give-up-after: 5
+    delay-between-tries-in-millis: 250
+
+  oauth-client:
+    client-id: wes-service
+    client-secret: dev-secret-never-use-in-prod
+    scopes: audit:create
+    audience: http://localhost:8888
+    resource: ${auditing.publisher.events-uri}
+    actions: ["audit:create"]
+    token-uri: http://localhost:8081/oauth/token
+    token-issuers-uris: ${wes.auth.token-issuers}
+    policy-evaluation-requester: ${wes.auth.validator.policy-evaluation-requester}
+    policy-evaluation-uri:  ${wes.auth.validator.policy-evaluation-uri}
+  json-printer-style: dense_print
 # App information
 info:
   app:
