@@ -2,12 +2,7 @@ package com.dnastack.wes.storage;
 
 import com.dnastack.wes.shared.ConfigurationException;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -27,7 +22,7 @@ public class LocalBlobStorageClient implements BlobStorageClient {
             throw new ConfigurationException("Could not create LocalBlobStorageClient, no config provided");
         }
 
-        if ( config.getStagingPath() == null || config.getStagingPath().isEmpty()) {
+        if (config.getStagingPath() == null || config.getStagingPath().isEmpty()) {
             Path directory = Files.createTempDirectory("workflow_attachments");
             stagingPath = directory.toAbsolutePath().toString();
         } else {
@@ -93,8 +88,6 @@ public class LocalBlobStorageClient implements BlobStorageClient {
         }
 
 
-
-
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(fileToRead, "r")) {
             randomAccessFile.seek(rangeStart);
 
@@ -118,4 +111,5 @@ public class LocalBlobStorageClient implements BlobStorageClient {
             }
         }
     }
+
 }

@@ -1,12 +1,13 @@
 package com.dnastack.wes.wdl;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.Map;
 
-public class UploadedAttachmentObjectTranslator implements ObjectTranslator{
+public class UploadedAttachmentObjectTranslator implements ObjectTranslator {
 
-    UploadedAttachmentObjectTranslator(Map<String,String> uploadedAttachments){
-        
+    UploadedAttachmentObjectTranslator(Map<String, String> uploadedAttachments) {
+
     }
 
     @Override
@@ -18,4 +19,5 @@ public class UploadedAttachmentObjectTranslator implements ObjectTranslator{
     public boolean shouldMap(ObjectWrapper wrapper) {
         return false;
     }
+
 }

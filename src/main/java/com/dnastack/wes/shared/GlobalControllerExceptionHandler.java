@@ -1,14 +1,15 @@
 package com.dnastack.wes.shared;
 
-import com.dnastack.wes.drs.UnsupportedDrsAccessType;
 import com.dnastack.wes.api.ErrorResponse;
+import com.dnastack.wes.drs.UnsupportedDrsAccessType;
 import com.dnastack.wes.transfer.TransferFailedException;
 import feign.FeignException;
-import java.io.FileNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import java.io.FileNotFoundException;
 
 @ControllerAdvice
 public class GlobalControllerExceptionHandler {
@@ -53,4 +54,5 @@ public class GlobalControllerExceptionHandler {
     public ResponseEntity<ErrorResponse> handle(TransferFailedException ex) {
         return ResponseEntity.status(500).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(500).build());
     }
+
 }

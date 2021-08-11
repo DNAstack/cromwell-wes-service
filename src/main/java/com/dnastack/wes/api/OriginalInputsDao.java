@@ -15,7 +15,7 @@ public interface OriginalInputsDao {
 
 
     @RegisterRowMapper(OriginalInputRowMapper.class)
-    @SqlQuery("SELECT * FROM original_inputs where id = :id")
+    @SqlQuery("SELECT * FROM original_inputs WHERE id = :id")
     OriginalInputs getInputs(@Bind("id") String id);
 
 }

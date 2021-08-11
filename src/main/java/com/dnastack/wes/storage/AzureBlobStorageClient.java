@@ -1,15 +1,12 @@
 package com.dnastack.wes.storage;
 
-import com.azure.storage.blob.BlobClient;
-import com.azure.storage.blob.BlobContainerClient;
-import com.azure.storage.blob.BlobServiceClient;
-import com.azure.storage.blob.BlobServiceClientBuilder;
-import com.azure.storage.blob.BlobUrlParts;
+import com.azure.storage.blob.*;
 import com.azure.storage.blob.models.BlobRange;
 import com.azure.storage.blob.models.DownloadRetryOptions;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.dnastack.wes.shared.ConfigurationException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -19,7 +16,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
-import org.springframework.web.util.UriComponentsBuilder;
 
 public class AzureBlobStorageClient implements BlobStorageClient {
 
@@ -30,7 +26,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
     private final String stagingPath;
 
     public AzureBlobStorageClient(AzureBlobStorageClientConfig config) {
-        if (config == null){
+        if (config == null) {
             throw new ConfigurationException("Could not create ABS client");
         }
 
@@ -44,7 +40,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
         if (config.getContainer() != null) {
             container = config.getContainer();
-        } else  {
+        } else {
             throw new ConfigurationException("Container required to build AzureBlobStorageClient");
         }
 
@@ -106,7 +102,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
         BlobClient blobClient = containerClient.getBlobClient(blobName);
 
-        if (!blobClient.exists()){
+        if (!blobClient.exists()) {
             throw new IOException("Could not read from blob: " + blobUri + ", object does not exist");
         }
 
@@ -122,4 +118,5 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         blobClient.downloadWithResponse(outputStream, range, new DownloadRetryOptions()
             .setMaxRetryRequests(3), null, false, null, null);
     }
+
 }

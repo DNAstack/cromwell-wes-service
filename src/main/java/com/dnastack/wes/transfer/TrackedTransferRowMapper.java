@@ -2,14 +2,15 @@ package com.dnastack.wes.transfer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
-import org.jdbi.v3.core.mapper.RowMapper;
-import org.jdbi.v3.core.statement.StatementContext;
 
 public class TrackedTransferRowMapper implements RowMapper<TrackedTransfer> {
 
@@ -41,4 +42,5 @@ public class TrackedTransferRowMapper implements RowMapper<TrackedTransfer> {
             throw new SQLException("Unable to map '" + json + "' to " + type, e);
         }
     }
+
 }

@@ -1,9 +1,9 @@
 package com.dnastack.wes.transfer;
 
+import lombok.*;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.*;
 
 @EqualsAndHashCode
 @NoArgsConstructor

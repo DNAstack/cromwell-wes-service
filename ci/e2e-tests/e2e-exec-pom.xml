@@ -1,66 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.dnastack</groupId>
-  <artifactId>test-runner</artifactId>
-  <version>1.0-SNAPSHOT</version>
+    <groupId>com.dnastack</groupId>
+    <artifactId>test-runner</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
-  <description>
-    Allows us to run `mvn test` against an arbitrary fat jar inside a Docker image with no additional
-    dependencies required.
-  </description>
-
-
-  <dependencies>
-
-    <!-- The e2e-tests.jar is a fat jar built into the Docker image that also contains this POM. -->
-    <dependency>
-      <groupId>com.dnastack</groupId>
-      <artifactId>local-e2e-tests</artifactId>
-      <version>1.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/e2e-tests.jar</systemPath>
-    </dependency>
-
-    <!-- Surefire guesses at which JUnit version to use based on project dependencies -->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>5.3.2</version>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <version>5.3.2</version>
-    </dependency>
-  </dependencies>
+    <description>
+        Allows us to run `mvn test` against an arbitrary fat jar inside a Docker image with no additional
+        dependencies required.
+    </description>
 
 
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.22.1</version>
-        <configuration>
+    <dependencies>
 
-          <!-- Tells surefire to run the tests in our fat jar -->
-          <dependenciesToScan>
-            <dependency>com.dnastack:local-e2e-tests</dependency>
-          </dependenciesToScan>
+        <!-- The e2e-tests.jar is a fat jar built into the Docker image that also contains this POM. -->
+        <dependency>
+            <groupId>com.dnastack</groupId>
+            <artifactId>local-e2e-tests</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/e2e-tests.jar</systemPath>
+        </dependency>
 
-          <!-- Only run the tests we wrote: the fat jar tends to contain other JUnit @Test annotated methods. -->
-          <includes>
-            <include>%regex[com.dnastack.*\.class]</include>
-          </includes>
+        <!-- Surefire guesses at which JUnit version to use based on project dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.3.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.3.2</version>
+        </dependency>
+    </dependencies>
 
-          <!-- Forking doesn't work when we use dependenciesToScan (child VM dies with ClassNotFoundError) -->
-          <forkCount>0</forkCount>
-          <trimStackTrace>false</trimStackTrace>
 
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.1</version>
+                <configuration>
+
+                    <!-- Tells surefire to run the tests in our fat jar -->
+                    <dependenciesToScan>
+                        <dependency>com.dnastack:local-e2e-tests</dependency>
+                    </dependenciesToScan>
+
+                    <!-- Only run the tests we wrote: the fat jar tends to contain other JUnit @Test annotated methods. -->
+                    <includes>
+                        <include>%regex[com.dnastack.*\.class]</include>
+                    </includes>
+
+                    <!-- Forking doesn't work when we use dependenciesToScan (child VM dies with ClassNotFoundError) -->
+                    <forkCount>0</forkCount>
+                    <trimStackTrace>false</trimStackTrace>
+
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

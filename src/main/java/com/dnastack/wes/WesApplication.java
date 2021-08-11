@@ -11,4 +11,5 @@ public class WesApplication {
     public static void main(String[] args) {
         SpringApplication.run(WesApplication.class);
     }
+
 }

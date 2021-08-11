@@ -10,6 +10,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.auth.oauth2.GoogleCredentials;
 import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.jdbi.v3.core.Jdbi;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.net.URI;
@@ -20,14 +27,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.jdbi.v3.core.Jdbi;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import static java.lang.String.format;
 
@@ -63,7 +62,7 @@ public class TransferService {
 
                     if (now.minus(config.getMaxTransferWaitTimeMs(), ChronoUnit.MILLIS).isAfter(created)) {
                         throw new TransferFailedException("Transfer for job " + trackedTransfer.getCromwellId()
-                            + " has exceeded the maximum wait time. Failing the run and considering the transfer to have failed");
+                                                          + " has exceeded the maximum wait time. Failing the run and considering the transfer to have failed");
                     }
                     log.trace("Retrieved transfer context for run {}", trackedTransfer.getCromwellId());
                     List<TransferJob> jobs = new ArrayList<>();
@@ -147,20 +146,20 @@ public class TransferService {
                     throw e;
                 } catch (FeignException fe) {
                     throw new TransferFailedException(format("Failed to start file transfer on run [%s] with status %d: %s",
-                                                             context.getRunId(),
-                                                             fe.status(),
-                                                             fe.contentUTF8()),
-                                                      fe);
+                        context.getRunId(),
+                        fe.status(),
+                        fe.contentUTF8()),
+                        fe);
                 } catch (ServiceAccountException sae) {
                     throw new TransferFailedException(format("Error authorizing for object transfer on run [%s]: %s",
-                                                             context.getRunId(),
-                                                             sae.getMessage()),
-                                                      sae);
+                        context.getRunId(),
+                        sae.getMessage()),
+                        sae);
                 } catch (RuntimeException re) {
                     throw new TransferFailedException(format("Failed to start file transfer on run [%s]: %s",
-                                                             context.getRunId(),
-                                                             re.getMessage()),
-                                                      re);
+                        context.getRunId(),
+                        re.getMessage()),
+                        re);
                 }
             }
         }
@@ -226,10 +225,10 @@ public class TransferService {
             String stagingDirectoryPrefix = RandomStringUtils.randomAlphanumeric(6);
             for (ObjectWrapper wrapper : objectWrappers) {
                 configureObjectForTransfer(stagingDirectoryPrefix, objectAccessCredentials, wrapper)
-                        .forEach(transferSpec -> {
-                            objectsToTransfer.add(transferSpec);
-                            updateObjectWrapper(wrapper, transferSpec.getTargetSpec().getUri());
-                        });
+                    .forEach(transferSpec -> {
+                        objectsToTransfer.add(transferSpec);
+                        updateObjectWrapper(wrapper, transferSpec.getTargetSpec().getUri());
+                    });
             }
         }
 
@@ -278,17 +277,22 @@ public class TransferService {
         } else if (node.isArray()) {
             ArrayNode arrayNode = (ArrayNode) node;
             return StreamSupport.stream(arrayNode.spliterator(), false)
-                                .flatMap(itemNode -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessCredentials, itemNode, objectWrapper));
+                .flatMap(itemNode -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessCredentials, itemNode, objectWrapper));
         } else if (node.isObject()) {
             ObjectNode objectNode = (ObjectNode) node;
             return StreamSupport.stream(Spliterators.spliteratorUnknownSize(objectNode.fields(), 0), false)
-                                .flatMap(entry -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessCredentials, entry.getValue(), objectWrapper));
+                .flatMap(entry -> configureNodeForTransfer(staginDirectoryPrefix, objectAccessCredentials, entry.getValue(), objectWrapper));
         }
 
         return Stream.of();
     }
 
-    private Stream<TransferSpec> getTransferSpecs(CredentialsModel sourceCredentials, String objectToTransfer, URI objectToTransferUri, String staginDirectoryPrefix) {
+    private Stream<TransferSpec> getTransferSpecs(
+        CredentialsModel sourceCredentials,
+        String objectToTransfer,
+        URI objectToTransferUri,
+        String staginDirectoryPrefix
+    ) {
         String destination = generateTransferDestination(staginDirectoryPrefix, objectToTransferUri);
         String dstAccessToken = getDestinationAccessToken(destination).orElse(null);
 

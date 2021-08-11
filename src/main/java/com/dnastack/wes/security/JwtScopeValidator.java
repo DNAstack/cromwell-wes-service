@@ -1,10 +1,5 @@
 package com.dnastack.wes.security;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -12,10 +7,15 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.Assert;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 public class JwtScopeValidator implements OAuth2TokenValidator<Jwt> {
 
-    private final List<String> requiredScopes;
     private static final String SCOPE_CLAIM_NAME = "scope";
+    private final List<String> requiredScopes;
 
     public JwtScopeValidator(List<String> requiredScopes) {
         this.requiredScopes = requiredScopes;
@@ -56,4 +56,5 @@ public class JwtScopeValidator implements OAuth2TokenValidator<Jwt> {
 
         return OAuth2TokenValidatorResult.success();
     }
+
 }

@@ -1,15 +1,20 @@
 package com.dnastack.wes.storage;
 
 import com.google.cloud.storage.BlobId;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class GcpStorageUtils {
 
 
     public final static Pattern GSPattern = Pattern.compile("^gs://(?<bucket>[0-9a-zA-Z_\\-.]+)/(?<object>.+)$");
+
+    public static BlobId blobIdFromGsUrl(String gsUrl) {
+        return BlobId.of(getBucketName(gsUrl), getObjectName(gsUrl));
+    }
 
     public static String getBucketName(String gsUrl) {
         Matcher matcher = GSPattern.matcher(gsUrl);
@@ -29,7 +34,4 @@ public class GcpStorageUtils {
         }
     }
 
-    public static BlobId blobIdFromGsUrl(String gsUrl) {
-        return BlobId.of(getBucketName(gsUrl), getObjectName(gsUrl));
-    }
 }

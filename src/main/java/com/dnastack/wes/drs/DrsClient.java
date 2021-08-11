@@ -1,8 +1,8 @@
 package com.dnastack.wes.drs;
 
-import com.dnastack.wes.drs.DrsObject;
 import feign.Param;
 import feign.RequestLine;
+
 import java.net.URI;
 
 public interface DrsClient {

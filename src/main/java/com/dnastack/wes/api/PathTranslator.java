@@ -8,11 +8,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import lombok.Getter;
+
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import lombok.Getter;
 
 /**
  * Given a path prefix
@@ -26,13 +27,13 @@ public class PathTranslator implements ObjectTranslator {
     private String replacement;
     private ObjectMapper mapper;
 
-    public PathTranslator(String prefixRegex, String replacement){
-        this(prefixRegex,replacement,PathLocation.ALL);
+    public PathTranslator(String prefixRegex, String replacement) {
+        this(prefixRegex, replacement, PathLocation.ALL);
     }
 
     public PathTranslator(String prefixRegex, String replacement, PathLocation location) {
         //Bind the prefixRegix to the start of the string pattern
-        if (!prefixRegex.startsWith("^")){
+        if (!prefixRegex.startsWith("^")) {
             prefixRegex = "^" + prefixRegex;
         }
 
@@ -133,4 +134,5 @@ public class PathTranslator implements ObjectTranslator {
     public boolean shouldMap(ObjectWrapper wrapper) {
         return shouldMapJsonNode(wrapper.getMappedValue());
     }
+
 }

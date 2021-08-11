@@ -1,10 +1,10 @@
 package com.dnastack.wes.storage;
 
 import com.dnastack.wes.storage.BlobStorageClientConfig.ClientName;
-
-import java.io.IOException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.io.IOException;
 
 @Configuration
 public class BlobStorageClientConfiguration {

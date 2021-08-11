@@ -27,14 +27,17 @@ public class AccessEvaluator {
 
     /**
      * Usage of this method:
+     *
+     * @param requiredResource path to the api endpoint
+     * @param requiredActions  check actions defined in policy
+     * @param requiredScopes   check scopes defined in policy
+     *
+     * @return boolean value specifying whether the user can access the resource
+     *
      * @PreAuthorize("@accessEvaluator.canAccessResource('/api/endpoint', 'app:feature:read', 'openid')")
      * Add the above line with appropriate api endpoint, actions and scopes on a controller method
      * to preauthorize the request
      * Additionally, you can handle exceptions using @ExceptionHandler
-     * @param requiredResource path to the api endpoint
-     * @param requiredActions check actions defined in policy
-     * @param requiredScopes check scopes defined in policy
-     * @return boolean value specifying whether the user can access the resource
      */
     public boolean canAccessResource(String requiredResource, Set<String> requiredActions, Set<String> requiredScopes) {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -47,18 +50,18 @@ public class AccessEvaluator {
             return false;
         }
         return Optional.ofNullable(authentication.getPrincipal())
-                .map((principal) -> (Jwt) principal)
-                .map((jwtPrincipal) -> {
-                    final String fullResourceUrl = appUrl + requiredResource;
-                    boolean hasPermissions = permissionChecker.hasPermissions(jwtPrincipal.getTokenValue(), requiredScopes, fullResourceUrl, requiredActions);
-                    if (!hasPermissions) {
-                        log.info("Denying access to {} for {}. requiredScopes={}; requiredActions={}; actualScopes={}; actualActions={}",
-                                jwtPrincipal.getSubject(), fullResourceUrl, requiredScopes, requiredActions,
-                                jwtPrincipal.getClaims().get("scope"), jwtPrincipal.getClaims().get("actions"));
-                    }
-                    return hasPermissions;
-                })
-                .orElse(false);
+            .map((principal) -> (Jwt) principal)
+            .map((jwtPrincipal) -> {
+                final String fullResourceUrl = appUrl + requiredResource;
+                boolean hasPermissions = permissionChecker.hasPermissions(jwtPrincipal.getTokenValue(), requiredScopes, fullResourceUrl, requiredActions);
+                if (!hasPermissions) {
+                    log.info("Denying access to {} for {}. requiredScopes={}; requiredActions={}; actualScopes={}; actualActions={}",
+                        jwtPrincipal.getSubject(), fullResourceUrl, requiredScopes, requiredActions,
+                        jwtPrincipal.getClaims().get("scope"), jwtPrincipal.getClaims().get("actions"));
+                }
+                return hasPermissions;
+            })
+            .orElse(false);
     }
 
 }

@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import lombok.extern.slf4j.Slf4j;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -15,7 +17,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -25,33 +26,24 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DrsObjectResolver implements ObjectTranslator {
 
-    private DrsConfig drsConfig;
-
     private final static Pattern drsPattern = Pattern
         .compile("drs://(?<drsServer>[^/]*)/(?<objectId>[A-Za-z0-9.-_~]*)");
     private final static String HTTP_SCHEME = "http";
-
-
     private final DrsClient drsClient;
+    private DrsConfig drsConfig;
 
     DrsObjectResolver(DrsConfig drsConfig, DrsClient drsClient) {
         this.drsConfig = drsConfig;
         this.drsClient = drsClient;
     }
 
-    private boolean isDrsUri(JsonNode element) {
-        if (element.isTextual()) {
-            String elemString = element.textValue();
-            return drsPattern.matcher(elemString).find();
-        }
-        return false;
-    }
-
     /**
      * Recursively resolve a single DrsUri. If the resulting object is a bundle, resolve all of the
      * Content's objects as DrsObjects and set the {@link DrsObject#setResolvedDrsContents(List)}. By default
      * This supports Drs V1
+     *
      * @param drsUri
+     *
      * @return
      */
     private DrsObject resolveDrsObject(String drsUri) {
@@ -108,7 +100,6 @@ public class DrsObjectResolver implements ObjectTranslator {
         return drsObject;
     }
 
-
     /**
      * Extract an AccessUrl from the access method. Use the list of supported access types defined by the configuration
      * and resolve the URL in the order returned by the supported types. Currently, only access methods requiring no
@@ -163,9 +154,17 @@ public class DrsObjectResolver implements ObjectTranslator {
         return extractUrlsFromDrsObject(drsObject);
     }
 
-
     @Override
     public boolean shouldMap(ObjectWrapper wrapper) {
         return isDrsUri(wrapper.getOriginalValue());
     }
+
+    private boolean isDrsUri(JsonNode element) {
+        if (element.isTextual()) {
+            String elemString = element.textValue();
+            return drsPattern.matcher(elemString).find();
+        }
+        return false;
+    }
+
 }

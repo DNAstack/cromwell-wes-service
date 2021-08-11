@@ -18,20 +18,18 @@ public class OAuthTokenCache {
     private final OauthTokenClient tokenClient;
 
     private final AuthConfig authConfig;
+    private AccessToken token;
+    private Long issuedAt = 0L;
 
     public OAuthTokenCache(OauthTokenClient tokenClient, AuthConfig authConfig) {
         this.tokenClient = tokenClient;
         this.authConfig = authConfig;
     }
 
-    private AccessToken token;
-
-    private Long issuedAt = 0L;
-
-
     /**
      * Retrieve a token in a thread safe way. If the token exists, make sure the token is not expired within a buffer
      * zone. If the the token has already expired, then retrieve a new token.
+     *
      * @param audience
      */
     public synchronized AccessToken getToken(String audience) {
@@ -60,4 +58,5 @@ public class OAuthTokenCache {
             throw new ServiceAccountException(fe);
         }
     }
+
 }

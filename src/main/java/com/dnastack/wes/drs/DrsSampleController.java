@@ -1,25 +1,16 @@
 package com.dnastack.wes.drs;
 
-import com.dnastack.wes.drs.AccessMethod;
-import com.dnastack.wes.drs.AccessType;
-import com.dnastack.wes.drs.AccessURL;
-import com.dnastack.wes.drs.CheckSum;
-import com.dnastack.wes.drs.ContentsObject;
-import com.dnastack.wes.drs.DrsObject;
-import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
+import java.time.ZonedDateTime;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -33,13 +24,13 @@ public class DrsSampleController {
     public DrsObject getObject(HttpServletRequest request, @PathVariable("objectId") String objectId) {
         if (drsObjects.containsKey(objectId)) {
 
-            String drsUri = "drs://" + request.getServerName() + ":" + request.getServerPort() +  "/" + objectId;
+            String drsUri = "drs://" + request.getServerName() + ":" + request.getServerPort() + "/" + objectId;
             DrsObject object = drsObjects.get(objectId);
             object.setSelfUri(drsUri);
             return object;
 
         } else {
-            throw new  IllegalArgumentException("Could not find");
+            throw new IllegalArgumentException("Could not find");
         }
 
     }
@@ -51,8 +42,8 @@ public class DrsSampleController {
 
     }
 
-    private Map<String,DrsObject> buildDrsObjects() {
-        Map<String,DrsObject> drsObjects = new HashMap<>();
+    private Map<String, DrsObject> buildDrsObjects() {
+        Map<String, DrsObject> drsObjects = new HashMap<>();
         //Build Single Drs Object
         DrsObject singleObject = new DrsObject();
         singleObject.setId("1");

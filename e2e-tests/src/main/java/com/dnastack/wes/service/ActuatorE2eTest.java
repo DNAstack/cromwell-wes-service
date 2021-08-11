@@ -1,23 +1,24 @@
 package com.dnastack.wes.service;
 
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.util.stream.Stream;
+
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-import java.util.stream.Stream;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 
 @DisplayName("Actuator tests")
 public class ActuatorE2eTest extends BaseE2eTest {
 
-  @Test
-  @DisplayName("App information is appropriately returned")
-  public void appNameAndVersionShouldBeExposed() {
-    //@formatter:off
+    @Test
+    @DisplayName("App information is appropriately returned")
+    public void appNameAndVersionShouldBeExposed() {
+        //@formatter:off
         given()
             .log().method()
             .log().uri()
@@ -28,14 +29,14 @@ public class ActuatorE2eTest extends BaseE2eTest {
             .statusCode(200)
             .body("app.version", notNullValue());
         //@formatter:on
-  }
+    }
 
-  @Test
-  @DisplayName("Sensitive system information should not be exposed to users")
-  public void sensitiveInfoShouldNotBeExposed() {
-    Stream.of("auditevents", "beans", "conditions", "configprops", "env", "flyway", "httptrace", "logfile", "loggers",
-        "liquibase", "metrics", "mappings", "prometheus", "scheduledtasks", "sessions", "shutdown", "threaddump")
-        //@formatter:off
+    @Test
+    @DisplayName("Sensitive system information should not be exposed to users")
+    public void sensitiveInfoShouldNotBeExposed() {
+        Stream.of("auditevents", "beans", "conditions", "configprops", "env", "flyway", "httptrace", "logfile", "loggers",
+            "liquibase", "metrics", "mappings", "prometheus", "scheduledtasks", "sessions", "shutdown", "threaddump")
+            //@formatter:off
                 .forEach(endpoint -> {
                     given()
                         .log().method()
@@ -47,6 +48,6 @@ public class ActuatorE2eTest extends BaseE2eTest {
                         .statusCode(anyOf(equalTo(401), equalTo(404),equalTo(403)));
                     });
         //@formatter:on
-  }
+    }
 
 }

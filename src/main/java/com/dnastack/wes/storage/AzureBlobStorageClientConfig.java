@@ -8,5 +8,6 @@ public class AzureBlobStorageClientConfig {
     public String connectionString;
     public String container;
     public String stagingPath;
-    public Long signedUrlTtl = 1000L * 60L * 60L * 24L ;
+    public Long signedUrlTtl = 1000L * 60L * 60L * 24L;
+
 }

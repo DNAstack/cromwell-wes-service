@@ -1,7 +1,5 @@
 package com.dnastack.wes.transfer;
 
-import com.dnastack.wes.transfer.TransferJob;
-import com.dnastack.wes.transfer.TransferRequest;
 import feign.Headers;
 import feign.Param;
 import feign.RequestLine;

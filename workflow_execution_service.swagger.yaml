@@ -155,13 +155,13 @@ paths:
         `workflow_attachment`.  The WES endpoint must understand and
         be able to access URLs supplied in the input.  This is
         implementation specific.
- 
- 
+
+
         The `workflow_type` is the type of workflow language and
         must be "CWL" or "WDL" currently (or another alternative 
         supported by this WES instance).
- 
- 
+
+
         The `workflow_type_version` is the version of the workflow language
         submitted and must be one supported by this WES instance.
 
@@ -191,7 +191,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
       consumes:
-         - multipart/form-data
+        - multipart/form-data
       parameters:
         - in: formData
           name: workflow_params
@@ -623,14 +623,14 @@ definitions:
           type: string
         description: >-
           OPTIONAL
-          
+
           Additional parameters can be sent to the workflow engine using this field. Default values
           for these parameters can be obtained using the ServiceInfo endpoint.
       workflow_url:
         type: string
         description: >-
           REQUIRED
-          
+
           The workflow CWL or WDL document.
           When `workflow_attachments` is used to attach files, the `workflow_url` may be a relative path
           to one of the attachments.
@@ -646,7 +646,7 @@ definitions:
   RunStatus:
     type: object
     required:
-     - run_id
+      - run_id
     properties:
       run_id:
         type: string

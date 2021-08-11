@@ -17,4 +17,5 @@ public interface BlobStorageClient {
 
 
     void readBytes(OutputStream outputStream, String blobUri, Long rangeStart, Long rangeEnd) throws IOException;
+
 }

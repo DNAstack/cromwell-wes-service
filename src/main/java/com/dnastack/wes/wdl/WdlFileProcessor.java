@@ -14,16 +14,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.Getter;
+
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import lombok.Getter;
+import java.util.*;
 
 
 /**
@@ -37,16 +33,13 @@ import lombok.Getter;
  */
 public class WdlFileProcessor {
 
+    private final List<ObjectTranslator> translators;
     private Map<String, Object> inputs;
-
     @Getter
     private Map<String, Object> processedInputs;
     private ObjectMapper mapper;
-
     @Getter
     private List<ObjectWrapper> mappedObjects;
-    private final List<ObjectTranslator> translators;
-
     private Set<String> uploadedAttachments;
 
     public WdlFileProcessor(Map<String, Object> inputs, Set<String> uploadedAttachments, List<ObjectTranslator> translators) {

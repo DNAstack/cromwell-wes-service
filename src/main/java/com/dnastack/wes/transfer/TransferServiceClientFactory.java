@@ -1,10 +1,10 @@
 package com.dnastack.wes.transfer;
 
+import com.dnastack.wes.security.AuthConfig;
+import com.dnastack.wes.shared.AccessToken;
 import com.dnastack.wes.shared.ClientConfigurations.SimpleLogger;
 import com.dnastack.wes.shared.OAuthTokenCache;
 import com.dnastack.wes.shared.OauthTokenClient;
-import com.dnastack.wes.security.AuthConfig;
-import com.dnastack.wes.shared.AccessToken;
 import feign.Client;
 import feign.Feign;
 import feign.Logger.Level;
@@ -22,6 +22,7 @@ public class TransferServiceClientFactory {
     private final TransferConfig transferConfig;
     private final Encoder encoder;
     private final Decoder decoder;
+    private TransferServiceClient instance;
 
     @Autowired
     public TransferServiceClientFactory(AuthConfig authConfig, TransferConfig transferConfig, Encoder encoder, Decoder decoder) {
@@ -30,8 +31,6 @@ public class TransferServiceClientFactory {
         this.encoder = encoder;
         this.decoder = decoder;
     }
-
-    private TransferServiceClient instance;
 
     public TransferServiceClient getClient() {
         if (transferConfig.isEnabled()) {

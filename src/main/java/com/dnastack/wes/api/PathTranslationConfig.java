@@ -17,7 +17,9 @@ public class PathTranslationConfig {
     PathLocation location = PathLocation.ALL;
 
     public enum PathLocation {
-        ALL, INPUTS, OUTPUTS
+        ALL,
+        INPUTS,
+        OUTPUTS
     }
 
 }

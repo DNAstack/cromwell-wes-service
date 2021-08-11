@@ -1,6 +1,6 @@
 package com.dnastack.wes.shared;
 
-public class ConfigurationException extends RuntimeException{
+public class ConfigurationException extends RuntimeException {
 
     public ConfigurationException() {
         super();
@@ -13,4 +13,5 @@ public class ConfigurationException extends RuntimeException{
     public ConfigurationException(String message, Throwable cause) {
         super(message, cause);
     }
+
 }

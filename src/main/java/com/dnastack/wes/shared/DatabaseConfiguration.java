@@ -1,14 +1,14 @@
 package com.dnastack.wes.shared;
 
 
-import javax.sql.DataSource;
-
 import com.dnastack.wes.api.OriginalInputRowMapper;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import javax.sql.DataSource;
 
 @Configuration
 public class DatabaseConfiguration {
@@ -24,4 +24,5 @@ public class DatabaseConfiguration {
             .registerRowMapper(new OriginalInputRowMapper())
             .installPlugin(new SqlObjectPlugin());
     }
+
 }

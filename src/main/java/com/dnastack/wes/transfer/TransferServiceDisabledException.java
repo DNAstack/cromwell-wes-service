@@ -9,4 +9,5 @@ public class TransferServiceDisabledException extends RuntimeException {
     public TransferServiceDisabledException(String message) {
         super(message);
     }
+
 }

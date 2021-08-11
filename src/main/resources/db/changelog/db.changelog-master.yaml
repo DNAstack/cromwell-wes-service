@@ -21,7 +21,7 @@ databaseChangeLog:
               - addPrimaryKey:
                   constraintName: pk_file_mappings
                   tableName: file_mappings
-                  columnNames: ["id"]
+                  columnNames: [ "id" ]
   - changeSet:
       id: 2
       author: Patrick Magee
@@ -51,7 +51,7 @@ databaseChangeLog:
               - addPrimaryKey:
                   constraintName: pk_original_inputs
                   tableName: original_inputs
-                  columnNames: ["id"]
+                  columnNames: [ "id" ]
   - changeSet:
       id: 4
       author: Patrick Magee
@@ -89,4 +89,4 @@ databaseChangeLog:
               - addPrimaryKey:
                   constraintName: pk_tracked_transfers
                   tableName: tracked_transfers
-                  columnNames: ["cromwell_id"]
+                  columnNames: [ "cromwell_id" ]

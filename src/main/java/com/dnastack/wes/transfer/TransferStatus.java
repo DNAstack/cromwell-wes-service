@@ -1,12 +1,6 @@
 package com.dnastack.wes.transfer;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
 @Setter
@@ -23,12 +17,12 @@ public class TransferStatus {
 
     private Long submissionTime;
 
-    public boolean isDone() {
-        return status.equals("complete") || status.equals("failed") || status.equals("canceled");
-    }
-
     public boolean isSuccessful() {
         return isDone() && status.equals("complete");
+    }
+
+    public boolean isDone() {
+        return status.equals("complete") || status.equals("failed") || status.equals("canceled");
     }
 
 }

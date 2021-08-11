@@ -1,16 +1,16 @@
 package com.dnastack.wes.storage.client.local;
 
+import com.dnastack.wes.storage.LocalBlobStorageClient;
+import com.dnastack.wes.storage.LocalBlobStorageClientConfig;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-
-import com.dnastack.wes.storage.LocalBlobStorageClient;
-import com.dnastack.wes.storage.LocalBlobStorageClientConfig;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 
 class LocalBlobStorageClientTest {
 
@@ -73,9 +73,9 @@ class LocalBlobStorageClientTest {
         Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        storageClient.readBytes(outputStream,targetPath.toString(),0L,(long) toWrite.length());
+        storageClient.readBytes(outputStream, targetPath.toString(), 0L, (long) toWrite.length());
         String readValue = outputStream.toString();
-        Assertions.assertEquals(readValue,toWrite);
+        Assertions.assertEquals(readValue, toWrite);
 
     }
 
@@ -90,9 +90,9 @@ class LocalBlobStorageClientTest {
         Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        storageClient.readBytes(outputStream,targetPath.toString(),5L,(long) toWrite.length());
+        storageClient.readBytes(outputStream, targetPath.toString(), 5L, (long) toWrite.length());
         String readValue = outputStream.toString();
-        Assertions.assertEquals(toWrite.substring(5),readValue);
+        Assertions.assertEquals(toWrite.substring(5), readValue);
     }
 
 }

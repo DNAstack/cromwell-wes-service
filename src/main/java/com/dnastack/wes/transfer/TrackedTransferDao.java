@@ -1,13 +1,14 @@
 package com.dnastack.wes.transfer;
 
-import java.time.ZonedDateTime;
-import java.util.List;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+
+import java.time.ZonedDateTime;
+import java.util.List;
 
 public interface TrackedTransferDao {
 
@@ -26,7 +27,11 @@ public interface TrackedTransferDao {
 
     @Transaction
     @SqlUpdate("UPDATE tracked_transfers SET last_update = :lastUpdate, failure_attempts = :failureAttempts WHERE cromwell_id = :cromwellId")
-    void updateTransfeFailureAttempts(@Bind("lastUpdate") ZonedDateTime lastUpdate, @Bind("failureAttempts") int failureAttempts, @Bind("cromwellId") String cromwellId);
+    void updateTransfeFailureAttempts(
+        @Bind("lastUpdate") ZonedDateTime lastUpdate,
+        @Bind("failureAttempts") int failureAttempts,
+        @Bind("cromwellId") String cromwellId
+    );
 
     @SqlQuery("SELECT * FROM tracked_transfers")
     @RegisterRowMapper(TrackedTransferRowMapper.class)

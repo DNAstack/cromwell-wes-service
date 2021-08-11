@@ -2,11 +2,12 @@ package com.dnastack.wes.api;
 
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.api.PathTranslationConfig.PathLocation;
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Component;
 
 @Component
 public class PathTranslatorFactory {

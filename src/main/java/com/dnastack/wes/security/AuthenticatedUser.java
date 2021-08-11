@@ -8,7 +8,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 @Slf4j
 public class AuthenticatedUser {
 
-    public static Jwt getJwt(){
+    public static Jwt getJwt() {
         try {
             return (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         } catch (Exception e) {

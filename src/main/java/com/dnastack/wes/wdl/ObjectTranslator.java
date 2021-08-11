@@ -7,4 +7,5 @@ public interface ObjectTranslator {
     JsonNode mapObjects(ObjectWrapper wrapper);
 
     boolean shouldMap(ObjectWrapper wrapper);
+
 }

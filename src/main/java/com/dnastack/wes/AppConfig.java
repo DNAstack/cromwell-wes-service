@@ -3,12 +3,13 @@ package com.dnastack.wes;
 import com.dnastack.wes.api.PathTranslationConfig;
 import com.dnastack.wes.api.ServiceInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -46,4 +47,5 @@ public class AppConfig {
             return serviceInfo;
         }
     }
+
 }

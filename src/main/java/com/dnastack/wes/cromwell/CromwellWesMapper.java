@@ -1,26 +1,17 @@
 package com.dnastack.wes.cromwell;
 
 import com.dnastack.wes.Constants;
-import com.dnastack.wes.api.Log;
-import com.dnastack.wes.api.RunListResponse;
-import com.dnastack.wes.api.RunLog;
-import com.dnastack.wes.api.RunRequest;
-import com.dnastack.wes.api.RunStatus;
-import com.dnastack.wes.api.State;
-import com.dnastack.wes.api.PathTranslator;
+import com.dnastack.wes.api.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class CromwellWesMapper {
@@ -37,12 +28,39 @@ public class CromwellWesMapper {
         return RunStatus.builder().runId(status.getId()).state(mapState(status.getStatus())).build();
     }
 
+    public static State mapState(String cromwellState) {
+        cromwellState = cromwellState.toLowerCase();
+        switch (cromwellState) {
+            case "on hold":
+                return State.QUEUED;
+            case "succeeded":
+                return State.COMPLETE;
+            case "submitted":
+                return State.INITIALIZING;
+            case "running":
+                return State.RUNNING;
+            case "aborting":
+                return State.CANCELINGSTATE;
+            case "aborted":
+                return State.CANCELED;
+            case "failed":
+                return State.EXECUTOR_ERROR;
+            default:
+                return State.UNKNOWN;
+
+        }
+
+    }
 
     public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
         return mapMetadataToRunLog(metadataResponse, originalInputs, null);
     }
 
-    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs, List<PathTranslator> pathTranslators) {
+    public static RunLog mapMetadataToRunLog(
+        CromwellMetadataResponse metadataResponse,
+        Map<String, Object> originalInputs,
+        List<PathTranslator> pathTranslators
+    ) {
         RunLog runLog = new RunLog();
         runLog.setRunId(metadataResponse.getId());
         runLog.setState(mapState(metadataResponse.getStatus()));
@@ -54,8 +72,8 @@ public class CromwellWesMapper {
         String workflowEnd = metadataResponse.getEnd() == null ? null : metadataResponse.getEnd().toString();
         Log workflowLog = Log.builder().startTime(workflowStart).endTime(workflowEnd)
             .name(metadataResponse.getWorkflowName()).build();
-        if (metadataResponse.getFailures() != null){
-            workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs","stderr").build().toString());
+        if (metadataResponse.getFailures() != null) {
+            workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs", "stderr").build().toString());
         }
         runLog.setRunLog(workflowLog);
         runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
@@ -76,6 +94,22 @@ public class CromwellWesMapper {
             return objectMapper.convertValue(node, typeReference);
         }
         return objectToTranslate;
+    }
+
+    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
+        List<Log> taskLogs = new ArrayList<>();
+
+        if (calls != null) {
+            for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
+                List<CromwellTaskCall> taskCalls = entry.getValue();
+                for (int i = 0; i < taskCalls.size(); i++) {
+                    CromwellTaskCall taskCall = taskCalls.get(i);
+
+                    taskLogs.add(mapTaskCallToLog(entry.getKey(), i, taskCall));
+                }
+            }
+        }
+        return taskLogs;
     }
 
     private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
@@ -107,6 +141,19 @@ public class CromwellWesMapper {
         return runRequest;
     }
 
+    public static Log mapTaskCallToLog(String name, Integer index, CromwellTaskCall taskCall) {
+
+        String taskStart = taskCall.getStart() == null ? null : taskCall.getStart().toString();
+        String taskEnd = taskCall.getEnd() == null ? null : taskCall.getEnd().toString();
+        String stdout = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
+            .pathSegment("logs", "task", name, index.toString(), "stdout").toUriString();
+        String stderr = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
+            .pathSegment("logs", "task", name, index.toString(), "stderr").toUriString();
+
+        return Log.builder().name(name).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
+            .startTime(taskStart).endTime(taskEnd).stderr(stderr).stdout(stdout).build();
+
+    }
 
     private static Map<String, Object> getWorkflowOptions(CromwellMetadataResponse metadataResponse) {
         Map<String, String> submittedFiles = metadataResponse.getSubmittedFiles();
@@ -144,61 +191,6 @@ public class CromwellWesMapper {
 
         }
         return engineParams;
-
-    }
-
-
-    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
-        List<Log> taskLogs = new ArrayList<>();
-
-        if (calls != null) {
-            for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
-                List<CromwellTaskCall> taskCalls = entry.getValue();
-                for (int i = 0; i < taskCalls.size(); i++) {
-                    CromwellTaskCall taskCall = taskCalls.get(i);
-
-                    taskLogs.add(mapTaskCallToLog( entry.getKey(), i, taskCall));
-                }
-            }
-        }
-        return taskLogs;
-    }
-
-    public static Log mapTaskCallToLog(String name, Integer index, CromwellTaskCall taskCall) {
-
-        String taskStart = taskCall.getStart() == null ? null : taskCall.getStart().toString();
-        String taskEnd = taskCall.getEnd() == null ? null : taskCall.getEnd().toString();
-        String stdout = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
-            .pathSegment("logs", "task",name, index.toString(), "stdout").toUriString();
-        String stderr = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
-            .pathSegment("logs","task", name, index.toString(), "stderr").toUriString();
-
-        return Log.builder().name(name).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
-            .startTime(taskStart).endTime(taskEnd).stderr(stderr).stdout(stdout).build();
-
-    }
-
-    public static State mapState(String cromwellState) {
-        cromwellState = cromwellState.toLowerCase();
-        switch (cromwellState) {
-            case "on hold":
-                return State.QUEUED;
-            case "succeeded":
-                return State.COMPLETE;
-            case "submitted":
-                return State.INITIALIZING;
-            case "running":
-                return State.RUNNING;
-            case "aborting":
-                return State.CANCELINGSTATE;
-            case "aborted":
-                return State.CANCELED;
-            case "failed":
-                return State.EXECUTOR_ERROR;
-            default:
-                return State.UNKNOWN;
-
-        }
 
     }
 

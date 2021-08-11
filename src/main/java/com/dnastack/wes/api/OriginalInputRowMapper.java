@@ -2,13 +2,14 @@ package com.dnastack.wes.api;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Map;
-import org.jdbi.v3.core.mapper.RowMapper;
-import org.jdbi.v3.core.statement.StatementContext;
 
 public class OriginalInputRowMapper implements RowMapper<OriginalInputs> {
 
@@ -37,4 +38,5 @@ public class OriginalInputRowMapper implements RowMapper<OriginalInputs> {
             throw new SQLException("Unable to map '" + json + "' to " + type, e);
         }
     }
+
 }

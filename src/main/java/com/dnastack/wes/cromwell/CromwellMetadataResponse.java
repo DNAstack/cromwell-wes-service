@@ -1,15 +1,10 @@
 package com.dnastack.wes.cromwell;
 
+import lombok.*;
+
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 /**
  * @author Patrick Magee
@@ -34,10 +29,11 @@ public class CromwellMetadataResponse {
     private ZonedDateTime start;
     private ZonedDateTime end;
 
-    private Map<String,String> submittedFiles;
+    private Map<String, String> submittedFiles;
     private Map<String, List<CromwellTaskCall>> calls;
-    private Map<String,String> labels;
+    private Map<String, String> labels;
     private Map<String, Object> outputs;
-    private Map<String,Object> inputs;
+    private Map<String, Object> inputs;
     private List<CromwellFailure> failures;
+
 }

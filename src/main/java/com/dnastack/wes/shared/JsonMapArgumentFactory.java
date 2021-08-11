@@ -2,16 +2,17 @@ package com.dnastack.wes.shared;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.UncheckedIOException;
-import java.lang.reflect.Type;
-import java.sql.Types;
-import java.util.Map;
-import java.util.Optional;
 import org.jdbi.v3.core.argument.Argument;
 import org.jdbi.v3.core.argument.ArgumentFactory;
 import org.jdbi.v3.core.argument.NullArgument;
 import org.jdbi.v3.core.argument.ObjectArgument;
 import org.jdbi.v3.core.config.ConfigRegistry;
+
+import java.io.UncheckedIOException;
+import java.lang.reflect.Type;
+import java.sql.Types;
+import java.util.Map;
+import java.util.Optional;
 
 public class JsonMapArgumentFactory implements ArgumentFactory {
 
@@ -33,4 +34,5 @@ public class JsonMapArgumentFactory implements ArgumentFactory {
         }
         return Optional.empty();
     }
+
 }

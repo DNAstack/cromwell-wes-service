@@ -1,8 +1,5 @@
 package com.dnastack.wes.service;
 
-import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.fail;
-
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.EncoderConfig;
@@ -10,9 +7,13 @@ import io.restassured.config.RestAssuredConfig;
 import io.restassured.filter.log.LogDetail;
 import io.restassured.http.Header;
 import io.restassured.specification.RequestSpecification;
+import org.junit.jupiter.api.BeforeAll;
+
 import java.util.Objects;
 import java.util.Set;
-import org.junit.jupiter.api.BeforeAll;
+
+import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public abstract class BaseE2eTest {
 
@@ -50,8 +51,13 @@ public abstract class BaseE2eTest {
         return val;
     }
 
+    public Header getHeader(String requiredResource) {
+        return getHeader(requiredResource, null);
+    }
 
-
+    public Header getHeader(String requiredResources, Set<String> requiredScopes) {
+        return new Header("Authorization", "Bearer " + getAccessToken(requiredResources, requiredScopes));
+    }
 
     private String getAccessToken(String requiredResources, Set<String> requiredScopes) {
         Objects.requireNonNull(requiredResources);
@@ -85,14 +91,6 @@ public abstract class BaseE2eTest {
             .jsonPath()
             .getString("access_token");
         //formatter:on
-    }
-
-    public Header getHeader(String requiredResource){
-        return getHeader(requiredResource,null);
-    }
-
-    public Header getHeader(String requiredResources, Set<String> requiredScopes) {
-        return new Header("Authorization", "Bearer " + getAccessToken(requiredResources, requiredScopes));
     }
 
 }

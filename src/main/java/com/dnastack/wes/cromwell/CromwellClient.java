@@ -1,11 +1,5 @@
 package com.dnastack.wes.cromwell;
 
-import com.dnastack.wes.cromwell.CromwellExecutionRequest;
-import com.dnastack.wes.cromwell.CromwellMetadataResponse;
-import com.dnastack.wes.cromwell.CromwellResponse;
-import com.dnastack.wes.cromwell.CromwellSearch;
-import com.dnastack.wes.cromwell.CromwellStatus;
-import com.dnastack.wes.cromwell.CromwellVersion;
 import feign.Headers;
 import feign.Param;
 import feign.QueryMap;

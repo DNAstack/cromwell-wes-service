@@ -6,4 +6,5 @@ import lombok.Data;
 public class LocalBlobStorageClientConfig {
 
     private String stagingPath;
+
 }

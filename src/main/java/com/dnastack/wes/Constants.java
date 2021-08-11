@@ -17,7 +17,7 @@ public class Constants {
     public static final String DEPENDENCIES_FILE = "dependencies.zip";
     public static final String OBJECT_ACCESS_CREDENTIALS_FILE = "credentials.json";
 
-    public static final List<String> FILES_TO_IGNORE_FOR_STAGING = Arrays.asList(OPTIONS_FILE,DEPENDENCIES_FILE,OBJECT_ACCESS_CREDENTIALS_FILE);
+    public static final List<String> FILES_TO_IGNORE_FOR_STAGING = Arrays.asList(OPTIONS_FILE, DEPENDENCIES_FILE, OBJECT_ACCESS_CREDENTIALS_FILE);
     public static final Set<String> VALID_CROMWELL_OPTIONS = cromwellOptions();
 
     private static Set<String> cromwellOptions() {

@@ -1,10 +1,11 @@
 package com.dnastack.wes.cromwell;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import lombok.Setter;
 
 /**
  * @author Patrick Magee created on: 2018-09-24
@@ -38,4 +39,5 @@ public class CromwellTaskCall {
     private Map<String, String> backendLogs;
     private Map<String, String> backendLabels;
     private Map<String, String> labels;
+
 }

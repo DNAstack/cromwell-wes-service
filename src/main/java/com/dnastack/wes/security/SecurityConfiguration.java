@@ -1,5 +1,6 @@
 package com.dnastack.wes.security;
 
+import brave.Tracing;
 import com.dnastack.auth.JwtTokenParser;
 import com.dnastack.auth.JwtTokenParserFactory;
 import com.dnastack.auth.PermissionChecker;
@@ -37,22 +38,22 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                .cors()
-                .and()
-                .csrf().disable()
-                .authorizeRequests()
-                .antMatchers("/actuator", "/actuator/info", "/actuator/health").permitAll()
-                .antMatchers("/").permitAll()
-                .antMatchers("/index.html").permitAll()
-                .antMatchers("/ga4gh/drs/**").permitAll()
-                .antMatchers("/ga4gh/wes/v1/service-info").permitAll()
-                .anyRequest()
-                .authenticated()
-                .and()
-                .oauth2ResourceServer()
-                .jwt();
+            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            .cors()
+            .and()
+            .csrf().disable()
+            .authorizeRequests()
+            .antMatchers("/actuator", "/actuator/info", "/actuator/health").permitAll()
+            .antMatchers("/").permitAll()
+            .antMatchers("/index.html").permitAll()
+            .antMatchers("/ga4gh/drs/**").permitAll()
+            .antMatchers("/ga4gh/wes/v1/service-info").permitAll()
+            .anyRequest()
+            .authenticated()
+            .and()
+            .oauth2ResourceServer()
+            .jwt();
     }
 
     @Bean
@@ -75,29 +76,39 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
 
         return authConfig.getTokenIssuers().stream()
-                .map((issuerConfig) -> {
-                    final String issuerUri = issuerConfig.getIssuerUri();
-                    return IssuerInfo.IssuerInfoBuilder.builder()
-                            .issuerUri(issuerUri)
-                            .allowedAudiences(issuerConfig.getAudiences())
-                            .publicKeyResolver(issuerConfig.getRsaPublicKey() != null
-                                    ? new IssuerPubKeyStaticResolver(issuerUri, issuerConfig.getRsaPublicKey())
-                                    : new CachingIssuerPubKeyJwksResolver(issuerUri))
-                            .build();
-                })
-                .collect(Collectors.toUnmodifiableList());
+            .map((issuerConfig) -> {
+                final String issuerUri = issuerConfig.getIssuerUri();
+                return IssuerInfo.IssuerInfoBuilder.builder()
+                    .issuerUri(issuerUri)
+                    .allowedAudiences(issuerConfig.getAudiences())
+                    .publicKeyResolver(issuerConfig.getRsaPublicKey() != null
+                        ? new IssuerPubKeyStaticResolver(issuerUri, issuerConfig.getRsaPublicKey())
+                        : new CachingIssuerPubKeyJwksResolver(issuerUri))
+                    .build();
+            })
+            .collect(Collectors.toUnmodifiableList());
     }
 
     @Bean
-    public PermissionChecker permissionChecker(List<IssuerInfo> allowedIssuers) {
-        return PermissionCheckerFactory.create(allowedIssuers);
+    public PermissionChecker permissionChecker(
+        List<IssuerInfo> allowedIssuers,
+        @Value("${app.validator.policy-evaluation-requester}") String policyEvaluationRequester,
+        @Value("${app.validator.policy-evaluation-uri}") String policyEvaluationUri,
+        Tracing tracing
+    ) {
+        return PermissionCheckerFactory.create(allowedIssuers, policyEvaluationRequester, policyEvaluationUri, tracing);
+    }
+
+
+    @Bean
+    public JwtTokenParser tokenParser(List<IssuerInfo> allowedIssuers, Tracing tracing) {
+        return JwtTokenParserFactory.create(allowedIssuers, tracing);
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(List<IssuerInfo> allowedIssuers, PermissionChecker permissionChecker) {
+    public JwtDecoder jwtDecoder(List<IssuerInfo> allowedIssuers, PermissionChecker permissionChecker, JwtTokenParser jwtTokenParser) {
         return (jwtToken) -> {
             permissionChecker.checkPermissions(jwtToken);
-            final JwtTokenParser jwtTokenParser = JwtTokenParserFactory.create(allowedIssuers);
             final Jws<Claims> jws = jwtTokenParser.parseTokenClaims(jwtToken);
             final JwsHeader headers = jws.getHeader();
             final Claims claims = jws.getBody();

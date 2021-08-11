@@ -4,28 +4,20 @@ import com.dnastack.wes.shared.ConfigurationException;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
-import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.*;
 import com.google.cloud.storage.Blob.BlobSourceOption;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.HttpMethod;
-import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.Storage.BlobWriteOption;
 import com.google.cloud.storage.Storage.SignUrlOption;
-import com.google.cloud.storage.StorageOptions;
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.io.*;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.TimeUnit;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 public class GcpBlobStorageClient implements BlobStorageClient {
@@ -67,14 +59,14 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     }
 
     @Override
-    public String writeBytes(InputStream blobStream,long size, String stagingFolder, String blobName) throws IOException {
+    public String writeBytes(InputStream blobStream, long size, String stagingFolder, String blobName) throws IOException {
         String blobUri = UriComponentsBuilder.fromUri(stagingLocation).pathSegment(stagingFolder, blobName)
             .toUriString();
         BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
         Blob blob = client.get(blobId);
         if (blob != null && blob.exists()) {
             throw new IOException("An in the current staging directory with the name: " + blobName
-                + " already exists. Could not overrwrite file");
+                                  + " already exists. Could not overrwrite file");
         }
 
         blob = client.create(BlobInfo.newBuilder(blobId).build());
@@ -137,4 +129,5 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         }
 
     }
+
 }

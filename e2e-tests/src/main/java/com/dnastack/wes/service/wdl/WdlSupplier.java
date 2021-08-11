@@ -1,6 +1,7 @@
 package com.dnastack.wes.service.wdl;
 
 import com.google.common.io.CharStreams;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -23,4 +24,5 @@ public class WdlSupplier {
             throw new RuntimeException(e);
         }
     }
+
 }

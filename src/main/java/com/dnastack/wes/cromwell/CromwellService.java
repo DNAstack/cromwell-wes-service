@@ -1,27 +1,19 @@
 package com.dnastack.wes.cromwell;
 
-import com.dnastack.wes.Constants;
 import com.dnastack.wes.AppConfig;
-import com.dnastack.wes.api.OriginalInputs;
-import com.dnastack.wes.api.OriginalInputsDao;
+import com.dnastack.wes.Constants;
+import com.dnastack.wes.api.*;
+import com.dnastack.wes.drs.DrsObjectResolverFactory;
+import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.shared.AuthorizationException;
+import com.dnastack.wes.shared.CredentialsModel;
 import com.dnastack.wes.shared.InvalidRequestException;
 import com.dnastack.wes.shared.NotFoundException;
-import com.dnastack.wes.drs.DrsObjectResolverFactory;
-import com.dnastack.wes.shared.CredentialsModel;
-import com.dnastack.wes.api.RunId;
-import com.dnastack.wes.api.RunListResponse;
-import com.dnastack.wes.api.RunLog;
-import com.dnastack.wes.api.RunRequest;
-import com.dnastack.wes.api.RunStatus;
-import com.dnastack.wes.api.State;
-import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.storage.BlobStorageClient;
 import com.dnastack.wes.transfer.TransferContext;
 import com.dnastack.wes.transfer.TransferService;
 import com.dnastack.wes.transfer.TransferSpec;
 import com.dnastack.wes.wdl.ObjectTranslator;
-import com.dnastack.wes.api.PathTranslatorFactory;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -31,43 +23,26 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
+import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.*;
+import java.net.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Service layer for converting WES api calls into Cromwell API calls
@@ -86,7 +61,15 @@ public class CromwellService {
     private final PathTranslatorFactory pathTranslatorFactory;
 
     @Autowired
-    CromwellService(CromwellClient cromwellClient, BlobStorageClient storageClient, PathTranslatorFactory pathTranslatorFactory, DrsObjectResolverFactory drsObjectResolverFactory, Jdbi jdbi, AppConfig appConfig, TransferService transferService) {
+    CromwellService(
+        CromwellClient cromwellClient,
+        BlobStorageClient storageClient,
+        PathTranslatorFactory pathTranslatorFactory,
+        DrsObjectResolverFactory drsObjectResolverFactory,
+        Jdbi jdbi,
+        AppConfig appConfig,
+        TransferService transferService
+    ) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
         this.drsObjectResolverFactory = drsObjectResolverFactory;
@@ -145,11 +128,12 @@ public class CromwellService {
      * listed from most recent to oldest. Because of this limitation, listing jobs does not provide a guarantee that the
      * list has not changed since the last time a user fetched results.
      *
-     * @param pageSize The size of the page to return. If pageToken is provided, then page size will be ignored. If
-     * neither the pageSize or pageToken are defined, then the default page size will be used. {@link
-     * Constants#DEFAULT_PAGE_SIZE}
+     * @param pageSize  The size of the page to return. If pageToken is provided, then page size will be ignored. If
+     *                  neither the pageSize or pageToken are defined, then the default page size will be used. {@link
+     *                  Constants#DEFAULT_PAGE_SIZE}
      * @param pageToken The page token is an encoded string defining the next page to retrieve from the cromwell server.
-     * It is a base64 encoded query string containing the page size and the next page
+     *                  It is a base64 encoded query string containing the page size and the next page
+     *
      * @return List of runs with next page set.
      */
     public RunListResponse listRuns(Integer pageSize, String pageToken) {
@@ -198,6 +182,7 @@ public class CromwellService {
      * Get a Specific Run by retrieving the job metadata from cromwell.
      *
      * @param runId The cromwell id
+     *
      * @return a complete run log
      */
     public RunLog getRun(String runId) {
@@ -213,10 +198,37 @@ public class CromwellService {
                 .getTranslatorsForOutputs());
     }
 
+    private void authorizeUserForRun(String runId) {
+        String user = AuthenticatedUser.getSubject();
+        if (config.getEnableMultiTenantSupport()) {
+            CromwellSearch search = new CromwellSearch();
+            search.setId(Arrays.asList(runId));
+            search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
+            CromwellResponse response = client.listWorkflows(search);
+            if (response.getTotalResultsCount() == 0) {
+                throw new AuthorizationException("The resource does not exist or the user is unauthorized to access "
+                                                 + "it");
+            }
+        }
+    }
+
+    private CromwellMetadataResponse getMetadata(String runId) {
+        try {
+            return client.getMetadata(runId);
+        } catch (FeignException e) {
+            if (e.status() == 400 || e.status() == 404) {
+                throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
+            } else {
+                throw e;
+            }
+        }
+    }
+
     /**
      * Get a Specific Run by retrieving the job status from cromwell.
      *
      * @param runId The cromwell id
+     *
      * @return a run status
      */
     public RunStatus getRunStatus(String runId) {
@@ -225,10 +237,23 @@ public class CromwellService {
         return CromwellWesMapper.mapCromwellStatusToRunStatus(status);
     }
 
+    private CromwellStatus getStatus(String runId) {
+        try {
+            return client.getStatus(runId);
+        } catch (FeignException e) {
+            if (e.status() == 400 || e.status() == 404) {
+                throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
+            } else {
+                throw e;
+            }
+        }
+    }
+
     /**
      * Attempt to cancel a workflow in cromwell if the job is in a "cancellable" state
      *
      * @param runId The cromwell id
+     *
      * @return a complete run log
      */
     public RunId cancel(String runId) {
@@ -237,18 +262,9 @@ public class CromwellService {
         return RunId.builder().runId(runId).build();
     }
 
-
     public void getLogBytes(OutputStream outputStream, String runId, String taskName, int index, String logKey) throws IOException {
         String logPath = getLogPath(runId, taskName, index, logKey);
         storageClient.readBytes(outputStream, logPath, null, null);
-    }
-
-    public void getLogBytes(OutputStream outputStream, String runId) throws IOException {
-        CromwellMetadataResponse response = client.getMetadata(runId);
-        if (response.getFailures() != null) {
-            ObjectMapper mapper = new ObjectMapper();
-            outputStream.write(mapper.writeValueAsBytes(response.getFailures()));
-        }
     }
 
     private String getLogPath(String runId, String taskName, int index, String logKey) throws IOException {
@@ -270,30 +286,13 @@ public class CromwellService {
         }
     }
 
-    private CromwellMetadataResponse getMetadata(String runId) {
-        try {
-            return client.getMetadata(runId);
-        } catch (FeignException e) {
-            if (e.status() == 400 || e.status() == 404) {
-                throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
-            } else {
-                throw e;
-            }
+    public void getLogBytes(OutputStream outputStream, String runId) throws IOException {
+        CromwellMetadataResponse response = client.getMetadata(runId);
+        if (response.getFailures() != null) {
+            ObjectMapper mapper = new ObjectMapper();
+            outputStream.write(mapper.writeValueAsBytes(response.getFailures()));
         }
     }
-
-    private CromwellStatus getStatus(String runId) {
-        try {
-            return client.getStatus(runId);
-        } catch (FeignException e) {
-            if (e.status() == 400 || e.status() == 404) {
-                throw new NotFoundException("Workflow execution with run_id " + runId + " does not exist.");
-            } else {
-                throw e;
-            }
-        }
-    }
-
 
     /**
      * Given the user submitted run request, compose a new request to cromwell for executing a workflow. The run request
@@ -411,7 +410,6 @@ public class CromwellService {
         }
     }
 
-
     private void uploadAttachments(RunRequest runRequest, WdlFileProcessor processor) throws IOException {
         String stagingFolder = UUID.randomUUID().toString();
         List<MultipartFile> attachmentFiles =
@@ -424,7 +422,7 @@ public class CromwellService {
         Map<String, String> mappedFiles = new HashMap<>();
         for (MultipartFile attachment : attachmentFiles) {
             String stagingBlobLocation = storageClient
-                .writeBytes(attachment.getInputStream(),attachment.getSize(), stagingFolder, attachment.getOriginalFilename());
+                .writeBytes(attachment.getInputStream(), attachment.getSize(), stagingFolder, attachment.getOriginalFilename());
             mappedFiles.put(attachment.getOriginalFilename(), stagingBlobLocation);
         }
 
@@ -454,20 +452,6 @@ public class CromwellService {
             objectAccessCredentials = Collections.emptyMap();
         }
         return objectAccessCredentials;
-    }
-
-    private void authorizeUserForRun(String runId) {
-        String user = AuthenticatedUser.getSubject();
-        if (config.getEnableMultiTenantSupport()) {
-            CromwellSearch search = new CromwellSearch();
-            search.setId(Arrays.asList(runId));
-            search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
-            CromwellResponse response = client.listWorkflows(search);
-            if (response.getTotalResultsCount() == 0) {
-                throw new AuthorizationException("The resource does not exist or the user is unauthorized to access "
-                    + "it");
-            }
-        }
     }
 
     private void transferCallBack(Throwable throwable, String runId) {
