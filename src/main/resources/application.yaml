@@ -79,8 +79,8 @@ auditing:
     audience: http://localhost:8888
     resource: ${auditing.publisher.events-uri}
     actions: ["audit:create"]
-    token-uri: http://localhost:8081/oauth/token
-    token-issuers-uris: ${wes.auth.token-issuers}
+    token-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
+    token-issuers-uris: ${wes.auth.token-issuers[0].issuer-uri}
     policy-evaluation-requester: ${wes.auth.validator.policy-evaluation-requester}
     policy-evaluation-uri:  ${wes.auth.validator.policy-evaluation-uri}
   json-printer-style: dense_print
