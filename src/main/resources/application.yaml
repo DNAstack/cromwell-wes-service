@@ -116,3 +116,9 @@ spring:
             # Fix for cosmetic error on startup `HHH000424: Disabling contextual LOB creation as createClob() method threw error`
             non_contextual_creation: true
     database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info

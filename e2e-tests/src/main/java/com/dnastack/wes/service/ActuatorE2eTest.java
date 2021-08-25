@@ -50,4 +50,17 @@ public class ActuatorE2eTest extends BaseE2eTest {
         //@formatter:on
     }
 
+    @Test
+    public void appIsReady(){
+        given()
+            .log().method()
+            .log().uri()
+            .when()
+        .get("/actuator/health")
+            .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .body("status", equalTo("UP"));
+    }
+
 }

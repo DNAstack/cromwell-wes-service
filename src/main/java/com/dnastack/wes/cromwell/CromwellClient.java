@@ -6,6 +6,8 @@ import feign.QueryMap;
 import feign.RequestLine;
 import org.springframework.http.MediaType;
 
+import java.util.Map;
+
 
 public interface CromwellClient {
 
@@ -14,6 +16,9 @@ public interface CromwellClient {
 
     @RequestLine("GET /engine/" + API_VERSION + "/version")
     CromwellVersion getVersion();
+
+    @RequestLine("GET /engine/" + API_VERSION + "/status")
+    Map<String,Object> getStatus();
 
     @RequestLine("GET /api/workflows/" + API_VERSION + "/query")
     CromwellResponse listWorkflows();
