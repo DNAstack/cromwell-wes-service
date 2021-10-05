@@ -282,7 +282,7 @@ public class CromwellService {
         if (calls == null) {
             throw new FileNotFoundException(
                 "Could not read " + logKey + " for task " + taskName + "in run " + runId + ", it does not exist");
-        } else if (!calls.containsKey(taskName) || calls.size() <= index) {
+        } else if (!calls.containsKey(taskName) || calls.get(taskName).size() <= index) {
             throw new FileNotFoundException(
                 "Could not read " + logKey + " for task " + taskName + "in run " + runId + ", it does not exist");
         }
