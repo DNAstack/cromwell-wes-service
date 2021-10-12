@@ -164,6 +164,12 @@
             <version>${feign.version}</version>
         </dependency>
 
+        <!-- Metrics -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!--    <dependency>-->
         <!--      <groupId>com.google.cloud</groupId>-->
         <!--      <artifactId>google-cloud-resourcemanager</artifactId>-->

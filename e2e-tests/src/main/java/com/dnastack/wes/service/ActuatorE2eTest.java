@@ -35,7 +35,7 @@ public class ActuatorE2eTest extends BaseE2eTest {
     @DisplayName("Sensitive system information should not be exposed to users")
     public void sensitiveInfoShouldNotBeExposed() {
         Stream.of("auditevents", "beans", "conditions", "configprops", "env", "flyway", "httptrace", "logfile", "loggers",
-            "liquibase", "metrics", "mappings", "prometheus", "scheduledtasks", "sessions", "shutdown", "threaddump")
+            "liquibase", "metrics", "mappings", "scheduledtasks", "sessions", "shutdown", "threaddump")
             //@formatter:off
                 .forEach(endpoint -> {
                     given()
