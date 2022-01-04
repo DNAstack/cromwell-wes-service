@@ -5,6 +5,8 @@ import com.dnastack.auth.JwtTokenParser;
 import com.dnastack.auth.JwtTokenParserFactory;
 import com.dnastack.auth.PermissionChecker;
 import com.dnastack.auth.PermissionCheckerFactory;
+import com.dnastack.auth.client.TokenActionsClient;
+import com.dnastack.auth.client.TokenActionsHttpClientFactory;
 import com.dnastack.auth.keyresolver.CachingIssuerPubKeyJwksResolver;
 import com.dnastack.auth.keyresolver.IssuerPubKeyStaticResolver;
 import com.dnastack.auth.model.IssuerInfo;
@@ -101,12 +103,12 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
 
     @Bean
-    public JwtTokenParser tokenParser(List<IssuerInfo> allowedIssuers, Tracing tracing) {
-        return JwtTokenParserFactory.create(allowedIssuers, tracing);
+    public JwtTokenParser tokenParser(List<IssuerInfo> allowedIssuers, Tracing tracing){
+       return JwtTokenParserFactory.create(allowedIssuers, TokenActionsHttpClientFactory.create(tracing));
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(List<IssuerInfo> allowedIssuers, PermissionChecker permissionChecker, JwtTokenParser jwtTokenParser) {
+    public JwtDecoder jwtDecoder(PermissionChecker permissionChecker, JwtTokenParser jwtTokenParser) {
         return (jwtToken) -> {
             permissionChecker.checkPermissions(jwtToken);
             final Jws<Claims> jws = jwtTokenParser.parseTokenClaims(jwtToken);

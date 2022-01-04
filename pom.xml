@@ -29,8 +29,8 @@
         <jwt.version>0.11.2</jwt.version>
         <org.jdbi.version>3.6.0</org.jdbi.version>
         <azurestorage.version>12.9.0</azurestorage.version>
-        <wallet-token-validator.version>1.0-47-g0d8e62e</wallet-token-validator.version>
-        <audit-event-logger.version>1.0-37-gc37b833</audit-event-logger.version>
+        <wallet-token-validator.version>1.0-52-g81c9c98</wallet-token-validator.version>
+        <audit-event-logger.version>1.0-47-g5b091b4</audit-event-logger.version>
     </properties>
 
     <repositories>
