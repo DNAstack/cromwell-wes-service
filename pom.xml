@@ -31,6 +31,8 @@
         <azurestorage.version>12.9.0</azurestorage.version>
         <wallet-token-validator.version>1.0-52-g81c9c98</wallet-token-validator.version>
         <audit-event-logger.version>1.0-47-g5b091b4</audit-event-logger.version>
+        <logback-extensions.version>1.0.0</logback-extensions.version>
+        <logback.contrib.version>0.1.5</logback.contrib.version>
     </properties>
 
     <repositories>
@@ -226,6 +228,18 @@
             <artifactId>springfox-swagger2</artifactId>
             <version>${springfox-swagger.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- Parseable Stackdriver Logs -->
+        <dependency>
+            <groupId>com.dnastack</groupId>
+            <artifactId>logback-extensions</artifactId>
+            <version>${logback-extensions.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback.contrib</groupId>
+            <artifactId>logback-jackson</artifactId>
+            <version>${logback.contrib.version}</version>
         </dependency>
 
         <dependency>
