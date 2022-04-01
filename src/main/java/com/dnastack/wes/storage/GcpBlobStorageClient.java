@@ -76,6 +76,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
                 byteBuffer.put(blobStream.readNBytes(64 * 1024));
                 byteBuffer.flip();
                 writeChannel.write(byteBuffer);
+                byteBuffer.compact();
             }
             blobStream.close();
         }
