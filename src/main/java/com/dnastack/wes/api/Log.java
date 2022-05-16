@@ -3,6 +3,8 @@ package com.dnastack.wes.api;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.time.Instant;
+
 
 @Getter
 @Setter
@@ -20,10 +22,10 @@ public class Log {
     String cmd;
 
     @JsonProperty(value = "start_time")
-    String startTime;
+    Instant startTime;
 
     @JsonProperty(value = "end_time")
-    String endTime;
+    Instant endTime;
 
     @JsonProperty(value = "stdout")
     String stdout;

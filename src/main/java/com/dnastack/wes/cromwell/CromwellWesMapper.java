@@ -68,9 +68,7 @@ public class CromwellWesMapper {
         runLog.setOutputs(translatePaths(new TypeReference<Map<String, Object>>() {
         }, metadataResponse.getOutputs(), pathTranslators));
 
-        String workflowStart = metadataResponse.getStart() == null ? null : metadataResponse.getStart().toString();
-        String workflowEnd = metadataResponse.getEnd() == null ? null : metadataResponse.getEnd().toString();
-        Log workflowLog = Log.builder().startTime(workflowStart).endTime(workflowEnd)
+        Log workflowLog = Log.builder().startTime(metadataResponse.getStart()).endTime(metadataResponse.getEnd())
             .name(metadataResponse.getWorkflowName()).build();
         if (metadataResponse.getFailures() != null) {
             workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs", "stderr").build().toString());
@@ -143,15 +141,13 @@ public class CromwellWesMapper {
 
     public static Log mapTaskCallToLog(String name, Integer index, CromwellTaskCall taskCall) {
 
-        String taskStart = taskCall.getStart() == null ? null : taskCall.getStart().toString();
-        String taskEnd = taskCall.getEnd() == null ? null : taskCall.getEnd().toString();
         String stdout = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
             .pathSegment("logs", "task", name, index.toString(), "stdout").toUriString();
         String stderr = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
             .pathSegment("logs", "task", name, index.toString(), "stderr").toUriString();
 
         return Log.builder().name(name).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
-            .startTime(taskStart).endTime(taskEnd).stderr(stderr).stdout(stdout).build();
+            .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
 
     }
 

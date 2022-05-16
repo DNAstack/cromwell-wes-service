@@ -3,6 +3,7 @@ package com.dnastack.wes.cromwell;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,8 +21,8 @@ public class CromwellTaskCall {
     private Integer attempt;
     private Boolean preemptible;
     private Integer shardIndex;
-    private ZonedDateTime start;
-    private ZonedDateTime end;
+    private Instant start;
+    private Instant end;
     private String jobId;
     private String backend;
     private String callRoot;

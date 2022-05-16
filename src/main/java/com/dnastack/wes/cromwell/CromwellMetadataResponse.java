@@ -2,6 +2,7 @@ package com.dnastack.wes.cromwell;
 
 import lombok.*;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,14 +21,14 @@ import java.util.Map;
 public class CromwellMetadataResponse {
 
     private String id;
-    private ZonedDateTime submission;
+    private Instant submission;
     private String actualWorkflowLanguageVersions;
     private String actualWorkflowLanguage;
     private String status;
     private String workflowName;
     private String workflowRoot;
-    private ZonedDateTime start;
-    private ZonedDateTime end;
+    private Instant start;
+    private Instant end;
 
     private Map<String, String> submittedFiles;
     private Map<String, List<CromwellTaskCall>> calls;
