@@ -6,14 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.restassured.builder.MultiPartSpecBuilder;
-import io.restassured.filter.log.LogDetail;
 import io.restassured.http.ContentType;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.restassured.specification.MultiPartSpecification;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
@@ -307,49 +305,6 @@ public class WesE2ETest extends BaseE2eTest {
             //@formatter:on
         }
 
-        @Test
-        @DisplayName("Workflow Run Submission with GCP access token input")
-        public void submitWorkflowRunNeedingObjectTransfer() throws Exception {
-            final Boolean testObjectTransfer = Boolean.valueOf(optionalEnv("E2E_TEST_OBJECT_TRANSFER", "true"));
-            Assumptions.assumeTrue(testObjectTransfer, "GCP object transfer test has been disabled");
-            final String submitPath = getRootPath() + "/runs";
-            final Map<String, String> tags = Collections.singletonMap("WES", "TestRun");
-            final Map<String, String> engineParams = new HashMap<>();
-            final String inputFile = optionalEnv("E2E_WORKFLOW_INPUT", "gs://ddap-e2etest-objects/small_files/SAMPLE_TEST_aligned.sorted.bam");
-            final Map<String, String> inputs = Collections.singletonMap("md5Sum.inputFile", inputFile);
-            final String token = getAccessToken();
-
-            final Map<String, String> objectAccessCredentials = Collections.singletonMap("accessToken", token);
-            JSONObject credentials = new JSONObject();
-            credentials.put(inputFile, objectAccessCredentials);
-
-            //@formatter:off
-            final ExtractableResponse<Response> runSubmitResponse =
-                given()
-                    .log().uri()
-                    .log().method()
-                    .header(getHeader(getResource(submitPath)))
-                    .multiPart(getWorkflowUrlMultipart( "workflow.wdl"))
-                    .multiPart(getMultipartAttachment( "workflow.wdl", supplier.getFileContent(WdlSupplier.MD5_SUM_WORKFLOW).getBytes()))
-                    .multiPart(getMultipartAttachment( "credentials.json", credentials.toJSONString().getBytes()))
-                    .multiPart(getJsonMultipart("workflow_engine_parameters", engineParams))
-                    .multiPart(getJsonMultipart("tags", tags))
-                    .multiPart(getJsonMultipart("workflow_params", inputs))
-                .post(submitPath)
-                .then()
-                    .log().ifValidationFails(LogDetail.ALL)
-                    .assertThat()
-                    .statusCode(200)
-                    .body("run_id", is(notNullValue()))
-                    .extract();
-            //@formatter:on
-
-            final String runId = runSubmitResponse.body()
-                .jsonPath()
-                .getString("run_id");
-            final String runPathStatus = format("%s/%s/status", submitPath, runId);
-            pollUntilJobCompletes(runId);
-        }
 
         @Test
         @DisplayName("Workflow Run Submission with invalid url and unsupported attachment should fail")

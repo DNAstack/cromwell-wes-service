@@ -30,6 +30,10 @@ cp -rp \
   mvnw \
   ${docker_context_dir}
 
+# Allows us to pass settings.xml configured on local machine or CI server to access private Nexus repo
+mkdir -p ${docker_context_dir}/.m2
+cp ~/.m2/*.xml ${docker_context_dir}/.m2
+
 docker build \
   --build-arg APP_NAME=${app_name} \
   --build-arg APP_VERSION=${app_version} \
