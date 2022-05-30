@@ -7,11 +7,10 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.http.ContentType;
-import io.restassured.response.ExtractableResponse;
-import io.restassured.response.Response;
 import io.restassured.specification.MultiPartSpecification;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
@@ -19,20 +18,23 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static java.lang.String.format;
+import static org.awaitility.Awaitility.with;
 import static org.hamcrest.Matchers.*;
 
 
 @DisplayName("WES tests")
 public class WesE2ETest extends BaseE2eTest {
 
+    static final List<String> TERMINAL_STATES = List.of("COMPLETE", "EXECUTOR_ERROR", "SYSTEM_ERROR", "CANCELED");
+    ConditionFactory pollInterval = with()
+        .ignoreException(AssertionError.class)
+        .pollDelay(Duration.ofSeconds(2)).and()
+        .pollInterval(Duration.ofSeconds(3))
+        .atMost(Duration.ofMinutes(5));
     private static WdlSupplier supplier = new WdlSupplier();
 
     private String getAccessToken() throws IOException {
@@ -171,56 +173,28 @@ public class WesE2ETest extends BaseE2eTest {
     }
 
     private void pollUntilJobCompletes(String workflowJobId) throws Exception {
-        String resourceUrl = getRootPath() + "/runs/" + workflowJobId;
-        String runPathStatus = resourceUrl + "/status";
-        poll(Duration.ofMinutes(6), () -> {
-            //@formatter:off
-            final ExtractableResponse<Response> statusResponse =
-                given()
-                    .log().uri()
-                    .log().method()
-                    .header(getHeader(getResource(resourceUrl)))
-                    .get(runPathStatus)
-                    .then()
-                    .assertThat()
-                    .statusCode(200)
-                    .body("run_id", equalTo(workflowJobId))
-                    .extract();
-            //@formatter:on
-            final String state = statusResponse.body()
-                .jsonPath()
-                .getString("state");
-            System.out.println("Workflow Run State: " + state);
-
-            if ("EXECUTOR_ERROR".equals(state) || "CANCELED".equals(state) || "CANCELINGSTATE".equals(state)
-                || "SYSTEMERROR".equals(state)) {
-                throw new EarlyAbortException(new AssertionError("Run failed with status " + state));
-            } else {
-                Assertions.assertEquals("COMPLETE", state, format("Run [%s] not in expected state", workflowJobId));
-            }
-        });
+        waitForRunTerminalState(workflowJobId, "COMPLETE");
     }
 
-    private static void poll(Duration duration, CustomAssertions customAssertions) throws Exception {
-        final Instant start = Instant.now();
-        try {
-            while (true) {
-                try {
-                    Thread.sleep(500);
-                    customAssertions.run();
-                    return;
-                } catch (AssertionError ae) {
-                    if (Instant.now().isAfter(start.plus(duration))) {
-                        throw ae;
-                    }
-                } catch (EarlyAbortException e) {
-                    throw e.getCause();
-                }
-            }
-        } finally {
-            System.out
-                .printf("Polling finished after %d seconds\n", Duration.between(start, Instant.now()).getSeconds());
-        }
+    void waitForRunTerminalState(String workflowJobId, String expectedState) {
+        String resourceUrl = getRootPath() + "/runs/" + workflowJobId;
+        String actualState = pollInterval.until(() -> {
+            return given()
+                .log().uri()
+                .log().method()
+                .header(getHeader(getResource(resourceUrl)))
+                .get("/ga4gh/wes/v1/runs/{runId}/status", workflowJobId)
+                .then()
+                .statusCode(200)
+                .body("state", in(TERMINAL_STATES))
+                .extract()
+                .jsonPath().getString("state");
+        }, TERMINAL_STATES::contains);
+
+        Assertions.assertEquals(expectedState, actualState,
+            "Expecting run %s to have a terminal state of '%s', however the state is '%s'".formatted(workflowJobId, expectedState, actualState));
+
+
     }
 
     private MultiPartSpecification getWorkflowUrlMultipart(String inputString) {
@@ -258,21 +232,6 @@ public class WesE2ETest extends BaseE2eTest {
             .charset(StandardCharsets.UTF_8)
             .fileName(fileName)
             .build();
-    }
-
-    @FunctionalInterface
-    interface CustomAssertions {
-
-        void run() throws EarlyAbortException;
-
-    }
-
-    @RequiredArgsConstructor
-    @Getter
-    private static class EarlyAbortException extends Exception {
-
-        private final AssertionError cause;
-
     }
 
     @DisplayName("Test Workflow Run Submissions")
