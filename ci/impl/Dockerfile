@@ -29,6 +29,8 @@ RUN ./mvnw -P -dnastack -B versions:set -DnewVersion=${APP_VERSION}
 # Now add sources, which will bust the cache.
 ADD target/src ./src
 
+# Run code analysis
+RUN ./mvnw verify sonar:sonar
 # If this step fails with an error like
 #     Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:2.22.1:test
 #     (default-test) on project xxx: Unable to generate classpath:
