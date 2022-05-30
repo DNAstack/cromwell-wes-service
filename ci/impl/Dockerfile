@@ -26,11 +26,12 @@ ADD target/.m2 /root/.m2
 RUN ./mvnw -P -dnastack -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 RUN ./mvnw -P -dnastack -B versions:set -DnewVersion=${APP_VERSION}
 
+
 # Now add sources, which will bust the cache.
 ADD target/src ./src
 
 # Run code analysis
-RUN ./mvnw verify sonar:sonar
+RUN ./mvnw -Dsonar.scm.disabled=true verify sonar:sonar
 # If this step fails with an error like
 #     Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:2.22.1:test
 #     (default-test) on project xxx: Unable to generate classpath:
@@ -38,8 +39,6 @@ RUN ./mvnw verify sonar:sonar
 # then update the version number of surefire-junit4 in pom.xml under the
 # dynamicDependencies section of go-offline-maven-plugin configuration.
 RUN ./mvnw -P -dnastack -B -o package
-
-
 ##
 ## Stage 2: Package the runnable image
 ##
