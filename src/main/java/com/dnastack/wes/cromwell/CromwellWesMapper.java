@@ -40,7 +40,7 @@ public class CromwellWesMapper {
             case "running":
                 return State.RUNNING;
             case "aborting":
-                return State.CANCELINGSTATE;
+                return State.CANCELING;
             case "aborted":
                 return State.CANCELED;
             case "failed":

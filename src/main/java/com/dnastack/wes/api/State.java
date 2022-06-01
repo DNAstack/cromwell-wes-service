@@ -11,5 +11,5 @@ public enum State {
     EXECUTOR_ERROR,
     SYSTEM_ERROR,
     CANCELED,
-    CANCELINGSTATE
+    CANCELING
 }
