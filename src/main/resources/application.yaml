@@ -1,4 +1,5 @@
 wes:
+  url: ${info.app.url}
   service-info:
     auth-instruction-url: "${wes.auth.token-issuers[0].issuer-uri}/.well-known/openid-configuration"
     supported-wes-versions:
@@ -58,6 +59,34 @@ wes:
     defaultWorkflowOptions:
       write_to_cache: false
       read_from_cache: false
+  registry:
+    client-id: wes-service
+    client-secret: dev-secret-never-use-in-prod
+    grant-type: "urn:ietf:params:oauth:grant-type:device_code"
+    token-uri:  ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
+    device-code-uri:  ${wes.auth.token-issuers[0].issuer-uri}/oauth/device/code
+    services:
+      wes:
+        id: wes
+        name: DNAstack Workbench - WES Service
+        type:
+          group: org.ga4gh
+          artifact: wes
+          version: v1.1
+        description: Compliant with the <a href='https://github.com/ga4gh/workflow-execution-service-schemas' target='_blank'>WES</a> standard by the <a href='https://www.ga4gh.org/' target='_blank'>Global Alliance for Genomics and Health</a>."
+        organization:
+          name: DNAstack
+          url: https://dnastack.com
+        version: ${build.version}
+        url: ${wes.url}/ga4gh/wes/v1/
+        authentication:
+          - accessTokenUrl: ${wes.registry.token-uri}
+            clientId: ${wes.registry.client-id}
+            clientSecret: ${wes.registry.client-secret}
+            deviceCodeUrl: ${wes.registry.device-code-uri}
+            grantType: ${wes.registry.grant-type}
+            resource: ${wes.url}/ga4gh/wes/v1/
+            type: oauth2
 # Auditing
 auditing:
   enabled: true

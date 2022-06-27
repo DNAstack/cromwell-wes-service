@@ -42,11 +42,10 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
         http.sessionManagement()
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
-            .cors()
-            .and()
+            .cors().disable()
             .csrf().disable()
             .authorizeRequests()
-            .antMatchers("/actuator", "/actuator/info", "/actuator/health").permitAll()
+            .antMatchers("/actuator", "/actuator/info", "/actuator/health", "/services").permitAll()
             .antMatchers("/").permitAll()
             .antMatchers("/index.html").permitAll()
             .antMatchers("/ga4gh/drs/**").permitAll()
@@ -56,18 +55,6 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
             .and()
             .oauth2ResourceServer()
             .jwt();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.urls:localhost:8090}") List<String> cors) {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(cors);
-        configuration.setAllowedMethods(cors);
-        configuration.setAllowedHeaders(cors);
-        configuration.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
     }
 
     @Bean
