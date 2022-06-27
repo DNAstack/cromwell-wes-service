@@ -12,9 +12,6 @@ import com.dnastack.wes.shared.CredentialsModel;
 import com.dnastack.wes.shared.InvalidRequestException;
 import com.dnastack.wes.shared.NotFoundException;
 import com.dnastack.wes.storage.BlobStorageClient;
-import com.dnastack.wes.transfer.TransferContext;
-import com.dnastack.wes.transfer.TransferService;
-import com.dnastack.wes.transfer.TransferSpec;
 import com.dnastack.wes.wdl.ObjectTranslator;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -60,7 +57,6 @@ public class CromwellService {
     private final Jdbi jdbi;
     private final DrsObjectResolverFactory drsObjectResolverFactory;
     private final AppConfig config;
-    private final TransferService transferService;
     private final PathTranslatorFactory pathTranslatorFactory;
     private final CromwellConfig cromwellConfig;
     private final AuditEventLogger auditEventLogger;
@@ -73,7 +69,6 @@ public class CromwellService {
         DrsObjectResolverFactory drsObjectResolverFactory,
         Jdbi jdbi,
         AppConfig appConfig,
-        TransferService transferService,
         CromwellConfig config,
         AuditEventLogger auditEventLogger
     ) {
@@ -81,7 +76,6 @@ public class CromwellService {
         this.pathTranslatorFactory = pathTranslatorFactory;
         this.drsObjectResolverFactory = drsObjectResolverFactory;
         this.config = appConfig;
-        this.transferService = transferService;
         this.jdbi = jdbi;
         this.storageClient = storageClient;
         this.cromwellConfig = config;
@@ -347,7 +341,7 @@ public class CromwellService {
      * </li>
      * <li><strong>workflowInputs</strong> The WES inputs will be expected to be in the same format which cromwell
      * accepts. Any files that are provided as <code>DRS</code> objects will be expected to be mapped into a resolvable
-     * URL that will work with the specific cromwell backend. Additionally, if the object transfer service is configured
+     * URL that will work with the specific cromwell backend. Additionally, if the object `transfer` service is configured
      * then, files will be mapped into their final destination and then localized by the object transfer service.
      * </ul>
      */
@@ -361,7 +355,7 @@ public class CromwellService {
             .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.STARTED).build())
             .context(AuditedContext.builder().build())
             .extraArguments(Map.of(
-                "cromwell_url",cromwellConfig.getUrl(),
+                "cromwell_url", cromwellConfig.getUrl(),
                 "workflow_url", runRequest.getWorkflowUrl()
             )).build());
         try {
@@ -387,15 +381,9 @@ public class CromwellService {
 
                 uploadAttachments(runRequest, processor);
 
-                List<TransferSpec> objectsToTransfer = null;
-                if (processor != null) {
-                    objectsToTransfer = transferService
-                        .configureObjectsForTransfer(processor.getMappedObjects(), credentials);
-                }
 
                 setWorkflowLabels(runRequest, executionRequest);
                 setWorkflowOptions(runRequest, executionRequest);
-                executionRequest.setWorkflowOnHold(objectsToTransfer != null && !objectsToTransfer.isEmpty());
                 CromwellStatus status = client.createWorkflow(executionRequest);
                 RunId runId = RunId.builder().runId(status.getId()).build();
 
@@ -404,24 +392,13 @@ public class CromwellService {
                     return null;
                 });
 
-                if (objectsToTransfer != null && !objectsToTransfer.isEmpty()) {
-                    transferService
-                        .transferFiles(subject, new TransferContext(
-                            runId.getRunId(),
-                            objectsToTransfer,
-                            null,
-                            this::transferCallBack
-                        ));
-
-                }
-
                 auditEventLogger.log(AuditEventBody.builder()
                     .action(AuditedAction.builder().uri("wes:execute").build())
                     .resource(AuditedResource.builder().uri(resourceUri).build())
                     .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.COMPLETED).build())
                     .context(AuditedContext.builder().build())
                     .extraArguments(Map.of(
-                        "cromwell_url",cromwellConfig.getUrl(),
+                        "cromwell_url", cromwellConfig.getUrl(),
                         "workflow_url", runRequest.getWorkflowUrl(),
                         "run_id", runId.getRunId()
                     )).build());
@@ -440,9 +417,9 @@ public class CromwellService {
                 .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.FAILED).build())
                 .context(AuditedContext.builder().build())
                 .extraArguments(Map.of(
-                    "cromwell_url",cromwellConfig.getUrl(),
+                    "cromwell_url", cromwellConfig.getUrl(),
                     "workflow_url", runRequest.getWorkflowUrl(),
-                    "failure_reason",e.getMessage()
+                    "failure_reason", e.getMessage()
                 )).build());
             throw new InvalidRequestException(e.getMessage(), e);
 
@@ -468,11 +445,11 @@ public class CromwellService {
         if (processor != null) {
             processor.getMappedObjects()
                 .stream().forEach(objectWrapper -> {
-                JsonNode node = objectWrapper.getMappedValue();
-                if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
-                    objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
-                }
-            });
+                    JsonNode node = objectWrapper.getMappedValue();
+                    if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
+                        objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
+                    }
+                });
         }
     }
 
@@ -495,16 +472,6 @@ public class CromwellService {
         return objectAccessCredentials;
     }
 
-    private void transferCallBack(Throwable throwable, String runId) {
-        if (throwable != null) {
-            log.error("Encountered error while transferring files. Aborting run {}", runId);
-            log.error(throwable.getMessage(), throwable);
-            client.abortWorkflow(runId);
-        } else {
-            log.info("Transferring files complete, releasing hold on run {}", runId);
-            client.releaseHold(runId);
-        }
-    }
 
     private void setWorkflowLabels(RunRequest runRequest, CromwellExecutionRequest cromwellExecutionRequest) {
         Map<String, String> labels = new HashMap<>();

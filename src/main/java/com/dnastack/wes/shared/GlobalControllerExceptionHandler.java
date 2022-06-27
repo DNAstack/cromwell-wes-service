@@ -2,7 +2,6 @@ package com.dnastack.wes.shared;
 
 import com.dnastack.wes.api.ErrorResponse;
 import com.dnastack.wes.drs.UnsupportedDrsAccessType;
-import com.dnastack.wes.transfer.TransferFailedException;
 import feign.FeignException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,10 +48,4 @@ public class GlobalControllerExceptionHandler {
     public ResponseEntity<ErrorResponse> handle(AuthorizationException ex) {
         return ResponseEntity.status(401).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(401).build());
     }
-
-    @ExceptionHandler(TransferFailedException.class)
-    public ResponseEntity<ErrorResponse> handle(TransferFailedException ex) {
-        return ResponseEntity.status(500).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(500).build());
-    }
-
 }

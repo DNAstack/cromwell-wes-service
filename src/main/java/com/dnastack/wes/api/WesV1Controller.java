@@ -7,7 +7,6 @@ import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.cromwell.CromwellService;
 import com.dnastack.wes.security.AccessEvaluator;
 import com.dnastack.wes.security.AuthenticatedUser;
-import com.dnastack.wes.transfer.TransferConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -31,14 +30,12 @@ public class WesV1Controller {
 
     private CromwellService adapter;
     private AppConfig config;
-    private TransferConfig transferConfig;
     private AccessEvaluator accessEvaluator;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, TransferConfig transferConfig, AccessEvaluator accessEvaluator) {
+    WesV1Controller(CromwellService adapter, AppConfig config, AccessEvaluator accessEvaluator) {
         this.adapter = adapter;
         this.config = config;
-        this.transferConfig = transferConfig;
         this.accessEvaluator = accessEvaluator;
     }
 
@@ -56,8 +53,7 @@ public class WesV1Controller {
         if (tags == null) {
             tags = new HashMap<>();
         }
-
-        tags.put("tranfser-service-enabled", String.valueOf(transferConfig.isEnabled()));
+        serviceInfo.setTags(tags);
         serviceInfo.setWorkflowEngineVersions(adapter.getEngineVersions());
         return serviceInfo;
     }

@@ -32,11 +32,6 @@ wes:
     local:
       staging-path: /home/patrick/tools/cromwell/v54/uploads
 
-  transfer:
-    enabled: false
-    object-transfer-uri:
-    # Needs to be set
-    staging-directory:
   auth:
     # Defaults included in wallet dev setup
     service-account-authentication-uri: http://localhost:8081/oauth/token
