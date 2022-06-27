@@ -100,10 +100,11 @@ public class CromwellWesMapper {
         if (calls != null) {
             for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
                 List<CromwellTaskCall> taskCalls = entry.getValue();
+
                 for (int i = 0; i < taskCalls.size(); i++) {
                     CromwellTaskCall taskCall = taskCalls.get(i);
-
-                    taskLogs.add(mapTaskCallToLog(entry.getKey(), i, taskCall));
+                    String uniqueName = taskCalls.size() > 1 ? entry.getKey() + "-" + i : entry.getKey();
+                    taskLogs.add(mapTaskCallToLog(entry.getKey(), i, uniqueName, taskCall));
                 }
             }
         }
@@ -139,16 +140,16 @@ public class CromwellWesMapper {
         return runRequest;
     }
 
-    public static Log mapTaskCallToLog(String name, Integer index, CromwellTaskCall taskCall) {
+    public static Log mapTaskCallToLog(String name, Integer index, String uniqueName, CromwellTaskCall taskCall) {
 
         String stdout = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
             .pathSegment("logs", "task", name, index.toString(), "stdout").toUriString();
         String stderr = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
             .pathSegment("logs", "task", name, index.toString(), "stderr").toUriString();
 
-        return Log.builder().name(name).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
-            .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
 
+        return Log.builder().name(uniqueName).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
+            .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
     }
 
     private static Map<String, Object> getWorkflowOptions(CromwellMetadataResponse metadataResponse) {
