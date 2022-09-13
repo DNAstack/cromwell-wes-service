@@ -2,21 +2,31 @@ package com.dnastack.wes.cromwell;
 
 import com.dnastack.wes.Constants;
 import com.dnastack.wes.api.*;
+import com.dnastack.wes.security.XForwardUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.util.Strings;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 @Slf4j
+@Service
 public class CromwellWesMapper {
-
-    private final static ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static RunListResponse mapCromwellResponseToRunListResposne(CromwellResponse response) {
         return RunListResponse.builder()
@@ -28,7 +38,7 @@ public class CromwellWesMapper {
         return RunStatus.builder().runId(status.getId()).state(mapState(status.getStatus())).build();
     }
 
-    public static State mapState(String cromwellState) {
+    public static  State mapState(String cromwellState) {
         cromwellState = cromwellState.toLowerCase();
         switch (cromwellState) {
             case "on hold":
@@ -141,12 +151,12 @@ public class CromwellWesMapper {
     }
 
     public static Log mapTaskCallToLog(String name, Integer index, String uniqueName, CromwellTaskCall taskCall) {
-
-        String stdout = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
-            .pathSegment("logs", "task", name, index.toString(), "stdout").toUriString();
-        String stderr = ServletUriComponentsBuilder.fromCurrentRequest().query(null)
-            .pathSegment("logs", "task", name, index.toString(), "stderr").toUriString();
-
+        HttpServletRequest request =
+                ((ServletRequestAttributes)RequestContextHolder.getRequestAttributes())
+                        .getRequest();
+        String path = request.getRequestURI();
+        String stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stdout").toString());
+        String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stderr").toString());
 
         return Log.builder().name(uniqueName).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
             .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
