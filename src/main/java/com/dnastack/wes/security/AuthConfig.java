@@ -54,6 +54,8 @@ public class AuthConfig {
          */
         List<String> audiences = new ArrayList<>();
 
+        List<String> resources = new ArrayList<>();
+
         /**
          * The required scopes to test the JWT against. If this is set the JWT must have one of the valid scopes
          */

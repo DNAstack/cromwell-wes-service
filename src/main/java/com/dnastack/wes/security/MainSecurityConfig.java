@@ -5,14 +5,26 @@ import com.dnastack.auth.JwtTokenParser;
 import com.dnastack.auth.JwtTokenParserFactory;
 import com.dnastack.auth.PermissionChecker;
 import com.dnastack.auth.PermissionCheckerFactory;
-import com.dnastack.auth.client.TokenActionsClient;
+import com.dnastack.auth.client.TokenActionsHttpClient;
 import com.dnastack.auth.client.TokenActionsHttpClientFactory;
 import com.dnastack.auth.keyresolver.CachingIssuerPubKeyJwksResolver;
 import com.dnastack.auth.keyresolver.IssuerPubKeyStaticResolver;
 import com.dnastack.auth.model.IssuerInfo;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.Client;
+import feign.Feign;
+import feign.Logger;
+import feign.auth.BasicAuthRequestInterceptor;
+import feign.form.FormEncoder;
+import feign.jackson.JacksonDecoder;
+import feign.jackson.JacksonEncoder;
+import feign.slf4j.Slf4jLogger;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwsHeader;
+import io.jsonwebtoken.JwtException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,7 +47,7 @@ import java.util.stream.Collectors;
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 @Configuration
-public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+public class MainSecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -45,12 +57,13 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
             .cors().disable()
             .csrf().disable()
             .authorizeRequests()
-            .antMatchers("/actuator", "/actuator/info", "/actuator/health", "/services").permitAll()
-            .antMatchers("/").permitAll()
-            .antMatchers("/index.html").permitAll()
+            .antMatchers("/*/services", "/actuator/info**", "/actuator/health", "/actuator/health/**", "/service-info", "/docs/**")
+            .permitAll()
             .antMatchers("/ga4gh/drs/**").permitAll()
-            .antMatchers("/ga4gh/wes/v1/service-info").permitAll()
-            .anyRequest()
+            .antMatchers("/ga4gh/wes/v1/service-info")
+            .permitAll()
+            .antMatchers("/actuator/**").authenticated()
+            .antMatchers("/**")
             .authenticated()
             .and()
             .oauth2ResourceServer()
@@ -59,23 +72,24 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     @Bean
     public List<IssuerInfo> allowedIssuers(AuthConfig authConfig) {
-        List<AuthConfig.IssuerConfig> issuers = authConfig.getTokenIssuers();
+        final List<AuthConfig.IssuerConfig> issuers = authConfig.getTokenIssuers();
+
         if (issuers == null || issuers.isEmpty()) {
             throw new IllegalArgumentException("At least one token issuer must be defined");
         }
 
         return authConfig.getTokenIssuers().stream()
-            .map((issuerConfig) -> {
+            .map(issuerConfig -> {
                 final String issuerUri = issuerConfig.getIssuerUri();
                 return IssuerInfo.IssuerInfoBuilder.builder()
                     .issuerUri(issuerUri)
                     .allowedAudiences(issuerConfig.getAudiences())
+                    .allowedResources(issuerConfig.getResources())
                     .publicKeyResolver(issuerConfig.getRsaPublicKey() != null
                         ? new IssuerPubKeyStaticResolver(issuerUri, issuerConfig.getRsaPublicKey())
                         : new CachingIssuerPubKeyJwksResolver(issuerUri))
                     .build();
-            })
-            .collect(Collectors.toUnmodifiableList());
+            }).toList();
     }
 
     @Bean
@@ -89,19 +103,21 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
     }
 
 
-    @Bean
-    public JwtTokenParser tokenParser(List<IssuerInfo> allowedIssuers, Tracing tracing){
-       return JwtTokenParserFactory.create(allowedIssuers, TokenActionsHttpClientFactory.create(tracing));
-    }
 
     @Bean
-    public JwtDecoder jwtDecoder(PermissionChecker permissionChecker, JwtTokenParser jwtTokenParser) {
-        return (jwtToken) -> {
-            permissionChecker.checkPermissions(jwtToken);
-            final Jws<Claims> jws = jwtTokenParser.parseTokenClaims(jwtToken);
-            final JwsHeader headers = jws.getHeader();
-            final Claims claims = jws.getBody();
-            return new Jwt(jwtToken, claims.getIssuedAt().toInstant(), claims.getExpiration().toInstant(), headers, claims);
+    public JwtDecoder jwtDecoder(List<IssuerInfo> allowedIssuers, PermissionChecker permissionChecker, Tracing tracing) {
+        final TokenActionsHttpClient tokenActionsHttpClient = TokenActionsHttpClientFactory.create(tracing);
+        final JwtTokenParser jwtTokenParser = JwtTokenParserFactory.create(allowedIssuers, tokenActionsHttpClient);
+        return jwtToken -> {
+            try {
+                permissionChecker.checkPermissions(jwtToken);
+                final Jws<Claims> jws = jwtTokenParser.parseTokenClaims(jwtToken);
+                final JwsHeader<?> headers = jws.getHeader();
+                final Claims claims = jws.getBody();
+                return new Jwt(jwtToken, claims.getIssuedAt().toInstant(), claims.getExpiration().toInstant(), headers, claims);
+            } catch (JwtException e) {
+                throw new org.springframework.security.oauth2.jwt.BadJwtException(e.getMessage(), e);
+            }
         };
     }
 

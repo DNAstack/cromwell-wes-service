@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -24,7 +24,7 @@ public class PathTranslatorTest {
         PathTranslator translator = new PathTranslator(prefix, replacement);
 
         JsonNode translatedNode = translator.mapJsonNode(node);
-        Assert.assertTrue(translatedNode.asText().startsWith(replacement));
+        Assertions.assertTrue(translatedNode.asText().startsWith(replacement));
     }
 
     @Test
@@ -36,9 +36,9 @@ public class PathTranslatorTest {
         PathTranslator translator = new PathTranslator(prefix, replacement);
 
 
-        Assert.assertFalse(translator.shouldMapJsonNode(node));
+        Assertions.assertFalse(translator.shouldMapJsonNode(node));
         JsonNode translatedNode = translator.mapJsonNode(node);
-        Assert.assertTrue(translatedNode.asText().startsWith(textPath));
+        Assertions.assertTrue(translatedNode.asText().startsWith(textPath));
     }
 
 
@@ -49,7 +49,7 @@ public class PathTranslatorTest {
         String textPath = "/to-replace/path/suffix";
         TextNode node = new TextNode(textPath);
         PathTranslator translator = new PathTranslator(prefix, replacement);
-        Assert.assertTrue(translator.shouldMapJsonNode(node));
+        Assertions.assertTrue(translator.shouldMapJsonNode(node));
     }
 
     @Test
@@ -61,7 +61,7 @@ public class PathTranslatorTest {
         PathTranslator translator = new PathTranslator(prefix, replacement);
 
         JsonNode translatedNode = translator.mapJsonNode(node);
-        Assert.assertEquals(translatedNode.asText(), textPath);
+        Assertions.assertEquals(translatedNode.asText(), textPath);
     }
 
     @Test
@@ -70,11 +70,11 @@ public class PathTranslatorTest {
         ArrayNode originalArray = mapper.valueToTree(Arrays.asList("path-to-translate", "path-to-leave"));
         PathTranslator translator = new PathTranslator("path-to-translate", "look-i-am-translated");
 
-        Assert.assertTrue(translator.shouldMapJsonNode(originalArray));
+        Assertions.assertTrue(translator.shouldMapJsonNode(originalArray));
         ArrayNode newArray = (ArrayNode) translator.mapJsonNode(originalArray);
 
-        Assert.assertEquals(newArray.get(0).asText(), "look-i-am-translated");
-        Assert.assertEquals(newArray.get(1).asText(), "path-to-leave");
+        Assertions.assertEquals(newArray.get(0).asText(), "look-i-am-translated");
+        Assertions.assertEquals(newArray.get(1).asText(), "path-to-leave");
     }
 
     @Test
@@ -85,11 +85,11 @@ public class PathTranslatorTest {
         originalNode.set("field-1", new TextNode("path-to-translate"));
         originalNode.set("field-2", new TextNode("path-to-leave"));
         PathTranslator translator = new PathTranslator("path-to-translate", "look-i-am-translated");
-        Assert.assertTrue(translator.shouldMapJsonNode(originalNode));
+        Assertions.assertTrue(translator.shouldMapJsonNode(originalNode));
         ObjectNode newObject = (ObjectNode) translator.mapJsonNode(originalNode);
 
-        Assert.assertEquals(newObject.get("field-1").asText(), "look-i-am-translated");
-        Assert.assertEquals(newObject.get("field-2").asText(), "path-to-leave");
+        Assertions.assertEquals(newObject.get("field-1").asText(), "look-i-am-translated");
+        Assertions.assertEquals(newObject.get("field-2").asText(), "path-to-leave");
     }
 
     @Test
@@ -108,14 +108,14 @@ public class PathTranslatorTest {
         originalNode.set("to-translate", nestedNode1);
         originalNode.set("field-2", new TextNode("path-to-leave"));
         PathTranslator translator = new PathTranslator("path-to-translate", "look-i-am-translated");
-        Assert.assertTrue(translator.shouldMapJsonNode(originalNode));
+        Assertions.assertTrue(translator.shouldMapJsonNode(originalNode));
         ObjectNode newObject = (ObjectNode) translator.mapJsonNode(originalNode);
 
-        Assert.assertFalse(newObject == originalNode);
+        Assertions.assertFalse(newObject == originalNode);
 
-        Assert.assertNotEquals(originalNode, newObject);
+        Assertions.assertNotEquals(originalNode, newObject);
         String text = newObject.get("to-translate").get("to-translate").get(0).get("to-translate").textValue();
-        Assert.assertEquals(text, "look-i-am-translated/with-some-prefix");
+        Assertions.assertEquals(text, "look-i-am-translated/with-some-prefix");
 
     }
 

@@ -49,10 +49,10 @@ public class LocalBlobStorageClient implements BlobStorageClient {
     public String writeBytes(InputStream stream, long uploadSize, String stagingFolder, String fileName) throws IOException {
         String path = stagingPath + "/" + stagingFolder + "/" + fileName;
         File fileToWrite = new File(path);
-        String filePath = fileToWrite.getCanonicalPath();
+        String filePath = fileToWrite.getAbsolutePath();
 
         if (!filePath.startsWith(stagingPath)) {
-            throw new IOException("Could not write to file path " + filePath + ". Path outset of protected scope");
+            throw new IOException("Could not write to file path " + filePath + ". Path outside of protected scope");
         }
 
         if (fileToWrite.exists()) {

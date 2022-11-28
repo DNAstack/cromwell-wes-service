@@ -21,7 +21,8 @@ mkdir -p ${docker_context_dir}/.m2
 cp -rp src .mvn mvnw pom.xml ${docker_context_dir}
 cp ~/.m2/*.xml ${docker_context_dir}/.m2
 
-docker build \
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
   --build-arg APP_NAME=${app_name} \
   --build-arg APP_VERSION=${app_version} \
   -t ${target_image_name} \

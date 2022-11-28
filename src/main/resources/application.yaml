@@ -1,3 +1,77 @@
+server:
+  port: 8090
+  error:
+    include-message: always         # To include "message" attribute
+    include-binding-errors: always  # To include "errors" attribute
+
+spring:
+  application:
+    name: cromwell-wes-service
+  liquibase:
+    enabled: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost/wes-service
+    username: wes-service
+    password: ""
+    hikari:
+      maximum-pool-size: 5
+  zipkin:
+    enabled: false # By default, it is DISABLED for the local development.
+    base-url: http://localhost:9411
+    sender:
+      type: web
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            # Fix for cosmetic error on startup `HHH000424: Disabling contextual LOB creation as createClob() method threw error`
+            non_contextual_creation: true
+    database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+  servlet:
+    multipart:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: INFO # set to DEBUG to find out why tokens are rejected
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: info,health,prometheus,loggers
+  endpoint:
+    info:
+      enabled: true
+    health:
+      probes:
+        enabled: true
+      enabled: true
+    prometheus:
+      enabled: true
+    loggers:
+      enabled: true
+
+# App information
+info:
+  app:
+    name: "wes-service"
+    description: "Interface Layering WES API ontop of an execution engine"
+    url: http://localhost:${server.port}
+    version: "${project.version}"
+
+build.version: @project.version@
+
+app:
+  url: ${wes.url}
+
 wes:
   url: ${info.app.url}
   service-info:
@@ -58,8 +132,8 @@ wes:
     client-id: wes-service
     client-secret: dev-secret-never-use-in-prod
     grant-type: "urn:ietf:params:oauth:grant-type:device_code"
-    token-uri:  ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
-    device-code-uri:  ${wes.auth.token-issuers[0].issuer-uri}/oauth/device/code
+    token-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
+    device-code-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/device/code
     services:
       wes:
         id: wes
@@ -85,64 +159,53 @@ wes:
 # Auditing
 auditing:
   enabled: true
-  service-client-id: wes-service
-  batch-processing-enabled: false
+  batch-processing-enabled: true
   scheduling:
     batch-emit:
-      cron: 0/2 * * ? * *
+      cron: 0/10 * * ? * *
+  service-client-id: ewes-service
   publisher:
     events-uri: ${auditing.oauth-client.audience}/events
     events-batch-uri: ${auditing.oauth-client.audience}/events/batch
     give-up-after: 5
     delay-between-tries-in-millis: 250
-
   oauth-client:
     client-id: wes-service
     client-secret: dev-secret-never-use-in-prod
     scopes: audit:create
     audience: http://localhost:8888
     resource: ${auditing.publisher.events-uri}
-    actions: ["audit:create"]
+    actions: [ "audit:create" ]
     token-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
     token-issuers-uris: ${wes.auth.token-issuers[0].issuer-uri}
     policy-evaluation-requester: ${wes.auth.validator.policy-evaluation-requester}
-    policy-evaluation-uri:  ${wes.auth.validator.policy-evaluation-uri}
+    policy-evaluation-uri: ${wes.auth.validator.policy-evaluation-uri}
   json-printer-style: dense_print
-# App information
-info:
-  app:
-    name: "wes-service"
-    description: "Interface Layering WES API ontop of an execution engine"
-    url: http://localhost:${server.port}
-    version: "${project.version}"
 
-server:
-  port: 8090
 
+springdoc:
+  oAuthFlow:
+    authorizationUrl: http://localhost:8081/oauth/authorize
+    tokenUrl: http://localhost:8081/oauth/token
+  api-docs:
+    path: /docs/openapi.json
+  swagger-ui:
+    path: /docs/swagger-ui.html
+
+---
 spring:
-  servlet:
-    multipart:
-      enabled: true
-  jackson:
-    default-property-inclusion: non_null
-    deserialization:
-      FAIL_ON_UNKNOWN_PROPERTIES: false
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    username: wes-service
-    password: ""
-    url: jdbc:postgresql://localhost/wes-service
-  jpa:
-    properties:
-      hibernate:
-        jdbc:
-          lob:
-            # Fix for cosmetic error on startup `HHH000424: Disabling contextual LOB creation as createClob() method threw error`
-            non_contextual_creation: true
-    database-platform: org.hibernate.dialect.PostgreSQL95Dialect
+  config:
+    activate:
+      on-profile: "local-dev"
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, prometheus
+logging:
+  level:
+    com.dnastack: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "publish-external"
+auditing:
+  publish-external: true
