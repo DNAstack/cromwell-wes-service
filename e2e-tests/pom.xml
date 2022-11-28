@@ -19,14 +19,15 @@
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
         <junit.version>5.8.2</junit.version>
         <restassured.version>4.5.1</restassured.version>
-        <slf4j.version>1.7.32</slf4j.version>
-        <jfairy.version>0.5.9</jfairy.version>
+        <slf4j.version>2.0.1</slf4j.version>
         <jackson.version>2.13.2</jackson.version>
-        <jackson-databind.version>2.13.2.1</jackson-databind.version>
-        <groovy.version>3.0.9</groovy.version>
+        <jackson-databind.version>2.13.4</jackson-databind.version>
+        <groovy.version>3.0.13</groovy.version>
         <awaitility.version>4.0.3</awaitility.version>
-        <lombok.version>1.18.22</lombok.version>
         <awaitility.version>4.0.3</awaitility.version>
+        <lombok.version>1.18.24</lombok.version>
+        <actuator-e2e-test.version>1.0.3</actuator-e2e-test.version>
+        <jfairy.version>0.5.9</jfairy.version>
     </properties>
 
     <dependencyManagement>
@@ -49,6 +50,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.dnastack</groupId>
+            <artifactId>actuator-e2e-test</artifactId>
+            <version>${actuator-e2e-test.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

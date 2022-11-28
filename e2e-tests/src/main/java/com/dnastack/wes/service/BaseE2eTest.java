@@ -25,11 +25,11 @@ public abstract class BaseE2eTest {
 
     @BeforeAll
     public static void setUpAllForAllTests() throws Exception {
-        tokenUri = requiredEnv("E2E_TOKEN_URI");
-        clientId = requiredEnv("E2E_CLIENT_ID");
-        clientSecret = requiredEnv("E2E_CLIENT_SECRET");
+        tokenUri = optionalEnv("E2E_TOKEN_URI","http://localhost:8081/oauth/token");
+        clientId = optionalEnv("E2E_CLIENT_ID", "wes-service-e2e-test");
+        clientSecret = optionalEnv("E2E_CLIENT_SECRET", "dev-secret-never-use-in-prod");
         scopes = optionalEnv("E2E_CLIENT_SCOPES", null);
-        resourceUrl = requiredEnv("E2E_CLIENT_RESOURCE_BASE_URI");
+        resourceUrl = optionalEnv("E2E_CLIENT_RESOURCE_BASE_URI","http://localhost:8090");
         RestAssured.baseURI = optionalEnv("E2E_BASE_URI", "http://localhost:8090");
         RestAssured.config = RestAssuredConfig.config()
             .encoderConfig(EncoderConfig.encoderConfig().appendDefaultContentCharsetToContentTypeIfUndefined(false));
