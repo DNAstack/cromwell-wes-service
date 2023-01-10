@@ -1,0 +1,26 @@
+name: Build, Test & Analyse
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test-java-app:
+    name: Build & Test Java App
+    uses: DNAstack/dnastack-development-tools/.github/workflows/build-test-java-app.yml@11f31261946b07ab0857673bef34bc588579a3aa
+    with:
+      java-version: 17
+    secrets:
+      pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
+  code-analysis-and-dependency-check:
+    name: Code Analysis and OWASP Dependency Check
+    uses: DNAstack/dnastack-development-tools/.github/workflows/code-analysis-and-dependency-check.yml@11f31261946b07ab0857673bef34bc588579a3aa
+    with:
+      with-frontend: false
+      java-version: 17
+    secrets:
+      pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
+      sonar-token: ${{ secrets.SONAR_TOKEN }}
+      sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
