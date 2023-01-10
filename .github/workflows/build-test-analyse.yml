@@ -20,6 +20,7 @@ jobs:
     with:
       with-frontend: false
       java-version: 17
+
     secrets:
       pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
       sonar-token: ${{ secrets.SONAR_TOKEN }}
