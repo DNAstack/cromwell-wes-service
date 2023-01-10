@@ -1,7 +1,7 @@
-package com.dnastack.wes.api;
+package com.dnastack.wes.translation;
 
 import com.dnastack.wes.AppConfig;
-import com.dnastack.wes.api.PathTranslationConfig.PathLocation;
+import com.dnastack.wes.translation.PathTranslationConfig.PathLocation;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

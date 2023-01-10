@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 @Data
-public class AccessToken implements Cloneable {
+public class AccessToken {
 
 
     @JsonProperty("access_token")
@@ -35,10 +35,5 @@ public class AccessToken implements Cloneable {
 
     @JsonProperty("session_state")
     protected String sessionState;
-
-    @Override
-    public AccessToken clone() {
-        return new AccessToken(token, expiresIn, refreshExpiresIn, refreshToken, tokenType, idToken, notBeforePolicy, sessionState);
-    }
 
 }

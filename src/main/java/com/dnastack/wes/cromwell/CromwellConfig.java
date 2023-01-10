@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -33,6 +34,19 @@ public class CromwellConfig {
     /**
      * Default workflow options to apply at runtime
      */
-    Map<String,Object> defaultWorkflowOptions = new HashMap<>();
+    Map<String, Object> defaultWorkflowOptions = new HashMap<>();
+
+    String userLabel = "user_id";
+
+    String workflowUrlLabel = "workflow_url";
+
+    String optionsFilename = "options.json";
+
+    String dependenciesFilename = "dependencies.zip";
+
+    List<String> filesToIgnoreForStaging = List.of();
+
+    List<String> validCromwellOptions = List.of();
+
 
 }

@@ -61,7 +61,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         try {
             return UriComponentsBuilder.fromUriString(blobUri).replaceQuery(sas).build().toUri().toURL();
         } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
+            throw new StorageException(e);
         }
     }
 

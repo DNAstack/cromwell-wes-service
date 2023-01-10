@@ -50,8 +50,8 @@ public class AccessEvaluator {
             return false;
         }
         return Optional.ofNullable(authentication.getPrincipal())
-            .map((principal) -> (Jwt) principal)
-            .map((jwtPrincipal) -> {
+            .map(Jwt.class::cast)
+            .map(jwtPrincipal -> {
                 final String fullResourceUrl = appUrl + requiredResource;
                 boolean hasPermissions = permissionChecker.hasPermissions(jwtPrincipal.getTokenValue(), requiredScopes, fullResourceUrl, requiredActions);
                 if (!hasPermissions) {

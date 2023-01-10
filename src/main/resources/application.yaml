@@ -80,7 +80,6 @@ wes:
       - "1.0.0"
     supported-file-system-protocols:
       - "file"
-      - "drs"
     workflow-engine-versions:
       cromwell: 47
     workflow-type-versions:
@@ -91,9 +90,7 @@ wes:
       object-access-token-attachment-name: "tokens.json"
       cromwell-options-attachment-name: "options.json"
       dependencies-zip-attachment-name: "dependencies.zip"
-  drs:
-    supported-access-types:
-      - file
+
   blob-storage-client:
     name: LOCAL
     gcp:
@@ -125,7 +122,33 @@ wes:
       policy-evaluation-uri: ${wes.auth.token-issuers[0].issuer-uri}/policies/evaluations
   enable-multi-tenant-support: false
   cromwell:
-    defaultWorkflowOptions:
+    user-label: user_id
+    workflow-url-label: workflow_url
+    options-filename: options.json
+    dependencies-filename: dependencies.zip
+    files-to-ignore-for-staging:
+      - ${wes.cromwell.options-filename}
+      - ${wes.cromwell.dependencies-filename}
+    valid-cromwell-options:
+      - workflow_failure_mode
+      - final_workflow_outputs_dir
+      - use_relative_output_paths
+      - final_workflow_log_dir
+      - final_call_logs_dir
+      - write_to_cache
+      - read_from_cache
+      - jes_gcs_root
+      - google_compute_service_account
+      - google_project
+      - refresh_token
+      - auth_bucket
+      - monitoring_script
+      - monitoring_image
+      - google_labels
+      - default_runtime_attributes
+      - continueOnReturnCode
+      - backend
+    default-workflow-options:
       write_to_cache: false
       read_from_cache: false
   registry:

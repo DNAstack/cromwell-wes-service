@@ -25,8 +25,8 @@ public class CromwellSearch {
 
     private List<String> label;
 
-    private Long page;
+    private Integer page;
 
-    private Long pageSize;
+    private Integer pageSize;
 
 }

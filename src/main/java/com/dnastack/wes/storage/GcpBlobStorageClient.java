@@ -108,23 +108,24 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         } else {
             try (ReadChannel reader = blob.reader(BlobSourceOption.userProject(project))) {
                 reader.seek(rangeStart);
-                WritableByteChannel writer = Channels.newChannel(outputStream);
-                long maxRead = totalBytesToRead - bufferSize;
+                try(WritableByteChannel writer = Channels.newChannel(outputStream)) {
+                    long maxRead = totalBytesToRead - bufferSize;
 
-                ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
-                int totalBytes = 0;
-                while ((totalBytes += reader.read(byteBuffer)) < maxRead) {
-                    byteBuffer.flip();
-                    writer.write(byteBuffer);
-                    byteBuffer.clear();
-                }
+                    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
+                    int totalBytes = 0;
+                    while ((totalBytes += reader.read(byteBuffer)) < maxRead) {
+                        byteBuffer.flip();
+                        writer.write(byteBuffer);
+                        byteBuffer.clear();
+                    }
 
-                if (totalBytes < totalBytesToRead) {
-                    byteBuffer = ByteBuffer.allocate((int) totalBytesToRead - totalBytes);
-                    reader.read(byteBuffer);
-                    byteBuffer.flip();
-                    writer.write(byteBuffer);
-                    byteBuffer.clear();
+                    if (totalBytes < totalBytesToRead) {
+                        byteBuffer = ByteBuffer.allocate((int) totalBytesToRead - totalBytes);
+                        reader.read(byteBuffer);
+                        byteBuffer.flip();
+                        writer.write(byteBuffer);
+                        byteBuffer.clear();
+                    }
                 }
             }
         }

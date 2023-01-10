@@ -1,7 +1,6 @@
 package com.dnastack.wes.shared;
 
 import com.dnastack.wes.api.ErrorResponse;
-import com.dnastack.wes.drs.UnsupportedDrsAccessType;
 import feign.FeignException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -37,11 +36,6 @@ public class GlobalControllerExceptionHandler {
     public ResponseEntity<ErrorResponse> handle(FeignException ex) {
         return ResponseEntity.status(ex.status())
             .body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(ex.status()).build());
-    }
-
-    @ExceptionHandler(UnsupportedDrsAccessType.class)
-    public ResponseEntity<ErrorResponse> handle(UnsupportedDrsAccessType ex) {
-        return ResponseEntity.status(400).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(400).build());
     }
 
     @ExceptionHandler(AuthorizationException.class)

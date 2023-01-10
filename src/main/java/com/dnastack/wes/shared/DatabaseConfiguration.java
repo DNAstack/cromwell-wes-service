@@ -1,7 +1,7 @@
 package com.dnastack.wes.shared;
 
 
-import com.dnastack.wes.api.OriginalInputRowMapper;
+import com.dnastack.wes.translation.OriginalInputRowMapper;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,8 +13,9 @@ import javax.sql.DataSource;
 @Configuration
 public class DatabaseConfiguration {
 
-    @Autowired
-    private DataSource dataSource;
+    private final DataSource dataSource;
+
+    public DatabaseConfiguration(DataSource dataSource) {this.dataSource = dataSource;}
 
     @Bean
     public Jdbi jdbi() {

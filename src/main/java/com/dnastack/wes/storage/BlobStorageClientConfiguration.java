@@ -18,7 +18,7 @@ public class BlobStorageClientConfiguration {
         } else if (config.getName().equals(ClientName.LOCAL)) {
             return new LocalBlobStorageClient(config.getLocal());
         } else {
-            throw new RuntimeException("Could not configure blob storage client, please specify at least one configuration");
+            throw new StorageException("Could not configure blob storage client, please specify at least one configuration");
         }
     }
 

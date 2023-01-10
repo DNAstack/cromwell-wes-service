@@ -1,72 +1,60 @@
 package com.dnastack.wes.cromwell;
 
-import com.dnastack.wes.Constants;
 import com.dnastack.wes.api.*;
 import com.dnastack.wes.security.XForwardUtil;
+import com.dnastack.wes.translation.PathTranslator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class CromwellWesMapper {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    private static final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    private final CromwellConfig cromwellConfig;
+
+    public CromwellWesMapper(CromwellConfig cromwellConfig) {
+        this.cromwellConfig = cromwellConfig;
+    }
 
     public static RunListResponse mapCromwellResponseToRunListResposne(CromwellResponse response) {
         return RunListResponse.builder()
             .runs(response.getResults().stream().map(CromwellWesMapper::mapCromwellStatusToRunStatus)
-                .collect(Collectors.toList())).build();
+                .toList()).build();
     }
 
     public static RunStatus mapCromwellStatusToRunStatus(CromwellStatus status) {
         return RunStatus.builder().runId(status.getId()).state(mapState(status.getStatus())).build();
     }
 
-    public static  State mapState(String cromwellState) {
+    public static State mapState(String cromwellState) {
         cromwellState = cromwellState.toLowerCase();
-        switch (cromwellState) {
-            case "on hold":
-                return State.QUEUED;
-            case "succeeded":
-                return State.COMPLETE;
-            case "submitted":
-                return State.INITIALIZING;
-            case "running":
-                return State.RUNNING;
-            case "aborting":
-                return State.CANCELING;
-            case "aborted":
-                return State.CANCELED;
-            case "failed":
-                return State.EXECUTOR_ERROR;
-            default:
-                return State.UNKNOWN;
-
-        }
+        return switch (cromwellState) {
+            case "on hold" -> State.QUEUED;
+            case "succeeded" -> State.COMPLETE;
+            case "submitted" -> State.INITIALIZING;
+            case "running" -> State.RUNNING;
+            case "aborting" -> State.CANCELING;
+            case "aborted" -> State.CANCELED;
+            case "failed" -> State.EXECUTOR_ERROR;
+            default -> State.UNKNOWN;
+        };
 
     }
 
-    public static RunLog mapMetadataToRunLog(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
-        return mapMetadataToRunLog(metadataResponse, originalInputs, null);
-    }
-
-    public static RunLog mapMetadataToRunLog(
+    public RunLog mapMetadataToRunLog(
         CromwellMetadataResponse metadataResponse,
         Map<String, Object> originalInputs,
         List<PathTranslator> pathTranslators
@@ -90,7 +78,7 @@ public class CromwellWesMapper {
         return runLog;
     }
 
-    private static <T> T translatePaths(TypeReference<T> typeReference, T objectToTranslate, List<PathTranslator> translators) {
+    private <T> T translatePaths(TypeReference<T> typeReference, T objectToTranslate, List<PathTranslator> translators) {
         if (translators != null && !translators.isEmpty()) {
             JsonNode node = objectMapper.valueToTree(objectToTranslate);
 
@@ -104,7 +92,7 @@ public class CromwellWesMapper {
         return objectToTranslate;
     }
 
-    public static List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
+    public List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
         List<Log> taskLogs = new ArrayList<>();
 
         if (calls != null) {
@@ -121,7 +109,7 @@ public class CromwellWesMapper {
         return taskLogs;
     }
 
-    private static RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
+    private RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
         RunRequest runRequest = new RunRequest();
         runRequest.setWorkflowType(metadataResponse.getActualWorkflowLanguage());
         runRequest.setWorkflowTypeVersion(metadataResponse.getActualWorkflowLanguageVersions());
@@ -140,20 +128,20 @@ public class CromwellWesMapper {
         runRequest.setWorkflowEngineParameters(mapOptionsToEngineParameters(options));
 
         if (metadataResponse.getLabels() != null && metadataResponse.getLabels()
-            .containsKey(Constants.WORKFLOW_URL_LABEL)) {
-            runRequest.setWorkflowUrl(metadataResponse.getLabels().get(Constants.WORKFLOW_URL_LABEL));
-            metadataResponse.getLabels().remove(Constants.WORKFLOW_URL_LABEL);
+            .containsKey(cromwellConfig.getWorkflowUrlLabel())) {
+            runRequest.setWorkflowUrl(metadataResponse.getLabels().get(cromwellConfig.getWorkflowUrlLabel()));
         }
+        metadataResponse.getLabels().remove(cromwellConfig.getWorkflowUrlLabel());
 
         runRequest.setTags(metadataResponse.getLabels());
 
         return runRequest;
     }
 
-    public static Log mapTaskCallToLog(String name, Integer index, String uniqueName, CromwellTaskCall taskCall) {
+    public Log mapTaskCallToLog(String name, Integer index, String uniqueName, CromwellTaskCall taskCall) {
         HttpServletRequest request =
-                ((ServletRequestAttributes)RequestContextHolder.getRequestAttributes())
-                        .getRequest();
+            ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes()))
+                .getRequest();
         String path = request.getRequestURI();
         String stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stdout").toString());
         String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stderr").toString());
@@ -162,7 +150,7 @@ public class CromwellWesMapper {
             .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
     }
 
-    private static Map<String, Object> getWorkflowOptions(CromwellMetadataResponse metadataResponse) {
+    private Map<String, Object> getWorkflowOptions(CromwellMetadataResponse metadataResponse) {
         Map<String, String> submittedFiles = metadataResponse.getSubmittedFiles();
         Map<String, Object> optionsMap = new HashMap<>();
         if (metadataResponse.getWorkflowRoot() != null && !metadataResponse.getWorkflowRoot().isEmpty()) {
@@ -182,7 +170,7 @@ public class CromwellWesMapper {
         return optionsMap;
     }
 
-    private static Map<String, String> mapOptionsToEngineParameters(Map<String, Object> workflowOptions) {
+    private Map<String, String> mapOptionsToEngineParameters(Map<String, Object> workflowOptions) {
         Map<String, String> engineParams = new HashMap<>();
         for (Entry<String, Object> entry : workflowOptions.entrySet()) {
             try {

@@ -1,6 +1,6 @@
 package com.dnastack.wes.wdl;
 
-import com.dnastack.wes.api.PathTranslator;
+import com.dnastack.wes.translation.PathTranslator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;

@@ -14,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,9 +27,9 @@ import java.util.Set;
 public class WesV1Controller {
 
 
-    private CromwellService adapter;
-    private AppConfig config;
-    private AccessEvaluator accessEvaluator;
+    private final CromwellService adapter;
+    private final AppConfig config;
+    private final AccessEvaluator accessEvaluator;
 
     @Autowired
     WesV1Controller(CromwellService adapter, AppConfig config, AccessEvaluator accessEvaluator) {
@@ -58,7 +57,7 @@ public class WesV1Controller {
         return serviceInfo;
     }
 
-    @AuditIgnore
+
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'wes:execute', 'wes')")
     @PostMapping(value = "/runs", produces = {
         MediaType.APPLICATION_JSON_VALUE
@@ -67,11 +66,11 @@ public class WesV1Controller {
         @RequestPart("workflow_url") String workflowUrl,
         @RequestPart(name = "workflow_type", required = false) String workflowType,
         @RequestPart(name = "workflow_type_version", required = false) String workflowTypeVersion,
-        @RequestPart(name = "workflow_engine_parameters", required = false) Map<String, String> workflowEngineParams,
-        @RequestPart(name = "workflow_params", required = false) Map<String, Object> workflowParams,
+        @AuditIgnore @RequestPart(name = "workflow_engine_parameters", required = false) Map<String, String> workflowEngineParams,
+        @AuditIgnore @RequestPart(name = "workflow_params", required = false) Map<String, Object> workflowParams,
         @RequestPart(name = "tags", required = false) Map<String, String> tags,
-        @RequestPart(name = "workflow_attachment", required = false) MultipartFile[] workflowAttachments
-    ) throws IOException {
+        @AuditIgnore @RequestPart(name = "workflow_attachment", required = false) MultipartFile[] workflowAttachments
+    ) {
 
         RunRequest runRequest = RunRequest.builder().workflowUrl(workflowUrl).workflowType(workflowType)
             .workflowEngineParameters(workflowEngineParams)
@@ -79,7 +78,7 @@ public class WesV1Controller {
             .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments)
             .tags(tags).build();
 
-        return adapter.execute(AuthenticatedUser.getSubject(), runRequest);
+        return adapter.execute(runRequest);
     }
 
     @AuditActionUri("wes:runs:list")
@@ -95,7 +94,7 @@ public class WesV1Controller {
     @AuditActionUri("wes:run:read")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/'+#runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}", produces = { MediaType.APPLICATION_JSON_VALUE })
-    public RunLog getRun(HttpServletRequest request, @PathVariable("run_id") String runId) {
+    public RunLog getRun( @PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 

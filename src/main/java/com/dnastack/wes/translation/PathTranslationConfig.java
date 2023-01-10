@@ -1,4 +1,4 @@
-package com.dnastack.wes.api;
+package com.dnastack.wes.translation;
 
 
 import lombok.AllArgsConstructor;

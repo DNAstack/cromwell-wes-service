@@ -3,15 +3,15 @@ package com.dnastack.wes.cromwell;
 import com.dnastack.audit.logger.AuditEventLogger;
 import com.dnastack.audit.model.*;
 import com.dnastack.wes.AppConfig;
-import com.dnastack.wes.Constants;
 import com.dnastack.wes.api.*;
-import com.dnastack.wes.drs.DrsObjectResolverFactory;
 import com.dnastack.wes.security.AuthenticatedUser;
 import com.dnastack.wes.shared.AuthorizationException;
-import com.dnastack.wes.shared.CredentialsModel;
 import com.dnastack.wes.shared.InvalidRequestException;
 import com.dnastack.wes.shared.NotFoundException;
 import com.dnastack.wes.storage.BlobStorageClient;
+import com.dnastack.wes.translation.OriginalInputs;
+import com.dnastack.wes.translation.OriginalInputsDao;
+import com.dnastack.wes.translation.PathTranslatorFactory;
 import com.dnastack.wes.wdl.ObjectTranslator;
 import com.dnastack.wes.wdl.WdlFileProcessor;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -51,35 +51,33 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class CromwellService {
 
-    private final static ObjectMapper mapper = new ObjectMapper();
+    private static final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
     private final CromwellClient client;
     private final BlobStorageClient storageClient;
-    private final Jdbi jdbi;
-    private final DrsObjectResolverFactory drsObjectResolverFactory;
-    private final AppConfig config;
+    private final OriginalInputsDao originalInputsDao;
     private final PathTranslatorFactory pathTranslatorFactory;
+    private final CromwellWesMapper cromwellWesMapper;
     private final CromwellConfig cromwellConfig;
-    private final AuditEventLogger auditEventLogger;
+
+    private final AppConfig appConfig;
 
     @Autowired
     CromwellService(
         CromwellClient cromwellClient,
         BlobStorageClient storageClient,
         PathTranslatorFactory pathTranslatorFactory,
-        DrsObjectResolverFactory drsObjectResolverFactory,
         Jdbi jdbi,
+        CromwellWesMapper cromwellWesMapper,
         AppConfig appConfig,
-        CromwellConfig config,
-        AuditEventLogger auditEventLogger
+        CromwellConfig config
     ) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
-        this.drsObjectResolverFactory = drsObjectResolverFactory;
-        this.config = appConfig;
-        this.jdbi = jdbi;
+        this.originalInputsDao = jdbi.onDemand(OriginalInputsDao.class);
         this.storageClient = storageClient;
+        this.cromwellWesMapper = cromwellWesMapper;
+        this.appConfig = appConfig;
         this.cromwellConfig = config;
-        this.auditEventLogger = auditEventLogger;
     }
 
 
@@ -89,17 +87,10 @@ public class CromwellService {
      */
     public Map<State, Integer> getSystemStateCounts() {
         CromwellResponse response;
-        if (config.getEnableMultiTenantSupport()) {
-            CromwellSearch search = new CromwellSearch();
-            search
-                .setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, AuthenticatedUser.getSubject())));
-            response = client.listWorkflows(search);
-        } else {
-            response = client.listWorkflows();
-        }
+        response = client.listWorkflows();
 
-        Map<State, Integer> systemCounts = new HashMap<>();
-        response.getResults().stream().forEach(cromwellStatus -> {
+        EnumMap<State, Integer> systemCounts = new EnumMap<>(State.class);
+        response.getResults().forEach(cromwellStatus -> {
             State state = CromwellWesMapper.mapState(cromwellStatus.getStatus());
             systemCounts.compute(state, (key, count) -> {
                 if (count != null) {
@@ -133,7 +124,7 @@ public class CromwellService {
      *
      * @param pageSize  The size of the page to return. If pageToken is provided, then page size will be ignored. If
      *                  neither the pageSize or pageToken are defined, then the default page size will be used. {@link
-     *                  Constants#DEFAULT_PAGE_SIZE}
+     *                  AppConfig}
      * @param pageToken The page token is an encoded string defining the next page to retrieve from the cromwell server.
      *                  It is a base64 encoded query string containing the page size and the next page
      *
@@ -147,25 +138,19 @@ public class CromwellService {
             Pattern pattern = Pattern.compile("page=(?<page>[0-9]+)&pageSize=(?<pageSize>[0-9]+)");
             Matcher matcher = pattern.matcher(decodedToken);
             if (matcher.find()) {
-                search.setPage(Long.valueOf(matcher.group("page")));
-                search.setPageSize(Long.valueOf(matcher.group("pageSize")));
+                search.setPage(Integer.valueOf(matcher.group("page")));
+                search.setPageSize(Integer.valueOf(matcher.group("pageSize")));
             }
         }
 
         if (search.getPage() == null) {
-            search.setPage(Constants.DEFAULT_PAGE);
+            search.setPage(appConfig.getDefaultPage());
         }
 
         if (search.getPageSize() == null) {
-            search.setPageSize(pageSize == null ? Constants.DEFAULT_PAGE_SIZE : pageSize);
+            search.setPageSize(pageSize == null ? appConfig.getDefaultPageSize() : pageSize);
         }
 
-        String user = AuthenticatedUser.getSubject();
-        if (config.getEnableMultiTenantSupport() && user != null) {
-            search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
-        } else if (config.getEnableMultiTenantSupport()) {
-            throw new AuthorizationException("Listing of workflows is restricted to authorized users");
-        }
 
         CromwellResponse response = client.listWorkflows(search);
         RunListResponse runListResponse = CromwellWesMapper.mapCromwellResponseToRunListResposne(response);
@@ -189,30 +174,11 @@ public class CromwellService {
      * @return a complete run log
      */
     public RunLog getRun(String runId) {
-        authorizeUserForRun(runId);
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
-        Map<String, Object> mappedFileObject = jdbi.withExtension(OriginalInputsDao.class, dao -> {
-            OriginalInputs inputs = dao.getInputs(runId);
-            return inputs == null ? null : inputs.getMapping();
-        });
-
-        return CromwellWesMapper
-            .mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory
+        OriginalInputs inputs = originalInputsDao.getInputs(runId);
+        Map<String, Object> mappedFileObject = inputs == null ? null : inputs.getMapping();
+        return cromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory
                 .getTranslatorsForOutputs());
-    }
-
-    private void authorizeUserForRun(String runId) {
-        String user = AuthenticatedUser.getSubject();
-        if (config.getEnableMultiTenantSupport()) {
-            CromwellSearch search = new CromwellSearch();
-            search.setId(Arrays.asList(runId));
-            search.setLabel(Arrays.asList(String.format("%s:%s", Constants.USER_LABEL, user)));
-            CromwellResponse response = client.listWorkflows(search);
-            if (response.getTotalResultsCount() == 0) {
-                throw new AuthorizationException("The resource does not exist or the user is unauthorized to access "
-                                                 + "it");
-            }
-        }
     }
 
     private CromwellMetadataResponse getMetadata(String runId) {
@@ -235,7 +201,6 @@ public class CromwellService {
      * @return a run status
      */
     public RunStatus getRunStatus(String runId) {
-        authorizeUserForRun(runId);
         CromwellStatus status = getStatus(runId);
         return CromwellWesMapper.mapCromwellStatusToRunStatus(status);
     }
@@ -260,7 +225,6 @@ public class CromwellService {
      * @return a complete run log
      */
     public RunId cancel(String runId) {
-        authorizeUserForRun(runId);
         client.abortWorkflow(runId);
         return RunId.builder().runId(runId).build();
     }
@@ -273,10 +237,7 @@ public class CromwellService {
     private String getLogPath(String runId, String taskName, int index, String logKey) throws IOException {
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
         Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
-        if (calls == null) {
-            throw new FileNotFoundException(
-                "Could not read " + logKey + " for task " + taskName + "in run " + runId + ", it does not exist");
-        } else if (!calls.containsKey(taskName) || calls.get(taskName).size() <= index) {
+        if (calls == null || !calls.containsKey(taskName) || calls.get(taskName).size() <= index) {
             throw new FileNotFoundException(
                 "Could not read " + logKey + " for task " + taskName + "in run " + runId + ", it does not exist");
         }
@@ -292,7 +253,6 @@ public class CromwellService {
     public void getLogBytes(OutputStream outputStream, String runId) throws IOException {
         CromwellMetadataResponse response = client.getMetadata(runId);
         if (response.getFailures() != null) {
-            ObjectMapper mapper = new ObjectMapper();
             outputStream.write(mapper.writeValueAsBytes(response.getFailures()));
         }
     }
@@ -327,12 +287,12 @@ public class CromwellService {
      * </pre>
      * <p>
      * The user can provide a dependencies file as a <code>workflow_attachment</code> named {@link
-     * Constants#DEPENDENCIES_FILE} which will be sent to cromwell instead of the zip file produced by this method.
+     * CromwellConfig} which will be sent to cromwell instead of the zip file produced by this method.
      * </li>
      * <li><strong>workflowOptions:</strong> Workflow options can be provided in two different ways.
      * <ol>
      * <li>A file submitted as a <code>workflow_attachment</code> with the name defined by {@link
-     * Constants#OPTIONS_FILE}. This file is expected to be <code>JSON</code> and will be extracted into a Hashmap and
+     * CromwellConfig}. This file is expected to be <code>JSON</code> and will be extracted into a Hashmap and
      * merged with the options submitted by <code>engine_parameters</code></li>
      * <li>Key-Value pairs provided by the . The values will extracted as
      * <code>JSON</code> before being merged in the options map.
@@ -345,19 +305,7 @@ public class CromwellService {
      * then, files will be mapped into their final destination and then localized by the object transfer service.
      * </ul>
      */
-    public RunId execute(String subject, RunRequest runRequest) {
-        final String resourceUri = ServletUriComponentsBuilder.fromCurrentServletMapping()
-            .path("/ga4gh/wes/v1")
-            .toUriString();
-        auditEventLogger.log(AuditEventBody.builder()
-            .action(AuditedAction.builder().uri("wes:execute").build())
-            .resource(AuditedResource.builder().uri(resourceUri).build())
-            .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.STARTED).build())
-            .context(AuditedContext.builder().build())
-            .extraArguments(Map.of(
-                "cromwell_url", cromwellConfig.getUrl(),
-                "workflow_url", runRequest.getWorkflowUrl()
-            )).build());
+    public RunId execute(RunRequest runRequest) {
         try {
             Path tempDirectory = null;
             try {
@@ -375,9 +323,8 @@ public class CromwellService {
                     setWorkflowSourceAndDependencies(tempDirectory, runRequest, executionRequest);
                 }
 
-                Map<String, CredentialsModel> credentials = getObjectAccessCredentials(runRequest);
                 WdlFileProcessor processor = setWorkflowInputs(runRequest
-                    .getWorkflowParams(), credentials, runRequest.getWorkflowAttachments(), executionRequest);
+                    .getWorkflowParams(), runRequest.getWorkflowAttachments(), executionRequest);
 
                 uploadAttachments(runRequest, processor);
 
@@ -387,40 +334,19 @@ public class CromwellService {
                 CromwellStatus status = client.createWorkflow(executionRequest);
                 RunId runId = RunId.builder().runId(status.getId()).build();
 
-                jdbi.withExtension(OriginalInputsDao.class, dao -> {
-                    dao.saveInputs(new OriginalInputs(runId.getRunId(), originalInputs));
-                    return null;
-                });
+                originalInputsDao.saveInputs(new OriginalInputs(runId.getRunId(), originalInputs));
 
-                auditEventLogger.log(AuditEventBody.builder()
-                    .action(AuditedAction.builder().uri("wes:execute").build())
-                    .resource(AuditedResource.builder().uri(resourceUri).build())
-                    .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.COMPLETED).build())
-                    .context(AuditedContext.builder().build())
-                    .extraArguments(Map.of(
-                        "cromwell_url", cromwellConfig.getUrl(),
-                        "workflow_url", runRequest.getWorkflowUrl(),
-                        "run_id", runId.getRunId()
-                    )).build());
 
                 return runId;
             } finally {
                 if (tempDirectory != null && tempDirectory.toFile().exists()) {
-                    Files.walk(tempDirectory.toAbsolutePath()).sorted(Comparator.reverseOrder()).map(Path::toFile)
-                        .forEach(File::delete);
+                    try (Stream<Path> files = Files.walk(tempDirectory.toAbsolutePath())) {
+                        files.sorted(Comparator.reverseOrder()).map(Path::toFile)
+                            .forEach(File::delete);
+                    }
                 }
             }
         } catch (IOException | FeignException e) {
-            auditEventLogger.log(AuditEventBody.builder()
-                .action(AuditedAction.builder().uri("wes:execute").build())
-                .resource(AuditedResource.builder().uri(resourceUri).build())
-                .outcome(AuditedOutcome.builder().operationState(AuditEventOutcome.FAILED).build())
-                .context(AuditedContext.builder().build())
-                .extraArguments(Map.of(
-                    "cromwell_url", cromwellConfig.getUrl(),
-                    "workflow_url", runRequest.getWorkflowUrl(),
-                    "failure_reason", e.getMessage()
-                )).build());
             throw new InvalidRequestException(e.getMessage(), e);
 
         }
@@ -431,9 +357,9 @@ public class CromwellService {
         List<MultipartFile> attachmentFiles =
             Stream.of(runRequest.getWorkflowAttachments())
                 .filter(attachment -> attachment.getOriginalFilename() != null)
-                .filter(attachment -> !Constants.FILES_TO_IGNORE_FOR_STAGING.contains(attachment.getOriginalFilename()))
+                .filter(attachment -> !cromwellConfig.getFilesToIgnoreForStaging().contains(attachment.getOriginalFilename()))
                 .filter(attachment -> !attachment.getOriginalFilename().endsWith("wdl"))
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, String> mappedFiles = new HashMap<>();
         for (MultipartFile attachment : attachmentFiles) {
@@ -443,33 +369,13 @@ public class CromwellService {
         }
 
         if (processor != null) {
-            processor.getMappedObjects()
-                .stream().forEach(objectWrapper -> {
-                    JsonNode node = objectWrapper.getMappedValue();
-                    if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
-                        objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
-                    }
-                });
+            processor.getMappedObjects().forEach(objectWrapper -> {
+                JsonNode node = objectWrapper.getMappedValue();
+                if (node instanceof TextNode && mappedFiles.containsKey(node.asText())) {
+                    objectWrapper.setMappedValue(new TextNode(mappedFiles.get(node.asText())));
+                }
+            });
         }
-    }
-
-    private Map<String, CredentialsModel> getObjectAccessCredentials(RunRequest runRequest) throws IOException {
-        Map<String, CredentialsModel> objectAccessCredentials;
-
-        Optional<MultipartFile> objectAccessCredentialsFile =
-            Stream.of(runRequest.getWorkflowAttachments())
-                .filter(attachment -> attachment.getOriginalFilename() != null && attachment.getOriginalFilename()
-                    .equals(Constants.OBJECT_ACCESS_CREDENTIALS_FILE)).findFirst();
-
-        TypeReference<Map<String, CredentialsModel>> typeReference = new TypeReference<>() {
-        };
-        if (objectAccessCredentialsFile.isPresent()) {
-            objectAccessCredentials = mapper
-                .readValue(objectAccessCredentialsFile.get().getInputStream(), typeReference);
-        } else {
-            objectAccessCredentials = Collections.emptyMap();
-        }
-        return objectAccessCredentials;
     }
 
 
@@ -481,9 +387,9 @@ public class CromwellService {
 
         String user = AuthenticatedUser.getSubject();
         if (user != null) {
-            labels.put(Constants.USER_LABEL, user);
+            labels.put(cromwellConfig.getUserLabel(), user);
         }
-        labels.put(Constants.WORKFLOW_URL_LABEL, runRequest.getWorkflowUrl());
+        labels.put(cromwellConfig.getWorkflowUrlLabel(), runRequest.getWorkflowUrl());
         cromwellExecutionRequest.setLabels(labels);
     }
 
@@ -496,7 +402,7 @@ public class CromwellService {
         }
 
         Optional<MultipartFile> optionsFile = Stream.of(runRequest.getWorkflowAttachments())
-            .filter((file) -> file.getOriginalFilename().endsWith(Constants.OPTIONS_FILE)).findFirst();
+            .filter(file -> file.getOriginalFilename().endsWith(cromwellConfig.getOptionsFilename())).findFirst();
         TypeReference<Map<String, Object>> typeReference = new TypeReference<>() {
         };
 
@@ -513,7 +419,7 @@ public class CromwellService {
             JsonNodeFactory nodeFactory = new JsonNodeFactory(false);
             ObjectNode objectNode = nodeFactory.objectNode();
             for (Entry<String, String> entry : engineParams.entrySet()) {
-                if (Constants.VALID_CROMWELL_OPTIONS.contains(entry.getKey())) {
+                if (cromwellConfig.getValidCromwellOptions().contains(entry.getKey())) {
                     JsonNode node = extractJsonNode(entry.getValue());
                     objectNode.set(entry.getKey(), node);
                 }
@@ -548,15 +454,15 @@ public class CromwellService {
         if (runRequest.getWorkflowAttachments().length > 1) {
 
             Optional<MultipartFile> dependenciesZip = Stream.of(runRequest.getWorkflowAttachments())
-                .filter(file -> file.getOriginalFilename().endsWith(Constants.DEPENDENCIES_FILE)).findFirst();
+                .filter(file -> file.getOriginalFilename().endsWith(cromwellConfig.getDependenciesFilename())).findFirst();
             if (dependenciesZip.isPresent()) {
-                Path depPath = Paths.get(tempDirectory.toString(), Constants.DEPENDENCIES_FILE);
+                Path depPath = Paths.get(tempDirectory.toString(), cromwellConfig.getDependenciesFilename());
                 File depFile = depPath.toFile();
                 dependenciesZip.get().transferTo(depFile);
                 cromwellRequest.setWorkflowDependencies(depFile);
             } else {
                 List<MultipartFile> wdls = Stream.of(runRequest.getWorkflowAttachments())
-                    .filter(file -> file.getOriginalFilename().endsWith(".wdl")).collect(Collectors.toList());
+                    .filter(file -> file.getOriginalFilename().endsWith(".wdl")).toList();
                 cromwellRequest.setWorkflowDependencies(createDependenciesZip(tempDirectory, wdls));
             }
         }
@@ -581,21 +487,21 @@ public class CromwellService {
     }
 
     private File createDependenciesZip(Path tempDirectory, List<MultipartFile> files) throws IOException {
-        Path depPath = Paths.get(tempDirectory.toString(), Constants.DEPENDENCIES_FILE);
+        Path depPath = Paths.get(tempDirectory.toString(), cromwellConfig.getDependenciesFilename());
         File depFile = depPath.toFile();
         FileOutputStream outputStream = new FileOutputStream(depFile);
-        ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream);
-        for (MultipartFile sourceFile : files) {
-            Path path = Paths.get(tempDirectory.toString(), sourceFile.getOriginalFilename());
-            File file = path.toFile();
-            file.getParentFile().mkdirs();
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            fileOutputStream.write(sourceFile.getBytes());
-            fileOutputStream.close();
-        }
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            for (MultipartFile sourceFile : files) {
+                Path path = Paths.get(tempDirectory.toString(), sourceFile.getOriginalFilename());
+                File file = path.toFile();
+                file.getParentFile().mkdirs();
+                try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+                    fileOutputStream.write(sourceFile.getBytes());
+                }
+            }
 
-        writeFilesToZip(zipOutputStream, tempDirectory.toUri(), tempDirectory.toFile());
-        zipOutputStream.close();
+            writeFilesToZip(zipOutputStream, tempDirectory.toUri(), tempDirectory.toFile());
+        }
         return depFile;
     }
 
@@ -626,20 +532,17 @@ public class CromwellService {
 
     private WdlFileProcessor setWorkflowInputs(
         Map<String, Object> workflowParams,
-        Map<String, CredentialsModel> credentials,
         MultipartFile[] uploadedAttachments,
         CromwellExecutionRequest executionRequest
     ) {
         Map<String, Object> cromwellInputs = new HashMap<>();
         WdlFileProcessor processor = null;
         Set<String> uploadFileNames = Stream.of(uploadedAttachments)
-            .filter(attachment -> attachment.getOriginalFilename() != null)
-            .map(MultipartFile::getOriginalFilename).collect(Collectors.toSet());
+            .map(MultipartFile::getOriginalFilename)
+            .filter(Objects::nonNull).collect(Collectors.toSet());
         if (workflowParams != null && !workflowParams.isEmpty()) {
 
-            List<ObjectTranslator> translators = new ArrayList<>();
-            translators.add(drsObjectResolverFactory.getService(credentials));
-            translators.addAll(pathTranslatorFactory.getTranslatorsForInputs());
+            List<ObjectTranslator> translators = new ArrayList<>(pathTranslatorFactory.getTranslatorsForInputs());
             processor = new WdlFileProcessor(workflowParams, uploadFileNames, translators);
             cromwellInputs.putAll(processor.getProcessedInputs());
         }

@@ -1,4 +1,4 @@
-package com.dnastack.wes.api;
+package com.dnastack.wes.translation;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class OriginalInputRowMapper implements RowMapper<OriginalInputs> {
 
-    private final static ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public OriginalInputs map(ResultSet rs, StatementContext ctx) throws SQLException {

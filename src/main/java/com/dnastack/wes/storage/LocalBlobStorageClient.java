@@ -41,7 +41,7 @@ public class LocalBlobStorageClient implements BlobStorageClient {
         try {
             return URI.create(blobUri).toURL();
         } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
+            throw new StorageException(e);
         }
     }
 

@@ -10,48 +10,33 @@ import com.dnastack.auth.client.TokenActionsHttpClientFactory;
 import com.dnastack.auth.keyresolver.CachingIssuerPubKeyJwksResolver;
 import com.dnastack.auth.keyresolver.IssuerPubKeyStaticResolver;
 import com.dnastack.auth.model.IssuerInfo;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import feign.Client;
-import feign.Feign;
-import feign.Logger;
-import feign.auth.BasicAuthRequestInterceptor;
-import feign.form.FormEncoder;
-import feign.jackson.JacksonDecoder;
-import feign.jackson.JacksonEncoder;
-import feign.slf4j.Slf4jLogger;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwsHeader;
 import io.jsonwebtoken.JwtException;
-import org.springframework.beans.factory.annotation.Qualifier;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-// Taken almost verbatim from other security configurations such as
-// https://github.com/DNAstack/wes-service/blob/master/src/main/java/com/dnastack/wes/security/SecurityConfiguration.java
+@Slf4j
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 @Configuration
-public class MainSecurityConfig extends WebSecurityConfigurerAdapter {
+public class MainSecurityConfig {
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http.sessionManagement()
+    @Bean
+    protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+       http.sessionManagement()
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .cors().disable()
@@ -59,7 +44,6 @@ public class MainSecurityConfig extends WebSecurityConfigurerAdapter {
             .authorizeRequests()
             .antMatchers("/*/services", "/actuator/info**", "/actuator/health", "/actuator/health/**", "/service-info", "/docs/**")
             .permitAll()
-            .antMatchers("/ga4gh/drs/**").permitAll()
             .antMatchers("/ga4gh/wes/v1/service-info")
             .permitAll()
             .antMatchers("/actuator/**").authenticated()
@@ -68,6 +52,7 @@ public class MainSecurityConfig extends WebSecurityConfigurerAdapter {
             .and()
             .oauth2ResourceServer()
             .jwt();
+       return http.build();
     }
 
     @Bean
@@ -93,6 +78,12 @@ public class MainSecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     @Bean
+    public JwtTokenParser tokenParser(List<IssuerInfo> allowedIssuers, Tracing tracing) {
+        final TokenActionsHttpClient tokenActionsHttpClient = TokenActionsHttpClientFactory.create(tracing);
+        return JwtTokenParserFactory.create(allowedIssuers, tokenActionsHttpClient);
+    }
+
+    @Bean
     public PermissionChecker permissionChecker(
         List<IssuerInfo> allowedIssuers,
         @Value("${wes.auth.validator.policy-evaluation-requester}") String policyEvaluationRequester,
@@ -103,11 +94,8 @@ public class MainSecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
 
-
     @Bean
-    public JwtDecoder jwtDecoder(List<IssuerInfo> allowedIssuers, PermissionChecker permissionChecker, Tracing tracing) {
-        final TokenActionsHttpClient tokenActionsHttpClient = TokenActionsHttpClientFactory.create(tracing);
-        final JwtTokenParser jwtTokenParser = JwtTokenParserFactory.create(allowedIssuers, tokenActionsHttpClient);
+    public JwtDecoder jwtDecoder(JwtTokenParser jwtTokenParser, PermissionChecker permissionChecker) {
         return jwtToken -> {
             try {
                 permissionChecker.checkPermissions(jwtToken);

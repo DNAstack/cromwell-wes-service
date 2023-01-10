@@ -1,4 +1,4 @@
-package com.dnastack.wes.api;
+package com.dnastack.wes.translation;
 
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;

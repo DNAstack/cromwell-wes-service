@@ -1,6 +1,7 @@
 package com.dnastack.wes;
 
-import com.dnastack.wes.api.PathTranslationConfig;
+import com.dnastack.wes.cromwell.CromwellConfig;
+import com.dnastack.wes.translation.PathTranslationConfig;
 import com.dnastack.wes.api.ServiceInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
@@ -25,14 +26,9 @@ public class AppConfig {
      */
     ServiceInfo serviceInfo = new ServiceInfo();
 
-    /**
-     * The API can be used in a very rudimentary "multi-tenant" mode. When enabled, the api will restrict results to a
-     * client to those which correspond to the correct principal. For example, when listing runs, only runs submitted by
-     * the client will be shown when this property is set to true. Conversely, when set to false, ALL runs irrespective
-     * of who the client is will be returned.
-     */
-    Boolean enableMultiTenantSupport = false;
 
+    Integer defaultPageSize = 20;
+    Integer defaultPage = 1;
 
     /**
      *
