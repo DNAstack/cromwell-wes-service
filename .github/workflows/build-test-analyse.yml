@@ -2,9 +2,9 @@ name: Build, Test & Analyse
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, main ]
 
 jobs:
   build-and-test-java-app:
@@ -20,7 +20,6 @@ jobs:
     with:
       with-frontend: false
       java-version: 17
-
     secrets:
       pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
       sonar-token: ${{ secrets.SONAR_TOKEN }}
