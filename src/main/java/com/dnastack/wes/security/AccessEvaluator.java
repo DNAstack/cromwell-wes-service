@@ -3,12 +3,12 @@ package com.dnastack.wes.security;
 import com.dnastack.auth.PermissionChecker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -16,12 +16,12 @@ import java.util.Set;
 @Component
 public class AccessEvaluator {
 
-    private final String appUrl;
+    private final List<String> audiences;
     private final PermissionChecker permissionChecker;
 
     @Autowired
-    public AccessEvaluator(@Value("${info.app.url}") String appUrl, PermissionChecker permissionChecker) {
-        this.appUrl = appUrl;
+    public AccessEvaluator(AuthConfig authConfig, PermissionChecker permissionChecker) {
+        this.audiences = authConfig.tokenIssuer.getAudiences();
         this.permissionChecker = permissionChecker;
     }
 
@@ -52,11 +52,13 @@ public class AccessEvaluator {
         return Optional.ofNullable(authentication.getPrincipal())
             .map(Jwt.class::cast)
             .map(jwtPrincipal -> {
-                final String fullResourceUrl = appUrl + requiredResource;
-                boolean hasPermissions = permissionChecker.hasPermissions(jwtPrincipal.getTokenValue(), requiredScopes, fullResourceUrl, requiredActions);
+                boolean hasPermissions = audiences.stream().anyMatch(audience -> {
+                    final String fullResourceUrl = audience + requiredResource;
+                    return permissionChecker.hasPermissions(jwtPrincipal.getTokenValue(), requiredScopes, fullResourceUrl, requiredActions);
+                });
                 if (!hasPermissions) {
-                    log.info("Denying access to {} for {}. requiredScopes={}; requiredActions={}; actualScopes={}; actualActions={}",
-                        jwtPrincipal.getSubject(), fullResourceUrl, requiredScopes, requiredActions,
+                    log.info("Denying access to {} for {}. allowedAudiences={}; requiredScopes={}; requiredActions={}; actualScopes={}; actualActions={}",
+                        jwtPrincipal.getSubject(), requiredResource, audiences, requiredScopes, requiredActions,
                         jwtPrincipal.getClaims().get("scope"), jwtPrincipal.getClaims().get("actions"));
                 }
                 return hasPermissions;

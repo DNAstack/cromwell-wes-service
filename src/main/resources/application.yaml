@@ -14,6 +14,8 @@ spring:
   servlet:
     multipart:
       enabled: true
+  zipkin:
+    enabled: false
 
 logging:
   level:
@@ -41,19 +43,16 @@ management:
 info:
   app:
     name: "wes-service"
-    description: "Interface Layering WES API ontop of an execution engine"
-    url: http://localhost:${server.port}
+    description: "Interface Layering WES API on top of an execution engine"
+    url: ${wes.url}
     version: "${project.version}"
 
 build.version: @project.version@
 
-app:
-  url: ${wes.url}
-
 wes:
-  url: ${info.app.url}
+  url: http://localhost:${server.port}
   service-info:
-    auth-instruction-url: "${wes.auth.token-issuers[0].issuer-uri}/.well-known/openid-configuration"
+    auth-instruction-url: "${wes.auth.token-issuer.issuer-uri}/.well-known/openid-configuration"
     supported-wes-versions:
       - "1.0.0"
     supported-file-system-protocols:
@@ -82,18 +81,16 @@ wes:
       staging-path: /home/patrick/tools/cromwell/v54/uploads
 
   auth:
-    token-issuers:
+    issuer-uri: http://localhost:8081
+    token-issuer:
       # Default Token issuer to use
-      - issuer-uri: http://localhost:8081
-        jwk-set-uri: http://localhost:8081/oauth/jwks
-        audiences:
-          - http://localhost:8090
-          - http://wes-service.local
-          - http://wes.local
-          - wes.local
+      issuer-uri: ${wes.auth.issuer-uri}
+      jwk-set-uri: ${wes.auth.issuer-uri}/oauth/jwks
+      audiences:
+        - ${wes.url}
     validator:
-      policy-evaluation-requester: ${info.app.url}
-      policy-evaluation-uri: ${wes.auth.token-issuers[0].issuer-uri}/policies/evaluations
+      policy-evaluation-requester: ${wes.url}
+      policy-evaluation-uri: ${wes.auth.issuer-uri}/policies/evaluations
   cromwell:
     user-label: user_id
     workflow-url-label: workflow_url
@@ -128,8 +125,8 @@ wes:
     client-id: wes-service
     client-secret: dev-secret-never-use-in-prod
     grant-type: "urn:ietf:params:oauth:grant-type:device_code"
-    token-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
-    device-code-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/device/code
+    token-uri: ${wes.auth.token-issuer.issuer-uri}/oauth/token
+    device-code-uri: ${wes.auth.token-issuer.issuer-uri}/oauth/device/code
     services:
       wes:
         id: wes
@@ -153,13 +150,16 @@ wes:
             resource: ${wes.url}/ga4gh/wes/v1/
             type: oauth2
 # Auditing
+app:
+  url: ${wes.url}
+
 auditing:
   enabled: true
+  publish-external: false
   batch-processing-enabled: true
   scheduling:
     batch-emit:
       cron: 0/10 * * ? * *
-  service-client-id: ewes-service
   publisher:
     events-uri: ${auditing.oauth-client.audience}/events
     events-batch-uri: ${auditing.oauth-client.audience}/events/batch
@@ -172,8 +172,8 @@ auditing:
     audience: http://localhost:8888
     resource: ${auditing.publisher.events-uri}
     actions: [ "audit:create" ]
-    token-uri: ${wes.auth.token-issuers[0].issuer-uri}/oauth/token
-    token-issuers-uris: ${wes.auth.token-issuers[0].issuer-uri}
+    token-uri: ${wes.auth.token-issuer.issuer-uri}/oauth/token
+    token-issuers-uris: ${wes.auth.token-issuer.issuer-uri}
     policy-evaluation-requester: ${wes.auth.validator.policy-evaluation-requester}
     policy-evaluation-uri: ${wes.auth.validator.policy-evaluation-uri}
   json-printer-style: dense_print

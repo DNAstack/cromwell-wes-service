@@ -36,7 +36,7 @@ public class MainSecurityConfig {
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-       http.sessionManagement()
+        http.sessionManagement()
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .cors().disable()
@@ -52,29 +52,21 @@ public class MainSecurityConfig {
             .and()
             .oauth2ResourceServer()
             .jwt();
-       return http.build();
+        return http.build();
     }
 
     @Bean
     public List<IssuerInfo> allowedIssuers(AuthConfig authConfig) {
-        final List<AuthConfig.IssuerConfig> issuers = authConfig.getTokenIssuers();
-
-        if (issuers == null || issuers.isEmpty()) {
-            throw new IllegalArgumentException("At least one token issuer must be defined");
-        }
-
-        return authConfig.getTokenIssuers().stream()
-            .map(issuerConfig -> {
-                final String issuerUri = issuerConfig.getIssuerUri();
-                return IssuerInfo.IssuerInfoBuilder.builder()
-                    .issuerUri(issuerUri)
-                    .allowedAudiences(issuerConfig.getAudiences())
-                    .allowedResources(issuerConfig.getResources())
-                    .publicKeyResolver(issuerConfig.getRsaPublicKey() != null
-                        ? new IssuerPubKeyStaticResolver(issuerUri, issuerConfig.getRsaPublicKey())
-                        : new CachingIssuerPubKeyJwksResolver(issuerUri))
-                    .build();
-            }).toList();
+        final AuthConfig.IssuerConfig issuerConfig = authConfig.getTokenIssuer();
+        final String issuerUri = issuerConfig.getIssuerUri();
+        return List.of(IssuerInfo.IssuerInfoBuilder.builder()
+            .issuerUri(issuerUri)
+            .allowedAudiences(issuerConfig.getAudiences())
+            .allowedResources(issuerConfig.getResources())
+            .publicKeyResolver(issuerConfig.getRsaPublicKey() != null
+                ? new IssuerPubKeyStaticResolver(issuerUri, issuerConfig.getRsaPublicKey())
+                : new CachingIssuerPubKeyJwksResolver(issuerUri))
+            .build());
     }
 
     @Bean
