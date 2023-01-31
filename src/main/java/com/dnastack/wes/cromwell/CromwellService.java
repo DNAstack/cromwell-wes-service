@@ -1,16 +1,11 @@
 package com.dnastack.wes.cromwell;
 
-import com.dnastack.audit.logger.AuditEventLogger;
-import com.dnastack.audit.model.*;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.api.*;
 import com.dnastack.wes.security.AuthenticatedUser;
-import com.dnastack.wes.shared.AuthorizationException;
 import com.dnastack.wes.shared.InvalidRequestException;
 import com.dnastack.wes.shared.NotFoundException;
 import com.dnastack.wes.storage.BlobStorageClient;
-import com.dnastack.wes.translation.OriginalInputs;
-import com.dnastack.wes.translation.OriginalInputsDao;
 import com.dnastack.wes.translation.PathTranslatorFactory;
 import com.dnastack.wes.wdl.ObjectTranslator;
 import com.dnastack.wes.wdl.WdlFileProcessor;
@@ -23,11 +18,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.*;
 import java.net.*;
@@ -54,7 +47,6 @@ public class CromwellService {
     private static final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
     private final CromwellClient client;
     private final BlobStorageClient storageClient;
-    private final OriginalInputsDao originalInputsDao;
     private final PathTranslatorFactory pathTranslatorFactory;
     private final CromwellWesMapper cromwellWesMapper;
     private final CromwellConfig cromwellConfig;
@@ -66,14 +58,12 @@ public class CromwellService {
         CromwellClient cromwellClient,
         BlobStorageClient storageClient,
         PathTranslatorFactory pathTranslatorFactory,
-        Jdbi jdbi,
         CromwellWesMapper cromwellWesMapper,
         AppConfig appConfig,
         CromwellConfig config
     ) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
-        this.originalInputsDao = jdbi.onDemand(OriginalInputsDao.class);
         this.storageClient = storageClient;
         this.cromwellWesMapper = cromwellWesMapper;
         this.appConfig = appConfig;
@@ -175,10 +165,8 @@ public class CromwellService {
      */
     public RunLog getRun(String runId) {
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
-        OriginalInputs inputs = originalInputsDao.getInputs(runId);
-        Map<String, Object> mappedFileObject = inputs == null ? null : inputs.getMapping();
-        return cromwellWesMapper.mapMetadataToRunLog(metadataResponse, mappedFileObject, pathTranslatorFactory
-                .getTranslatorsForOutputs());
+        return cromwellWesMapper.mapMetadataToRunLog(metadataResponse, pathTranslatorFactory
+            .getTranslatorsForOutputs());
     }
 
     private CromwellMetadataResponse getMetadata(String runId) {
@@ -332,12 +320,7 @@ public class CromwellService {
                 setWorkflowLabels(runRequest, executionRequest);
                 setWorkflowOptions(runRequest, executionRequest);
                 CromwellStatus status = client.createWorkflow(executionRequest);
-                RunId runId = RunId.builder().runId(status.getId()).build();
-
-                originalInputsDao.saveInputs(new OriginalInputs(runId.getRunId(), originalInputs));
-
-
-                return runId;
+                return RunId.builder().runId(status.getId()).build();
             } finally {
                 if (tempDirectory != null && tempDirectory.toFile().exists()) {
                     try (Stream<Path> files = Files.walk(tempDirectory.toAbsolutePath())) {

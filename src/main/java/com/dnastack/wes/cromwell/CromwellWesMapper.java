@@ -56,7 +56,6 @@ public class CromwellWesMapper {
 
     public RunLog mapMetadataToRunLog(
         CromwellMetadataResponse metadataResponse,
-        Map<String, Object> originalInputs,
         List<PathTranslator> pathTranslators
     ) {
         RunLog runLog = new RunLog();
@@ -73,7 +72,7 @@ public class CromwellWesMapper {
         }
         runLog.setRunLog(workflowLog);
         runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
-        runLog.setRequest(mapMetadataToRunRequest(metadataResponse, originalInputs));
+        runLog.setRequest(mapMetadataToRunRequest(metadataResponse));
 
         return runLog;
     }
@@ -109,16 +108,13 @@ public class CromwellWesMapper {
         return taskLogs;
     }
 
-    private RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse, Map<String, Object> originalInputs) {
+    private RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse) {
         RunRequest runRequest = new RunRequest();
         runRequest.setWorkflowType(metadataResponse.getActualWorkflowLanguage());
         runRequest.setWorkflowTypeVersion(metadataResponse.getActualWorkflowLanguageVersions());
         Map<String, Object> options = getWorkflowOptions(metadataResponse);
 
         Map<String, Object> params = metadataResponse.getInputs();
-        if (originalInputs != null) {
-            params = originalInputs;
-        }
 
         if (params == null) {
             params = Collections.emptyMap();

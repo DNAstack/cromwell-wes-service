@@ -34,7 +34,6 @@
         <dnastack-token-validator.version>1.0.5</dnastack-token-validator.version>
         <audit-event-logger.version>1.0.7</audit-event-logger.version>
         <okhttpclient.version>4.9.3</okhttpclient.version>
-        <jdbi.version>3.34.0</jdbi.version>
         <jwt.version>0.11.2</jwt.version>
         <feign-form.version>3.8.0</feign-form.version>
         <azurestorage.version>12.9.0</azurestorage.version>
@@ -58,13 +57,6 @@
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.jdbi</groupId>
-                <artifactId>jdbi3-bom</artifactId>
-                <type>pom</type>
-                <version>${jdbi.version}</version>
                 <scope>import</scope>
             </dependency>
             <dependency>
@@ -214,43 +206,6 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-        </dependency>
-
-
-        <!--database connections -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jdbi</groupId>
-            <artifactId>jdbi3-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.jdbi</groupId>
-            <artifactId>jdbi3-sqlobject</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.jdbi</groupId>
-            <artifactId>jdbi3-postgres</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.jdbi</groupId>
-            <artifactId>jdbi3-jackson2</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-            <version>5.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jdbc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.liquibase</groupId>
-            <artifactId>liquibase-core</artifactId>
         </dependency>
 
         <!-- Springfox -->

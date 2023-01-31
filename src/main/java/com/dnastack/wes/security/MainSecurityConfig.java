@@ -42,7 +42,7 @@ public class MainSecurityConfig {
             .cors().disable()
             .csrf().disable()
             .authorizeRequests()
-            .antMatchers("/*/services", "/actuator/info**", "/actuator/health", "/actuator/health/**", "/service-info", "/docs/**")
+            .antMatchers("/services", "/actuator/info**", "/actuator/health", "/actuator/health/**", "/service-info", "/docs/**")
             .permitAll()
             .antMatchers("/ga4gh/wes/v1/service-info")
             .permitAll()

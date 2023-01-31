@@ -1,4 +1,4 @@
-package com.dnastack.wes.shared;
+package com.dnastack.wes.security;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;

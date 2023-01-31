@@ -37,9 +37,4 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(ex.status())
             .body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(ex.status()).build());
     }
-
-    @ExceptionHandler(AuthorizationException.class)
-    public ResponseEntity<ErrorResponse> handle(AuthorizationException ex) {
-        return ResponseEntity.status(401).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(401).build());
-    }
 }
