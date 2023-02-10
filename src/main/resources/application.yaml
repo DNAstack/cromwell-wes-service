@@ -91,6 +91,9 @@ wes:
     validator:
       policy-evaluation-requester: ${wes.url}
       policy-evaluation-uri: ${wes.auth.issuer-uri}/policies/evaluations
+    http-client-config:
+      keep-alive-timeout: PT20S # override OkHttp default to avoid connection reset with wallet in private GKE cluster
+      max-idle-connections: 5 # same as OkHttp default
   cromwell:
     user-label: user_id
     workflow-url-label: workflow_url

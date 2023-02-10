@@ -31,7 +31,7 @@
         <logback-extensions.version>1.0.0</logback-extensions.version>
         <logback.contrib.version>0.1.5</logback.contrib.version>
         <springdoc.version>1.6.13</springdoc.version>
-        <dnastack-token-validator.version>1.0.5</dnastack-token-validator.version>
+        <dnastack-token-validator.version>1.0.7-SNAPSHOT-2-g7b4ca3b</dnastack-token-validator.version>
         <audit-event-logger.version>1.0.7</audit-event-logger.version>
         <okhttpclient.version>4.9.3</okhttpclient.version>
         <jwt.version>0.11.2</jwt.version>
