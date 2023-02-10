@@ -1,10 +1,12 @@
 package com.dnastack.wes.security;
 
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +25,14 @@ public class AuthConfig {
      * configured scopes, if they are present in the issuer config
      */
     IssuerConfig tokenIssuer;
+
+    HttpClientConfig httpClientConfig;
+
+    @Data
+    public static class HttpClientConfig {
+        private int maxIdleConnections;
+        private Duration keepAliveTimeout;
+    }
 
 
     @Getter
