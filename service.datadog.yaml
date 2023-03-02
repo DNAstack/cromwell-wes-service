@@ -1,0 +1,24 @@
+---
+schema-version: v2
+dd-service: cromwell-wes-service
+team: workbench
+contacts:
+  - type: email
+    name: workbench
+    contact: workbench@dnastack.com
+repos:
+  - provider: github
+    name: Source
+    url: https://github.com/DNAstack/cromwell-wes-service
+---
+schema-version: v2
+dd-service: workspaces-wes
+team: workbench
+contacts:
+  - type: email
+    name: workbench
+    contact: workbench@dnastack.com
+repos:
+  - provider: github
+    name: Source
+    url: https://github.com/DNAstack/cromwell-wes-service
