@@ -62,7 +62,7 @@ public class CromwellWesMapper {
         runLog.setRunId(metadataResponse.getId());
         runLog.setState(mapState(metadataResponse.getStatus()));
 
-        runLog.setOutputs(translatePaths(new TypeReference<Map<String, Object>>() {
+        runLog.setOutputs(translatePaths(new TypeReference<>() {
         }, metadataResponse.getOutputs(), pathTranslators));
 
         Log workflowLog = Log.builder().startTime(metadataResponse.getStart()).endTime(metadataResponse.getEnd())
@@ -71,7 +71,7 @@ public class CromwellWesMapper {
             workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs", "stderr").build().toString());
         }
         runLog.setRunLog(workflowLog);
-        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getCalls()));
+        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getWorkflowName(), metadataResponse.getCalls()));
         runLog.setRequest(mapMetadataToRunRequest(metadataResponse));
 
         return runLog;
@@ -91,21 +91,38 @@ public class CromwellWesMapper {
         return objectToTranslate;
     }
 
-    public List<Log> mapTaskCallsToLog(Map<String, List<CromwellTaskCall>> calls) {
+    public List<Log> mapTaskCallsToLog(String workflowName, Map<String, List<CromwellTaskCall>> calls) {
         List<Log> taskLogs = new ArrayList<>();
 
         if (calls != null) {
             for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
                 List<CromwellTaskCall> taskCalls = entry.getValue();
-
+                final String callName = entry.getKey();
                 for (int i = 0; i < taskCalls.size(); i++) {
                     CromwellTaskCall taskCall = taskCalls.get(i);
-                    String uniqueName = taskCalls.size() > 1 ? entry.getKey() + "-" + i : entry.getKey();
-                    taskLogs.add(mapTaskCallToLog(entry.getKey(), i, uniqueName, taskCall));
+                    final String taskName = getTaskName(workflowName, callName, taskCall);
+                    if (taskCall.getSubWorkflowMetadata() != null) {
+                        taskLogs.addAll(mapTaskCallsToLog(taskCall.getSubWorkflowMetadata().getWorkflowName(), taskCall.getSubWorkflowMetadata().getCalls()));
+                    } else {
+                        taskLogs.add(mapTaskCallToLog(entry.getKey(), i, taskName, taskCall));
+                    }
                 }
             }
         }
         return taskLogs;
+    }
+
+    private String getTaskName(String workflowName, String callName, CromwellTaskCall taskCall) {
+        String taskName = callName;
+        if (taskCall.getShardIndex() >= 0) {
+            String index = "[" + taskCall.getShardIndex() + "]";
+            taskName = taskName + index;
+        }
+        if (workflowName != null) {
+            taskName = workflowName + "|" + taskName;
+        }
+
+        return taskName;
     }
 
     private RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse) {
@@ -127,7 +144,7 @@ public class CromwellWesMapper {
             .containsKey(cromwellConfig.getWorkflowUrlLabel())) {
             runRequest.setWorkflowUrl(metadataResponse.getLabels().get(cromwellConfig.getWorkflowUrlLabel()));
         }
-        metadataResponse.getLabels().remove(cromwellConfig.getWorkflowUrlLabel());
+        Optional.ofNullable(metadataResponse.getLabels()).ifPresent(labels -> labels.remove(cromwellConfig.getWorkflowUrlLabel()));
 
         runRequest.setTags(metadataResponse.getLabels());
 
@@ -140,7 +157,7 @@ public class CromwellWesMapper {
                 .getRequest();
         String path = request.getRequestURI();
         String stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stdout").toString());
-        String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stderr").toString());
+        String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index + "/stderr").toString());
 
         return Log.builder().name(uniqueName).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
             .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();

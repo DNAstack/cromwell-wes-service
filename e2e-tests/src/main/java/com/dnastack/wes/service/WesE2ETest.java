@@ -8,8 +8,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.MultiPartSpecification;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -305,6 +303,48 @@ public class WesE2ETest extends BaseE2eTest {
                 .assertThat()
                 .statusCode(200)
                 .body("run_id",is(notNullValue()));
+            //@formatter:on
+        }
+
+        @Test
+        @DisplayName("Workflow Run Submission with valid multiple attachments should succeed")
+        public void submitValidWorkflowRunWithSubWorkflowFlattensTasks() throws Exception {
+            String path = getRootPath() + "/runs";
+            ObjectMapper mapper = new ObjectMapper();
+            TypeReference<Map<String, Object>> typeReference = new TypeReference<Map<String, Object>>() {
+            };
+            Map<String, Object> inputs = mapper
+                .readValue(supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_INPUTS), typeReference);
+            //@formatter:off
+            String workflowJobId = given()
+                .log().uri()
+                .log().method()
+                .header(getHeader(getResource(path)))
+                .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                .multiPart(getMultipartAttachment("echo.wdl",supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_1).getBytes()))
+                .multiPart(getMultipartAttachment(WdlSupplier.WORKFLOW_WITH_IMPORTS_2,supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_IMPORTS_2).getBytes()))
+                .multiPart(getJsonMultipart("workflow_params", inputs))
+                .post(path)
+                .then()
+                .assertThat()
+                .statusCode(200)
+                .body("run_id",is(notNullValue()))
+                    .extract()
+
+                .jsonPath()
+                .getString("run_id");
+            //@formatter:on
+            pollUntilJobCompletes(workflowJobId);
+
+            final String runLogPath = getRootPath() + "/runs/" + workflowJobId;
+            given()
+                .log().uri()
+                .log().method()
+                .header(getHeader(getResource(runLogPath)))
+                .get(runLogPath)
+                .then()
+                .assertThat()
+                .body("task_logs", hasSize(equalTo(4)));
             //@formatter:on
         }
 
