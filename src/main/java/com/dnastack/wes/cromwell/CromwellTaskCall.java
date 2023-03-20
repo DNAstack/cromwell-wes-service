@@ -19,6 +19,7 @@ public class CromwellTaskCall {
     private String commandLine;
     private Integer attempt;
     private Boolean preemptible;
+    private CromwellMetadataResponse subWorkflowMetadata;
     private Integer shardIndex;
     private Instant start;
     private Instant end;
@@ -26,10 +27,7 @@ public class CromwellTaskCall {
     private String backend;
     private String callRoot;
     private Integer returnCode;
-
-
     private List<CromwellFailure> failures;
-
     private String stderr;
     private String stdout;
     private Map<String, String> jes;

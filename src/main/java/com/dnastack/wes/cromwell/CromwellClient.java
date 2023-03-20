@@ -33,7 +33,7 @@ public interface CromwellClient {
     CromwellStatus getStatus(@Param("id") String id);
 
 
-    @RequestLine("GET /api/workflows/" + API_VERSION + "/{id}/metadata")
+    @RequestLine("GET /api/workflows/" + API_VERSION + "/{id}/metadata?expandSubWorkflows=true")
     CromwellMetadataResponse getMetadata(@Param("id") String id);
 
 
@@ -44,9 +44,5 @@ public interface CromwellClient {
     @RequestLine("POST /api/workflows/" + API_VERSION)
     @Headers("Content-Type: " + MediaType.MULTIPART_FORM_DATA_VALUE)
     CromwellStatus createWorkflow(CromwellExecutionRequest executionRequest);
-
-
-    @RequestLine("POST /api/workflows/" + API_VERSION + "/{id}/releaseHold")
-    CromwellStatus releaseHold(@Param("id") String id);
 
 }
