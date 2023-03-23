@@ -71,7 +71,7 @@ public class CromwellWesMapper {
             workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs", "stderr").build().toString());
         }
         runLog.setRunLog(workflowLog);
-        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse.getWorkflowName(), metadataResponse.getCalls()));
+        runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse));
         runLog.setRequest(mapMetadataToRunRequest(metadataResponse));
 
         return runLog;
@@ -91,38 +91,47 @@ public class CromwellWesMapper {
         return objectToTranslate;
     }
 
-    public List<Log> mapTaskCallsToLog(String workflowName, Map<String, List<CromwellTaskCall>> calls) {
-        List<Log> taskLogs = new ArrayList<>();
-
-        if (calls != null) {
-            for (Entry<String, List<CromwellTaskCall>> entry : calls.entrySet()) {
-                List<CromwellTaskCall> taskCalls = entry.getValue();
-                final String callName = entry.getKey();
-                for (int i = 0; i < taskCalls.size(); i++) {
-                    CromwellTaskCall taskCall = taskCalls.get(i);
-                    final String taskName = getTaskName(workflowName, callName, taskCall);
-                    if (taskCall.getSubWorkflowMetadata() != null) {
-                        taskLogs.addAll(mapTaskCallsToLog(taskCall.getSubWorkflowMetadata().getWorkflowName(), taskCall.getSubWorkflowMetadata().getCalls()));
-                    } else {
-                        taskLogs.add(mapTaskCallToLog(entry.getKey(), i, taskName, taskCall));
-                    }
-                }
-            }
-        }
-        return taskLogs;
+    public List<Log> mapTaskCallsToLog(CromwellMetadataResponse metadataResponse) {
+        return flattenTaskCalls(metadataResponse).stream().map(this::mapTaskCallToLog).toList();
     }
 
-    private String getTaskName(String workflowName, String callName, CromwellTaskCall taskCall) {
-        String taskName = callName;
-        if (taskCall.getShardIndex() >= 0) {
-            String index = "[" + taskCall.getShardIndex() + "]";
-            taskName = taskName + index;
+    public List<CromwellTaskCall> flattenTaskCalls(CromwellMetadataResponse metadataResponse) {
+        Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
+        List<CromwellTaskCall> flattenedTaskCalls = new ArrayList<>();
+        if (calls != null) {
+            calls.entrySet().forEach(entry -> {
+                final String callName = entry.getKey();
+                entry.getValue().forEach(taskCall -> {
+                    if (taskCall.getSubWorkflowMetadata() != null) {
+                        flattenedTaskCalls.addAll(flattenTaskCalls(taskCall.getSubWorkflowMetadata()));
+                    } else {
+                        taskCall.setTaskId(getTaskId(metadataResponse.getId(), callName, taskCall));
+                        final String taskName = getTaskName(metadataResponse, callName, taskCall);
+                        taskCall.setTaskName(taskName);
+                        flattenedTaskCalls.add(taskCall);
+                    }
+                });
+            });
         }
-        if (workflowName != null) {
-            taskName = workflowName + "|" + taskName;
+        return flattenedTaskCalls;
+    }
+
+
+    private String getTaskId(String workflowId, String callName, CromwellTaskCall taskCall) {
+        return workflowId + "-" + callName + (taskCall.getShardIndex() > 0 ? "_" + taskCall.getShardIndex() : "");
+    }
+
+    private String getTaskName(CromwellMetadataResponse metadataResponse, String callName, CromwellTaskCall taskCall) {
+        String taskName = callName;
+        if (taskCall.getShardIndex() > 0) {
+            String index = "(" + taskCall.getShardIndex() + ")";
+            taskName = taskName + " " + index;
+        }
+        if (metadataResponse.getParentWorkflowId() != null) {
+            taskName = metadataResponse.getWorkflowName() + ": " + taskName;
         }
 
-        return taskName;
+        return taskName + "|wf-" + metadataResponse.getId();
     }
 
     private RunRequest mapMetadataToRunRequest(CromwellMetadataResponse metadataResponse) {
@@ -151,15 +160,15 @@ public class CromwellWesMapper {
         return runRequest;
     }
 
-    public Log mapTaskCallToLog(String name, Integer index, String uniqueName, CromwellTaskCall taskCall) {
+    public Log mapTaskCallToLog(CromwellTaskCall taskCall) {
         HttpServletRequest request =
             ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes()))
                 .getRequest();
         String path = request.getRequestURI();
-        String stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index.toString() + "/stdout").toString());
-        String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + name + "/" + index + "/stderr").toString());
+        String stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + taskCall.getTaskId() + "/stdout").toString());
+        String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + taskCall.getTaskId() + "/stderr").toString());
 
-        return Log.builder().name(uniqueName).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
+        return Log.builder().name(taskCall.getTaskName()).id(taskCall.getTaskId()).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
             .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
     }
 

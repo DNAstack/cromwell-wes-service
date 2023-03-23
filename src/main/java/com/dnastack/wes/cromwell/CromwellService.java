@@ -113,7 +113,7 @@ public class CromwellService {
      * list has not changed since the last time a user fetched results.
      *
      * @param pageSize  The size of the page to return. If pageToken is provided, then page size will be ignored. If
-     *                  neither the pageSize or pageToken are defined, then the default page size will be used. {@link
+     *                  neither the pageSize nor pageToken are defined, then the default page size will be used. {@link
      *                  AppConfig}
      * @param pageToken The page token is an encoded string defining the next page to retrieve from the cromwell server.
      *                  It is a base64 encoded query string containing the page size and the next page
@@ -144,7 +144,7 @@ public class CromwellService {
 
         CromwellResponse response = client.listWorkflows(search);
         RunListResponse runListResponse = CromwellWesMapper.mapCromwellResponseToRunListResposne(response);
-        if (response.getTotalResultsCount() > search.getPage() * search.getPageSize()) {
+        if (response.getTotalResultsCount() > (long) search.getPage() * search.getPageSize()) {
             String urlEncodedNextPage = URLEncoder
                 .encode(String.format("page=%d&pageSize=%d", search.getPage() + 1, search.getPageSize()), Charset
                     .defaultCharset());
@@ -217,11 +217,31 @@ public class CromwellService {
         return RunId.builder().runId(runId).build();
     }
 
+    public void getLogBytes(OutputStream outputStream, String runId, String taskId, String logKey) throws IOException {
+        String logPath = getLogPath(runId, taskId, logKey);
+        storageClient.readBytes(outputStream, logPath, null, null);
+    }
+
+    private String getLogPath(String runId, String taskId, String logKey) throws IOException {
+        CromwellMetadataResponse metadataResponse = getMetadata(runId);
+        CromwellTaskCall taskCall = cromwellWesMapper.flattenTaskCalls(metadataResponse)
+            .stream().filter(call -> call.getTaskId().equals(taskId))
+            .findFirst()
+            .orElseThrow(() -> new FileNotFoundException(
+                "Could not read " + logKey + " for task " + taskId + "in run " + runId + ", it does not exist"));
+        if (logKey.equals("stderr")) {
+            return taskCall.getStderr();
+        } else {
+            return taskCall.getStdout();
+        }
+    }
+
     public void getLogBytes(OutputStream outputStream, String runId, String taskName, int index, String logKey) throws IOException {
         String logPath = getLogPath(runId, taskName, index, logKey);
         storageClient.readBytes(outputStream, logPath, null, null);
     }
 
+    //legacy
     private String getLogPath(String runId, String taskName, int index, String logKey) throws IOException {
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
         Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
@@ -247,7 +267,7 @@ public class CromwellService {
 
     /**
      * Given the user submitted run request, compose a new request to cromwell for executing a workflow. The run request
-     * should contain all of the required information for creating a run.
+     * should contain all required information for creating a run.
      *
      * <h3>Workflow Files</h3>
      * <p/>
@@ -299,7 +319,6 @@ public class CromwellService {
             try {
                 tempDirectory = Files.createTempDirectory("wes-dependency-resolver");
                 CromwellExecutionRequest executionRequest = new CromwellExecutionRequest();
-                final Map<String, Object> originalInputs = runRequest.getWorkflowParams();
 
                 if (runRequest.getWorkflowAttachments() == null) {
                     runRequest.setWorkflowAttachments(new MultipartFile[0]);
@@ -428,7 +447,7 @@ public class CromwellService {
 
         for (MultipartFile file : runRequest.getWorkflowAttachments()) {
             if (file.getOriginalFilename() == null) {
-                throw new InvalidRequestException("Unamed workflow attachment provided. All files must have a file name");
+                throw new InvalidRequestException("Unnamed workflow attachment provided. All files must have a file name");
             }
         }
 
@@ -444,9 +463,9 @@ public class CromwellService {
                 dependenciesZip.get().transferTo(depFile);
                 cromwellRequest.setWorkflowDependencies(depFile);
             } else {
-                List<MultipartFile> wdls = Stream.of(runRequest.getWorkflowAttachments())
+                List<MultipartFile> wdlFiles = Stream.of(runRequest.getWorkflowAttachments())
                     .filter(file -> file.getOriginalFilename().endsWith(".wdl")).toList();
-                cromwellRequest.setWorkflowDependencies(createDependenciesZip(tempDirectory, wdls));
+                cromwellRequest.setWorkflowDependencies(createDependenciesZip(tempDirectory, wdlFiles));
             }
         }
         cromwellRequest.setWorkflowInputs(runRequest.getWorkflowParams());

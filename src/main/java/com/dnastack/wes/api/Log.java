@@ -18,6 +18,8 @@ public class Log {
     @JsonProperty(value = "name")
     String name;
 
+    @JsonProperty(value = "id")
+    String id;
     @JsonProperty(value = "cmd")
     String cmd;
 

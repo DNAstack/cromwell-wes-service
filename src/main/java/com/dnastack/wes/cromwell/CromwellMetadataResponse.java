@@ -28,7 +28,7 @@ public class CromwellMetadataResponse {
     private String workflowRoot;
     private Instant start;
     private Instant end;
-
+    private String parentWorkflowId;
     private Map<String, String> submittedFiles;
     private Map<String, List<CromwellTaskCall>> calls;
     private Map<String, String> labels;

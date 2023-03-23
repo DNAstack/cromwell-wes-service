@@ -14,6 +14,8 @@ import java.util.Map;
 @Setter
 public class CromwellTaskCall {
 
+    private String taskName;
+    private String taskId;
     private String executionStatus;
     private String backendStatus;
     private String commandLine;

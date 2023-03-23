@@ -121,6 +121,20 @@ public class WesV1Controller {
 
     @AuditActionUri("wes:run:stderr")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
+    @GetMapping(value = "/runs/{runId}/logs/task/{taskId}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskId) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr");
+    }
+
+    @AuditActionUri("wes:run:stdout")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
+    @GetMapping(value = "/runs/{runId}/logs/task/{taskId}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskId) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout");
+    }
+
+    @AuditActionUri("wes:run:stderr")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr");
@@ -132,6 +146,5 @@ public class WesV1Controller {
     public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout");
     }
-
 
 }

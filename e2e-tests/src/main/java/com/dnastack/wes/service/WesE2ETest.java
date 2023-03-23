@@ -633,9 +633,9 @@ public class WesE2ETest extends BaseE2eTest {
             Assertions.assertNotNull(taskLogs.get("stderr"));
             Assertions.assertNotNull(taskLogs.get("stdout"));
             Assertions
-                .assertTrue(taskLogs.get("stderr").endsWith(path + "/logs/task/" + taskLogs.get("name") + "/0/stderr"));
+                .assertTrue(taskLogs.get("stderr").endsWith(path + "/logs/task/" + taskLogs.get("id") + "/stderr"));
             Assertions
-                .assertTrue(taskLogs.get("stdout").endsWith(path + "/logs/task/" + taskLogs.get("name") + "/0/stdout"));
+                .assertTrue(taskLogs.get("stdout").endsWith(path + "/logs/task/" + taskLogs.get("id") + "/stdout"));
 
             //@formatter:off
             String body = given()
