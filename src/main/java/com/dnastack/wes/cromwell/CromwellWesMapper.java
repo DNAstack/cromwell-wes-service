@@ -105,7 +105,7 @@ public class CromwellWesMapper {
                     if (taskCall.getSubWorkflowMetadata() != null) {
                         flattenedTaskCalls.addAll(flattenTaskCalls(taskCall.getSubWorkflowMetadata()));
                     } else {
-                        taskCall.setTaskId(getTaskId(metadataResponse.getId(), callName, taskCall));
+                        taskCall.setTaskId(taskCall.getJobId());
                         final String taskName = getTaskName(metadataResponse, callName, taskCall);
                         taskCall.setTaskName(taskName);
                         flattenedTaskCalls.add(taskCall);
