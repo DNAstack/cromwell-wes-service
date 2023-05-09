@@ -105,7 +105,7 @@ public class CromwellWesMapper {
                     if (taskCall.getSubWorkflowMetadata() != null) {
                         flattenedTaskCalls.addAll(flattenTaskCalls(taskCall.getSubWorkflowMetadata()));
                     } else {
-                        taskCall.setTaskId(taskCall.getJobId());
+                        taskCall.setTaskId(getTaskId(taskCall.getJobId()));
                         final String taskName = getTaskName(metadataResponse, callName, taskCall);
                         taskCall.setTaskName(taskName);
                         flattenedTaskCalls.add(taskCall);
@@ -116,9 +116,8 @@ public class CromwellWesMapper {
         return flattenedTaskCalls;
     }
 
-
-    private String getTaskId(String workflowId, String callName, CromwellTaskCall taskCall) {
-        return workflowId + "-" + callName + (taskCall.getShardIndex() > 0 ? "_" + taskCall.getShardIndex() : "");
+    private String getTaskId(String jobId) {
+        return jobId.replaceAll("/", "__");
     }
 
     private String getTaskName(CromwellMetadataResponse metadataResponse, String callName, CromwellTaskCall taskCall) {
