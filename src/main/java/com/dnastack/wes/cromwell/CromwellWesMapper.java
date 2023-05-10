@@ -117,7 +117,7 @@ public class CromwellWesMapper {
     }
 
     private String getTaskId(String jobId) {
-        return jobId.replaceAll("/", "__");
+        return jobId == null ? null: jobId.replaceAll("/", "__");
     }
 
     private String getTaskName(CromwellMetadataResponse metadataResponse, String callName, CromwellTaskCall taskCall) {
