@@ -225,7 +225,7 @@ public class CromwellService {
     private String getLogPath(String runId, String taskId, String logKey) throws IOException {
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
         CromwellTaskCall taskCall = cromwellWesMapper.flattenTaskCalls(metadataResponse)
-            .stream().filter(call -> call.getTaskId().equals(taskId))
+            .stream().filter(call -> taskId.equals(call.getTaskId()))
             .findFirst()
             .orElseThrow(() -> new FileNotFoundException(
                 "Could not read " + logKey + " for task " + taskId + "in run " + runId + ", it does not exist"));
