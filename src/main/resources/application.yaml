@@ -78,7 +78,7 @@ wes:
       connection-string:
       staging-path:
     local:
-      staging-path: /home/patrick/tools/cromwell/v54/uploads
+      staging-path: uploads/
 
   auth:
     issuer-uri: http://localhost:8081
@@ -192,7 +192,22 @@ springdoc:
     path: /docs/swagger-ui.html
 
 security:
-  enabled: true
+  authentication:
+    enabled: true
+  authorization:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: no-auth
+security:
+  authentication:
+    enabled: false
+  authorization:
+    enabled: false
+
 
 ---
 spring:

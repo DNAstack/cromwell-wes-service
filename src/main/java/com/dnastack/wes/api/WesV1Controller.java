@@ -32,7 +32,7 @@ public class WesV1Controller {
     private final boolean securityEnabled;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, @Value("${security.enabled}") boolean securityEnabled) {
+    WesV1Controller(CromwellService adapter, AppConfig config, @Value("${security.authentication.enabled}") boolean securityEnabled) {
         this.adapter = adapter;
         this.config = config;
         this.securityEnabled = securityEnabled;

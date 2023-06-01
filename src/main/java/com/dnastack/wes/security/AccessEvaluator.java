@@ -2,31 +2,20 @@ package com.dnastack.wes.security;
 
 import com.dnastack.auth.PermissionChecker;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
-@ConditionalOnProperty(
-    prefix = "security",
-    name = "enabled",
-    havingValue = "true",
-    matchIfMissing = true
-)
-@Component
 public class AccessEvaluator {
 
     private final List<String> audiences;
     private final PermissionChecker permissionChecker;
 
-    @Autowired
     public AccessEvaluator(AuthConfig authConfig, PermissionChecker permissionChecker) {
         this.audiences = authConfig.tokenIssuer.getAudiences();
         this.permissionChecker = permissionChecker;

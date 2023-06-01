@@ -1,19 +1,15 @@
 package com.dnastack.wes.security;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
-@ConditionalOnProperty(
-    prefix = "security",
-    name = "enabled",
-    havingValue = "false",
-    matchIfMissing = false
-)
+
 @Configuration
+@ConditionalOnExpression("!${security.authentication.enabled:false}")
 public class NoAuthSecurityConfig {
 
     @Bean

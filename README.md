@@ -3,8 +3,14 @@ Workflow Execution Schema Service
 
 This repo contains a spring boot application which provides a fully
 featured [Workflow Execution Service (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) api that can be
-used to present a standardized way of submitting and querying workflows. Currently the only execution engine supported
-is `Cromwell`
+used to present a standardized way of submitting and querying workflows. Currently, the only execution engine supported
+is [Cromwell](https://github.com/Broadinstitute/cromwell). Other then cromwell, there are no hard external dependencies
+(ie a database).
+
+# Requirements
+
+- Java 17+
+- [Cromwell](https://github.com/Broadinstitute/cromwell) running somewhere that is accessible to the WES service
 
 # Building
 
@@ -12,109 +18,109 @@ is `Cromwell`
 ./mvnw clean install
 ```
 
-# CI
-
-```bash
-./ci/build-docker-image wes-service:$(git describe) wes-service $(git describe)
-./ci/build-docker-e2e-image wes-service-e2e:$(git describe) wes-service-e2e $(git describe)
-```
-
-# Building and Running Tests
-
-```bash
-docker run --network host -it wes-service-e2e:$(git describe)
-```
-
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------  |
-| `E2E_BASE_URI` | `http://localhost:8090` | The base uri for the e2e tests |
-| `E2E_TOKEN_URI` | `http://localhost:8081/oauth/token` | The endpoint to get access token from wallet |
-| `E2E_CLIENT_ID` | `wes-service-development-client` | WES client id for development |
-| `E2E_CLIENT_SECRET` | `wes-service-development-secret` | WES client secret for development |
-| `E2E_CLIENT_AUDIENCE` | `http://localhost:8090` | The audience of the access token received from wallet |
-| `E2E_CLIENT_SCOPE` | `read:execution write:execution` | The scope of the access token received from wallet |
-| `E2E_CLIENT_RESOURCES` | `http://localhost:8090/ga4gh/wes/v1/runs/` | The resources accessible with the access token received from wallet |
-
 # Running
 
+By default, the WES service will start on port `8090`. You can change this by specifying the `SERVER_PORT` environment
+variable.
+
 ```bash
-java -jar target/weservice-1.0-SNAPSHOT.jar
+java -jar target/cromwell-wes-service-1.0-SNAPSHOT.jar
 ```
 
-### Postgres
-
-The service requires a postgres database. By default, it expects postgres to be running at
-`jdbc:postgresql://localhost/wes-service` with username `wes-service` with no credentials set (ie allowing localhost
-only). Postgres can be configured through env variables
-
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------- |
-| `SPRING_DATASOURCE_USERNAME` | `wes-service` | The username to authenticate to postgres with |
-| `SPRING_DATASOURCE_PASSWORD` | `""` | The password to authenticate to postgres with |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost/wes-service` | The Postgres url to connect to |
-
-### Basic Configuration
+## Basic Configuration
 
 The WES Service has basic configuration for interacting with a local cromwell instance out of the box and provides
-support for the File object type without any subsequent configuration. In this setup, object transfer and multi-tenancy
-are disabled. By default, the API is protected by [wallet](https://wallet.staging.dnastack.com) (deployed in staging)
-however any valid OIDC token issuer can be configured in place.
+support for the File object type without any subsequent configuration.
 
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------  |
-| `WES_ENABLEMULTITENANTSUPPORT` | `false` | If enabled, users will only be able to see workflows they submitted. Identity is defined by the `sub` of the token |
+By default, the API is protected by [DNAstack Passport](https://passport.dnastack.com), however you can configure
 
-#### Service Info
+## Authentication
+
+By default, the API is setup to use a local installation of [DNAstack Passport](https://passport.dnastack.com) as a
+token
+issuer, however any valid OAuth OAuth 2.0 Token issuer can be used. There is also a mechanism to run
+
+### Passport Configuration
+
+Many Configuration fields are automatically filled when using passport as the authentication mechanism. The only
+required
+property is the `WES_AUTH_ISSUER_URI` which can be set as defined below
+
+| Env Variable          | Default                 | Description                              |
+|-----------------------|-------------------------|------------------------------------------|
+| `WES_AUTH_ISSUER_URI` | `http://localhost:8081` | The URI of a local passport installation |
+
+### External OAuth 2.0 token Issuer
+
+If using an external token issue that is not Passport, you will need to provide additional configuration beyond
+the `WES_AUTH_ISSUER_URI`.
+Additionally, you will also need to disable passport permission authorization enforcement. This can be accomplished by
+disabling the authorization:
+
+`SECURIT_AUTHORIZATION_ENABLED=false`
+
+Additional configuration values available:
+
+| Env Variable                           | Default                                          | Description                                                                                                                                                                                            |
+|----------------------------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `WES_AUTH_TOKEN_ISSUER_ISSUER_URI`     | `http://localhost:8081`                          | The Issuer URI, corresponding to the `iss` field in the JWT                                                                                                                                            |
+| `WES_AUTH_TOKEN_ISSUER_AUDIENCES`      | `[${WES_URL}]`                                   | A list of acceptable audiences to enforce corresponding to the `aud` field in the JWD                                                                                                                  |
+| `WES_AUTH_TOKEN_ISSUER_SCOPES`         | `[wes]`                                          | A list of scopes to enforce are present in the token, corresponding to the `scope` field in the JWT                                                                                                    |
+| `WES_AUTH_TOKEN_ISSUER_JWK_SET_URI`    | `${WES_AUTH_TOKEN_ISSUER_ISSUER_URI}/oauth/jwks` | The URI to fetch the [Json Web Key Set](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets) to validate the signature of tokens. Either the JWKS or the RSA Public key is required |
+| `WES_AUTH_TOKEN_ISSUER_RSA_PUBLIC_KEY` | `null`                                           | The public key to use to verify the signature of the JWT's. Eiuther the RSA Public Key or JKWS is required                                                                                             |
+
+### No Auth
+
+You can start the WES Service in a mode that does not require any authentication or authorization. This may be useful
+if you are using the WES service locally for testing, do not have access to a OAuth 2.0 provider, or want to run the
+service behind a reverse proxy which provides authentication
+
+_note_ All endpoints will be accessible without any authentication at all
+
+You can enable the `no-auth` spring profile to turn off all authentication
+
+`SPRING_PROFILES_ACTIVE=no-auth`
+
+### mTLS Authorization
+
+One possible alternative to using OAuth 2.0 is to setup a reverse proxy that
+uses [Mutual TLS](https://en.wikipedia.org/wiki/Mutual_authentication).
+The benefit to mTLS is that it wraps the authentication of both the server and the client directly in the transport
+layer of the
+request.
+
+mTLS does not prevent you from also using OAuth 2.0 or any other form of authentication in addition to mTLS, howver it
+is not
+necessary. You can start the WES Service in the [no-auth](#no-auth) setup
+
+You can see an example nginx configuration using mTLS in front of the WES service [here](nginx/README.md)
+
+## Service Info
 
 The service info served by `WES` can easily be configured through environment variables as well. Please see the
 (application.yaml)[src/main/java/resources/application.yaml] or (
 ServiceInfo.java)[src/main/java/com/dnastack/wes/model/wes/ServiceInfo.java]
-for more information
+for more information.
 
-### Configuring Cromwell
+## Configuring Cromwell
 
 The WES service can be layered on top of any cromwell API (only versions greater than 38 have been tested) to provide a
-fully featured WES API. By default, a cromwell instance on localhost is used however this can be easily configured
-through environment variables.
+fully featured WES API. By default, a cromwell instance on localhost running on port 8000 is used however this can be
+easily configured through environment variables.
 
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------  |
-| `WES_CROMWELL_URL` | `http://localhost:8000` | The cromwell instance to connect to |
-| `WES_CROMWELL_USERNAME` | `null` | A username to use if cromwell requires basic auth |
-| `WES_CROMWELL_PASSWORD` | `null` | A password to use if cromwell requires basic auth |
+| Env Variable            | Default                 | Description                                       |
+|-------------------------|-------------------------|---------------------------------------------------|
+| `WES_CROMWELL_URL`      | `http://localhost:8000` | The cromwell instance to connect to               |
+| `WES_CROMWELL_USERNAME` | `null`                  | A username to use if cromwell requires basic auth |
+| `WES_CROMWELL_PASSWORD` | `null`                  | A password to use if cromwell requires basic auth |
 
-### Configuring DRS
+## Configuring Path Translations
 
-The WES service is able to resolve `DrsUri`'s passed into it through the `workflow_params` of a new run. At the moment
-this support is limited and has the following behaviour:
-
-1. All `DrsUri`'s must be publicly resolvable unless included in the `tokens.json` for a run request
-
-- If the `drs://<server>` or `drs://<server>/<id>` is included in the `tokens.json` the request will use that token
-
-2. Each `DRS` object will be recursively resolved (in the case of a Bundle) and converted to a supported url for
-   cromwell
-
-- If multiple `AccessMethod` objects are defined then they will be chosen in the order defined by
-  the `supportedAccessTypes`
-  of the `DrsConfig`
-- `AccessMethod` Objects having an `AccessId` are currently not supported
-- `AccessMethod` Objects having `headers` to access a URL are currently not supported
-
-3. A single `Drs` object is resolved into a single object url. Additionally, if the `DrsObject` is a bundle, then that
-   object will resolve into an Array. Nested Bundles will result in an N-ary array.
-
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------  |
-| `WES_DRS_SUPPORTEDACCESSTYPES` | `file` | The access types that are currently supported for Drs. The order of these dictates the order that urls will be resolved |
-
-### Configuring Path Translations
-
-It certain circumstances, File input URI's may need to be mapped into a separate internal represenation for cromwell to
+It certain circumstances, File input URI's may need to be mapped into a separate internal representation for cromwell to
 be able to localize the files. A good example of this is
 with [CromwellOnAzure](https://github.com/microsoft/CromwellOnAzure), which leverages blob fuse to mount Blob storage
-containers to the local file system. Outside of Cromwell/Wes users will interact with the files using the microsoft
-https api, however internally they must specify files using as if they were on the local file system.
+containers to the local file system. Outside of Cromwell/Wes users will interact with the files using the microsoft blob
+storage api, however internally they must specify files as if they were on the local file system.
 
 Path Translators, allow you to define a `Regex` pattern for a prefix and a replacement string to use instead. Any number
 of path translators can be provided, and they will be applied in the order they were defined, allowing you to apply
@@ -124,57 +130,57 @@ Path translators will be applied to the input `params` prior to passing the inpu
 always be returned to the user. Path Translators will also be applied to the task logs (the stderr and stdout) as well
 as the outputs.
 
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------  |
-| `WES_PATHTRANSLATIONS_[INDEX]_PREFIX` | `null` | The prefix to test inputs and outputs against |
-| `WES_PATHTRANSLATIONS_[INDEX]_REPLACEMENT` | `null` | The replacement string to use instead of the prefix |
-| `WES_PATHTRANSLATIONS_[INDEX]_LOCATION` | `ALL` | The location that this path translation applies to. values [`ALL`,`INPUTS`,`OUTPUTS`] |
+| Env Variable                               | Default | Description                                                                           |
+|--------------------------------------------|---------|---------------------------------------------------------------------------------------|
+| `WES_PATHTRANSLATIONS_[INDEX]_PREFIX`      | `null`  | The prefix to test inputs and outputs against                                         |
+| `WES_PATHTRANSLATIONS_[INDEX]_REPLACEMENT` | `null`  | The replacement string to use instead of the prefix                                   |
+| `WES_PATHTRANSLATIONS_[INDEX]_LOCATION`    | `ALL`   | The location that this path translation applies to. values [`ALL`,`INPUTS`,`OUTPUTS`] |
 
-### Configuring the Transfer API
+# Storage
 
-The transfer API provides a way to securely stage files which the workflow execution backend does not conventionally
-have access to. By default this API is disabled, but can be enabled through an environment flag.
+The WES service has been designed to run on Cromwell in most of the environments that cromwell currently supports. In
+order
+to access the log data and write `workflow_attachments` to storage, it may be necessary to provide credentials for file
+system access.
 
-When using the Transfer Service through `WES` several assumptions are made about the transfer
+By Default, the service will use the local file-system accessible to WES. There is an assumption that Cromwell has
+access
+to the same file system. Only one file system is supported at a given time
 
-1. There is only ever a single destination directory or storage provider, ie a single bucket, container, folder where
-   all transfers will be placed
-2. The Transfer service has already been configured to access this single destination
-3. The User requestng a transfer has provided all of the tokens required to perform the transfer as part of
-   the `tokens.json` file
+## Local File System
 
-Incoming files to be transferred will be moved to the destintation defined by the `stagingDirectory` config variable. In
-general, the entirety of the path will be preseverd in the transfer. For example if you have a staging directory
-of `/my-directory` and a transfer file of `gs://some-bucket/some-file.txt`
-then when following transfer will be moved to `/my-directory/0abn578/some-bucket/some-file.txt`. The random string
-between the staging directory and the bucket/path is a praefix added to all of the transfers. All files being
-transferred for the same workflow run will share the same prefix.
+You can enable the local file system by specifying `LOCAL` as the storage client name
 
-| Env Variable | Default | Description |
-| ------------ | ------- | ----------  |
-| `WES_TRANSFER_ENABLED` | `false` | Flag whether the transfer service should be enabled or not | 
-| `WES_TRANSFER_STAGINGDIRECTORY` | `null` | The destination to write all transfer to. This can be a bucket, container, local folder etc |
-| `WES_TRANSFER_OBJECTPREFIXWHITELIST` | `[null]` | An Array of object prefixes that will never be transferred. It is assumed in this case that the caller already has access to them |
-| `WES_TRANSFER_OBJECTTRANSFERURI` | `null` | The URI of the object transfer service |
-| `WES_TRANSFER_MAXMONITORINGFAILURES` | `3` | The total number of API request failures to the transfer service  tolerate before aborting the workflow |
-| `WES_TRANSFER_MAXTRANSFERWAITTIMEMS` | `60_000 * 60 * 24 * 3` | The maximum wait time (ms) that any one job should be on hold while waiting for a transfer. If this waitime is exceeded, then the job will be aborted |
-| `WES_AUTH_SERVICEACCOUNTAUTHENTICATIONURI` | `null` | The URI to obtain an access token from for the transfer service | 
-| `WES_AUTH_SERVICEACCOUNTCLIENTID` | `null` | The client ID to use for obtaining an access token |
-| `WES_AUTH_SERVICEACCOUNTSECRET` | `null` | The secret to use for obtaining an access token |
+`WES_BLOB_STORAGE_CLIENT_NAME=LOCAL`.
 
-#### Triggering a transfer
+| Env Variable                                 | Default    | Description                                                      |
+|----------------------------------------------|------------|------------------------------------------------------------------|
+| `WES_BLOB_STORAGE_CLIENT_LOCAL_STAGING_PATH` | `uploads/` | The path accessible to cromwell to write workflow attachments to |
 
-The `WES` service will descend into the workflow input tree and identify any leaf values that look "file like". That is,
-anything which is a valid URI (gs/https/abs/s3 etc) that could potentially be a file. All of these are wrapped in as
-an `ObjectWrapper`
-and extracted to be passed to the `TransferService`. The `TransferService` will accept an array of potential objects to
-transfer, as well as a map of `tokens` defined by the `tokens.json`. A transfer will ONLY be triggered if there is a
-valid token which will give the transfer service permission to read the set file. A valid token is defined by the `key`
-being the exact same as the full object path, OR for the same `shceme/host`.
+# CI
 
-Once all objects to transfer have been Identified, the workflown inputs are modified to reflect the final destination of
-the transfers and NOT the original destination. When the workflow is submitted it will be put on "hold" until all
-transfer are completed asynchronously, and then the hold will be lifted.
+Building containers requires an installation of docker
+
+```bash
+./ci/build-docker-image cromwell-wes-service:$(git describe) cromwell-wes-service $(git describe)
+./ci/build-docker-e2e-image cromwell-wes-service-e2e:$(git describe) cromwell-wes-service-e2e $(git describe)
+```
+
+# Building and Running Tests
+
+```bash
+docker run --network host -it cromwell-wes-service-e2e:$(git describe)
+```
+
+| Env Variable           | Default                                    | Description                                                         |
+|------------------------|--------------------------------------------|---------------------------------------------------------------------|
+| `E2E_BASE_URI`         | `http://localhost:8090`                    | The base uri for the e2e tests                                      |
+| `E2E_TOKEN_URI`        | `http://localhost:8081/oauth/token`        | The endpoint to get access token from wallet                        |
+| `E2E_CLIENT_ID`        | `wes-service-development-client`           | WES client id for development                                       |
+| `E2E_CLIENT_SECRET`    | `wes-service-development-secret`           | WES client secret for development                                   |
+| `E2E_CLIENT_AUDIENCE`  | `http://localhost:8090`                    | The audience of the access token received from wallet               |
+| `E2E_CLIENT_SCOPE`     | `read:execution write:execution`           | The scope of the access token received from wallet                  |
+| `E2E_CLIENT_RESOURCES` | `http://localhost:8090/ga4gh/wes/v1/runs/` | The resources accessible with the access token received from wallet |
 
 # REST - API
 
@@ -183,42 +189,41 @@ find out how to get an access token.
 
 ## Service Info `GET /ga4gh/wes/v1/service-info`
 
-Retrieve information about the service, inclduing the supported workflow versions, auth instructions, as well as some
+Retrieve information about the service, including the supported workflow versions, auth instructions, as well as some
 tags defining default names of options. If the user is authenticated then the `system_state_counts` will be shown. If
 multi-tenant support is turned on, only their runs will be shown here.
 
 ```json
 {
-     "workflow_type_versions": {
-       "WDL": [
-         "draft-2",
-         "1.0"
-       ]
-     },
-     "supported_wes_versions": [
-       "1.0.0"
-     ],
-     "supported_filesystem_protocols": [
-       "gs",
-       "http",
-       "file",
-       "drs"
-     ],
-     "workflow_engine_versions": {
-       "cromwell": "42"
-     },
-     "system_state_counts": {
-       "EXECUTOR_ERROR": 7,
-       "CANCELED": 5,
-       "COMPLETE": 11
-     },
-     "auth_instruction_url": "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/.well-known/openid-configuration",
-     "tags": {
-       "object-access-token-attachment-name": "tokens.json",
-       "cromwell-options-attachment-name": "options.json",
-       "dependencies-zip-attachment-name": "dependencies.zip"
-     }
-   }
+    "workflow_type_versions": {
+        "WDL": [
+            "draft-2",
+            "1.0"
+        ]
+    },
+    "supported_wes_versions": [
+        "1.0.0"
+    ],
+    "supported_filesystem_protocols": [
+        "gs",
+        "http",
+        "file",
+        "drs"
+    ],
+    "workflow_engine_versions": {
+        "cromwell": "42"
+    },
+    "system_state_counts": {
+        "EXECUTOR_ERROR": 7,
+        "CANCELED": 5,
+        "COMPLETE": 11
+    },
+    "auth_instruction_url": "https://wep-keycloak.staging.dnastack.com/auth/realms/DNAstack/.well-known/openid-configuration",
+    "tags": {
+        "cromwell-options-attachment-name": "options.json",
+        "dependencies-zip-attachment-name": "dependencies.zip"
+    }
+}
 ```
 
 ## Create a Run `POST /ga4gh/wes/v1/runs`
@@ -253,16 +258,16 @@ When you submit the run, if it was successfully submitted you will receive an ob
 `run_id` is actually the same `ID` used by cromwell
 
 ```json
-{ 
-  "run_id": "c806516e-ea5b-4505-8d0f-70b0c7bfc48c"
+{
+    "run_id": "c806516e-ea5b-4505-8d0f-70b0c7bfc48c"
 }
 ```
 
 ## List Runs `GET /ga4gh/wes/v1/runs`
 
-List all of the runs in a paginated list. Pagination is rundimentarily supported and it is important to note that
+Return runs in a paginated list. Pagination has rudimentary supported and it is important to note that
 cromwell returns results tail first. That means the most recent entries are reported first and there is no mechanism
-to "freeze" the paginated list without heavy caching as perscribed by `wes`. Therefore, entries on any given page are
+to "freeze" the paginated list without heavy caching as perscribed by `WES`. Therefore, entries on any given page are
 not static and are subject to change if additional workflows have been submitted between listing calls.
 
 **Request Parameters:**
@@ -273,29 +278,29 @@ not static and are subject to change if additional workflows have been submitted
 
 ```json
 {
-  "runs": [
-    {
-      "run_id": "5d435f79-7c7b-41fe-9ed0-c333ae32e4de",
-      "state": "EXECUTOR_ERROR"
-    },
-    {
-      "run_id": "bb9e719f-30d8-4895-98a9-72ba689c0c83",
-      "state": "EXECUTOR_ERROR"
-    },
-    {
-      "run_id": "cf48955b-0707-413b-8696-fcea304ad461",
-      "state": "EXECUTOR_ERROR"
-    },
-    {
-      "run_id": "a355ae0f-766d-4158-a41a-3679ad1142e8",
-      "state": "EXECUTOR_ERROR"
-    },
-    {
-      "run_id": "81d59e64-0c6c-4b9c-b682-5826763d7d85",
-      "state": "EXECUTOR_ERROR"
-    }
-  ],
-  "next_page_token": "cGFnZSUzRDIlMjZwYWdlU2l6ZSUzRDU="
+    "runs": [
+        {
+            "run_id": "5d435f79-7c7b-41fe-9ed0-c333ae32e4de",
+            "state": "EXECUTOR_ERROR"
+        },
+        {
+            "run_id": "bb9e719f-30d8-4895-98a9-72ba689c0c83",
+            "state": "EXECUTOR_ERROR"
+        },
+        {
+            "run_id": "cf48955b-0707-413b-8696-fcea304ad461",
+            "state": "EXECUTOR_ERROR"
+        },
+        {
+            "run_id": "a355ae0f-766d-4158-a41a-3679ad1142e8",
+            "state": "EXECUTOR_ERROR"
+        },
+        {
+            "run_id": "81d59e64-0c6c-4b9c-b682-5826763d7d85",
+            "state": "EXECUTOR_ERROR"
+        }
+    ],
+    "next_page_token": "cGFnZSUzRDIlMjZwYWdlU2l6ZSUzRDU="
 }
 ```
 
@@ -312,96 +317,96 @@ important to note
 
 ```json
 {
-  "run_id": "01662c4a-094d-45ac-8376-c58a3f52fecc",
-  "request": {
-    "workflow_params": {
-      "x.p": {
-        "age": 42,
-        "info": "drs://localhost:8090/4",
-        "name": "jonas",
-        "children": [
-          {
-            "age": 7,
-            "name": "charlie"
-          }
-        ]
-      },
-      "x.s": "ggggggg"
+    "run_id": "01662c4a-094d-45ac-8376-c58a3f52fecc",
+    "request": {
+        "workflow_params": {
+            "x.p": {
+                "age": 42,
+                "info": "drs://localhost:8090/4",
+                "name": "jonas",
+                "children": [
+                    {
+                        "age": 7,
+                        "name": "charlie"
+                    }
+                ]
+            },
+            "x.s": "he,llo"
+        },
+        "workflow": "WDL",
+        "tags": {
+            "user_id": "c806516e-ea5b-4505-8d0f-70b0c7bfc48c",
+            "my": "workflow",
+            "cromwell-workflow-id": "cromwell-01662c4a-094d-45ac-8376-c58a3f52fecc"
+        },
+        "workflow_engine_parameters": {
+            "workflow_root": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/",
+            "write_to_cache": "false"
+        },
+        "workflow_url": "echo.wdl"
     },
-    "workflow": "WDL",
-    "tags": {
-      "user_id": "c806516e-ea5b-4505-8d0f-70b0c7bfc48c",
-      "my": "workflow",
-      "cromwell-workflow-id": "cromwell-01662c4a-094d-45ac-8376-c58a3f52fecc"
+    "state": "COMPLETE",
+    "run_log": {
+        "name": "x",
+        "start_time": "2019-12-12T19:51:09.511Z[UTC]",
+        "end_time": "2019-12-12T19:56:33.302Z[UTC]"
     },
-    "workflow_engine_parameters": {
-      "workflow_root": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/",
-      "write_to_cache": "false"
-    },
-    "workflow_url": "echo.wdl"
-  },
-  "state": "COMPLETE",
-  "run_log": {
-    "name": "x",
-    "start_time": "2019-12-12T19:51:09.511Z[UTC]",
-    "end_time": "2019-12-12T19:56:33.302Z[UTC]"
-  },
-  "task_logs": [
-    {
-      "name": "x.echo3",
-      "cmd": "cat /cromwell_root/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta > Homo_sapiens_assembly38.fasta/some-out.txt\necho \"done\"",
-      "start_time": "2019-12-12T19:51:14.038Z[UTC]",
-      "end_time": "2019-12-12T19:56:30.693Z[UTC]",
-      "stdout": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-0/stdout",
-      "stderr": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-0/stderr",
-      "exit_code": 0
-    },
-    {
-      "name": "x.echo3",
-      "cmd": "cat /cromwell_root/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta > Homo_sapiens_assembly38.fasta/some-out.txt\necho \"done\"",
-      "start_time": "2019-12-12T19:51:14.039Z[UTC]",
-      "end_time": "2019-12-12T19:56:30.694Z[UTC]",
-      "stdout": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-1/stdout",
-      "stderr": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-1/stderr",
-      "exit_code": 0
-    },
-    {
-      "name": "x.echo3",
-      "cmd": "cat /cromwell_root/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta > Homo_sapiens_assembly38.fasta/some-out.txt\necho \"done\"",
-      "start_time": "2019-12-12T19:51:14.038Z[UTC]",
-      "end_time": "2019-12-12T19:56:30.694Z[UTC]",
-      "stdout": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-2/stdout",
-      "stderr": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-2/stderr",
-      "exit_code": 0
-    },
-    {
-      "name": "x.echo",
-      "cmd": "echo jonas",
-      "start_time": "2019-12-12T19:51:11.997Z[UTC]",
-      "end_time": "2019-12-12T19:54:49.692Z[UTC]",
-      "stdout": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo/stdout",
-      "stderr": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo/stderr",
-      "exit_code": 0
-    },
-    {
-      "name": "x.echo2",
-      "cmd": "echo charlie",
-      "start_time": "2019-12-12T19:51:11.997Z[UTC]",
-      "end_time": "2019-12-12T19:54:16.691Z[UTC]",
-      "stdout": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo2/stdout",
-      "stderr": "gs://dnastack-cromwell-development-bucket/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo2/stderr",
-      "exit_code": 0
-    }
-  ],
-  "outputs": {
-    "x.d2": "charlie",
-    "x.d3": [
-      "done",
-      "done",
-      "done"
+    "task_logs": [
+        {
+            "name": "x.echo3",
+            "cmd": "cat /cromwell_root/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta > Homo_sapiens_assembly38.fasta/some-out.txt\necho \"done\"",
+            "start_time": "2019-12-12T19:51:14.038Z[UTC]",
+            "end_time": "2019-12-12T19:56:30.693Z[UTC]",
+            "stdout": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-0/stdout",
+            "stderr": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-0/stderr",
+            "exit_code": 0
+        },
+        {
+            "name": "x.echo3",
+            "cmd": "cat /cromwell_root/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta > Homo_sapiens_assembly38.fasta/some-out.txt\necho \"done\"",
+            "start_time": "2019-12-12T19:51:14.039Z[UTC]",
+            "end_time": "2019-12-12T19:56:30.694Z[UTC]",
+            "stdout": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-1/stdout",
+            "stderr": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-1/stderr",
+            "exit_code": 0
+        },
+        {
+            "name": "x.echo3",
+            "cmd": "cat /cromwell_root/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta > Homo_sapiens_assembly38.fasta/some-out.txt\necho \"done\"",
+            "start_time": "2019-12-12T19:51:14.038Z[UTC]",
+            "end_time": "2019-12-12T19:56:30.694Z[UTC]",
+            "stdout": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-2/stdout",
+            "stderr": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo3/shard-2/stderr",
+            "exit_code": 0
+        },
+        {
+            "name": "x.echo",
+            "cmd": "echo jonas",
+            "start_time": "2019-12-12T19:51:11.997Z[UTC]",
+            "end_time": "2019-12-12T19:54:49.692Z[UTC]",
+            "stdout": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo/stdout",
+            "stderr": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo/stderr",
+            "exit_code": 0
+        },
+        {
+            "name": "x.echo2",
+            "cmd": "echo charlie",
+            "start_time": "2019-12-12T19:51:11.997Z[UTC]",
+            "end_time": "2019-12-12T19:54:16.691Z[UTC]",
+            "stdout": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo2/stdout",
+            "stderr": "/file-system/x/01662c4a-094d-45ac-8376-c58a3f52fecc/call-echo2/stderr",
+            "exit_code": 0
+        }
     ],
-    "x.d": "jonas"
-  }
+    "outputs": {
+        "x.d2": "charlie",
+        "x.d3": [
+            "done",
+            "done",
+            "done"
+        ],
+        "x.d": "jonas"
+    }
 }
 ```
 
@@ -410,9 +415,9 @@ important to note
 Return an updated status for a specific run
 
 ```json
-{ 
-  "run_id": "c806516e-ea5b-4505-8d0f-70b0c7bfc48c",
-  "state": "RUNNING"
+{
+    "run_id": "c806516e-ea5b-4505-8d0f-70b0c7bfc48c",
+    "state": "RUNNING"
 }
 ```
 
