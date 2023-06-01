@@ -32,17 +32,14 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import java.time.Duration;
 import java.util.List;
-<<<<<<< Updated upstream:src/main/java/com/dnastack/wes/security/MainSecurityConfig.java
 import java.util.concurrent.TimeUnit;
 
-=======
 @ConditionalOnProperty(
     prefix = "security",
     name = "enabled",
     havingValue = "true",
     matchIfMissing = true
 )
->>>>>>> Stashed changes:src/main/java/com/dnastack/wes/security/AuthSecurityConfig.java
 @Slf4j
 @EnableWebSecurity
 @EnableMethodSecurity
