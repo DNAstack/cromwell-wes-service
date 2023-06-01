@@ -191,6 +191,9 @@ springdoc:
   swagger-ui:
     path: /docs/swagger-ui.html
 
+security:
+  enabled: true
+
 ---
 spring:
   config:

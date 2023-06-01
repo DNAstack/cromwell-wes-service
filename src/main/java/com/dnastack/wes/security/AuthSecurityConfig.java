@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.ConnectionPool;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -31,13 +32,22 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import java.time.Duration;
 import java.util.List;
+<<<<<<< Updated upstream:src/main/java/com/dnastack/wes/security/MainSecurityConfig.java
 import java.util.concurrent.TimeUnit;
 
+=======
+@ConditionalOnProperty(
+    prefix = "security",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true
+)
+>>>>>>> Stashed changes:src/main/java/com/dnastack/wes/security/AuthSecurityConfig.java
 @Slf4j
 @EnableWebSecurity
 @EnableMethodSecurity
 @Configuration
-public class MainSecurityConfig {
+public class AuthSecurityConfig {
 
     @Bean
     // purposefully uses same qualifier as bean in spring-wallet-token-validator library in case we ever start using

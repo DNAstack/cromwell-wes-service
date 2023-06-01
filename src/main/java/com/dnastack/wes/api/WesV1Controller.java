@@ -5,10 +5,10 @@ import com.dnastack.audit.aspect.AuditActionUri;
 import com.dnastack.audit.aspect.AuditIgnore;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.cromwell.CromwellService;
-import com.dnastack.wes.security.AccessEvaluator;
 import com.dnastack.wes.security.AuthenticatedUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +18,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 
 @Slf4j
@@ -29,13 +28,14 @@ public class WesV1Controller {
 
     private final CromwellService adapter;
     private final AppConfig config;
-    private final AccessEvaluator accessEvaluator;
+
+    private final boolean securityEnabled;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, AccessEvaluator accessEvaluator) {
+    WesV1Controller(CromwellService adapter, AppConfig config, @Value("${security.enabled}") boolean securityEnabled) {
         this.adapter = adapter;
         this.config = config;
-        this.accessEvaluator = accessEvaluator;
+        this.securityEnabled = securityEnabled;
     }
 
     @AuditActionUri("wes:service-info")
@@ -43,8 +43,7 @@ public class WesV1Controller {
     @GetMapping(value = "/service-info", produces = { MediaType.APPLICATION_JSON_VALUE })
     public ServiceInfo getServiceInfo() {
         ServiceInfo serviceInfo = config.getServiceInfo();
-        if (AuthenticatedUser.getSubject() != null && accessEvaluator
-            .canAccessResource("/ga4gh/wes/v1/service-info", Set.of("wes:runs:read"), Set.of("wes"))) {
+        if (!securityEnabled || (AuthenticatedUser.getSubject() != null)) {
             serviceInfo.setSystemStateCounts(adapter.getSystemStateCounts());
         }
 
@@ -94,7 +93,7 @@ public class WesV1Controller {
     @AuditActionUri("wes:run:read")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/'+#runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}", produces = { MediaType.APPLICATION_JSON_VALUE })
-    public RunLog getRun( @PathVariable("run_id") String runId) {
+    public RunLog getRun(@PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
