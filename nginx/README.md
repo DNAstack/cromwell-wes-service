@@ -26,6 +26,10 @@ openssl req -new -nodes -x509 -days 365 -keyout server.key -out server.crt -conf
 
 # Generate client cert to be signed
 openssl req -new -nodes -x509 -days 365 -keyout client.key -out client.crt -config client.conf
+
+# Generate a PEM file containing both the key and the certificate
+cat client.key > client.pem
+cat client.crt >> client.pem
 ```
 
 ## Running
