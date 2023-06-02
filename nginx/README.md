@@ -19,21 +19,13 @@ Before starting the NGINX service, you will need to generate certificates to use
 following will provide certificates for hostname `127.0.0.1`.
 
 ```bash
-cd certs
-# Generate self signed root CA cert
-openssl req -nodes -x509 -days 358000 -newkey rsa:2048 -keyout ca.key -out ca.crt -subj "/C=CA/ST=Ontario/L=Toronto/OU=root/CN=127.0.0.1/emailAddress=test@dnastack.com"
+cd cert
 
 # Generate server cert to be signed
-openssl req -nodes -newkey rsa:2048 -days 358000 -keyout server.key -out server.csr -subj "/C=CA/ST=Ontario/L=Toronto/OU=root/CN=127.0.0.1/emailAddress=test@dnastack.com"
-
-# Sign the server cert
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+openssl req -new -nodes -x509 -days 365 -keyout server.key -out server.crt -config server.conf
 
 # Generate client cert to be signed
-openssl req -nodes -newkey rsa:2048 -days 358000 -keyout client.key -out client.csr -subj "/C=CA/ST=Ontario/L=Toronto/OU=root/CN=127.0.0.1/emailAddress=test@dnastack.com"
-
-# Sign the client cert
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAserial ca.srl -out client.crt
+openssl req -new -nodes -x509 -days 365 -keyout client.key -out client.crt -config client.conf
 ```
 
 ## Running
