@@ -124,6 +124,12 @@ wes:
     default-workflow-options:
       write_to_cache: false
       read_from_cache: false
+  workflows:
+    authorizers:
+      url-allow-list:
+        enabled: false
+      checksum:
+        enabled: false
   registry:
     client-id: wes-service
     client-secret: dev-secret-never-use-in-prod

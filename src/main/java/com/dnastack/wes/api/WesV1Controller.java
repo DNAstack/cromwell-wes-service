@@ -6,6 +6,7 @@ import com.dnastack.audit.aspect.AuditIgnore;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.cromwell.CromwellService;
 import com.dnastack.wes.security.AuthenticatedUser;
+import com.dnastack.wes.workflow.WorkflowAuthorizerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,13 +27,20 @@ import java.util.Map;
 public class WesV1Controller {
 
 
+    private final WorkflowAuthorizerService workflowAuthorizerService;
     private final CromwellService adapter;
     private final AppConfig config;
 
     private final boolean securityEnabled;
 
     @Autowired
-    WesV1Controller(CromwellService adapter, AppConfig config, @Value("${security.authentication.enabled}") boolean securityEnabled) {
+    WesV1Controller(
+        WorkflowAuthorizerService workflowAuthorizerService,
+        CromwellService adapter,
+        AppConfig config,
+        @Value("${security.authentication.enabled}") boolean securityEnabled
+    ) {
+        this.workflowAuthorizerService = workflowAuthorizerService;
         this.adapter = adapter;
         this.config = config;
         this.securityEnabled = securityEnabled;
@@ -77,6 +85,7 @@ public class WesV1Controller {
             .workflowTypeVersion(workflowTypeVersion).workflowAttachments(workflowAttachments)
             .tags(tags).build();
 
+        workflowAuthorizerService.authorize(workflowUrl, workflowAttachments);
         return adapter.execute(runRequest);
     }
 

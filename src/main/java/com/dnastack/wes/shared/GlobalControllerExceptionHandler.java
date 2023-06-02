@@ -1,6 +1,7 @@
 package com.dnastack.wes.shared;
 
 import com.dnastack.wes.api.ErrorResponse;
+import com.dnastack.wes.workflow.UnauthorizedWorkflowException;
 import feign.FeignException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -27,8 +28,8 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(404).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(404).build());
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handle(AccessDeniedException ex) {
+    @ExceptionHandler({ AccessDeniedException.class, UnauthorizedWorkflowException.class })
+    public ResponseEntity<ErrorResponse> handle(Exception ex) {
         return ResponseEntity.status(403).body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(403).build());
     }
 
@@ -37,4 +38,5 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(ex.status())
             .body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(ex.status()).build());
     }
+
 }

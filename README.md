@@ -25,6 +25,9 @@ is [Cromwell](https://github.com/Broadinstitute/cromwell). Other then cromwell, 
         - [Google Cloud Storage](#google-cloud-storage)
         - [Azure Blob Storage](#azure-blob-storage)
     - [Configuring Path Translations](#configuring-path-translations)
+    - [Authorizing Workflows](#authorizing-workflows)
+        - [Url Allow List](#url-allow-list)
+        - [Checksum Allow List](#checksum-allow-list)
     - [Configure Service Info](#configure-service-info)
 - [CI](#ci)
 - [Building and Running Tests](#building-and-running-testsu)
@@ -333,6 +336,53 @@ The replacement string to use instead of the matched prefix
 `WES_PATHTRANSLATIONS_[INDEX]_LOCATION` (`ALL`)
 
 The location that this path translation applies to. values [`ALL`,`INPUTS`,`OUTPUTS`]
+
+## Authorizing Workflows
+
+By default, the WES service allows you to submit any workflow to cromwell for execution either as a URL or as a workflow
+attachment. In some situations you may want to restrict the workflows that are allowed to be submitted. The WES Service
+provides two mechanisms for authorizing workflows: by an allow list, and by check sum validator. You can choose to use
+one or both of these authorizers, thus limiting the workflows you are allowed to submit.
+
+If the submitted workflow is authorized by either mechanism it will be allowed to execute
+
+### Url Allow List
+
+The URL allow list restricts the workflows that can be submitted by matching the supplied `workflow_url` against an
+allow list supplied at runtime. The allow list consists of one or more Regex patterns that the `workflow_url` will
+be tested against.
+
+You can enable the allow list with the use of an environment variable:
+
+`WES_WORKFLOWS_AUTHORIZERS_URL_ALLOW_LIST_ENABLED=true`
+
+**Configuration**
+
+`WES_WORKFLOWS_AUTHORIZERS_URL_ALLOW_LIST_ALLOWED_URLS` ('[]')
+
+Regex list of allowed URLS to match the `workflow_url` against. For example, `https://.*` would restrict workflows
+to only those that are served over an https connection while `http://foo.com/my-workflow` would require an exact match
+
+### Checksum Allow List
+
+The Checksum allow list restricts workflows that can be submitted by matching the supplied `workflow_attachment` files
+in the request against a set of md5sum hashes supplied at runtime. When a request is received each the md5sum of each
+workflow attachment is computed and compared to the supplied values, if ALL values match then the workflow will be
+allowed
+to execute.
+
+`WES_WORKFLOWS_AUTHORIZERS_CHECKSUM_ENABLED=true`
+
+**Configuration**
+
+`WES_WORKFLOWS_AUTHORIZERS_CHECKSUM_ALLOWED_CHECKSUMS` (`[]`)
+
+List of md5sum hashes to match the `workflow_attachments` against.
+
+`WES_WORKFLOWS_AUTHORIZERS_CHECKSUM_EXCLUDED_FILES` (`[]`)
+
+A list of filenames to exclude from the checksum match. If the workflow_attachment's filename matches it will not count
+towards the authorization of the given workflow
 
 ## Configure Service Info
 
