@@ -22,10 +22,10 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class GcpBlobStorageClient implements BlobStorageClient {
 
-    private Storage client;
-    private long ttl;
-    private URI stagingLocation;
-    private String project;
+    private final Storage client;
+    private final long ttl;
+    private final URI stagingLocation;
+    private final String project;
 
     public GcpBlobStorageClient(GcpBlobStorageConfig config) throws IOException {
         StorageOptions.Builder builder;
@@ -43,7 +43,10 @@ public class GcpBlobStorageClient implements BlobStorageClient {
             builder = StorageOptions.getDefaultInstance().toBuilder();
         }
 
-        client = builder.setProjectId(config.getProject()).build().getService();
+        client = builder.setProjectId(config.getProject())
+            .setQuotaProjectId(config.getBillingProject() == null ? config.getProject() : config.getBillingProject())
+            .build()
+            .getService();
         ttl = config.getSigndUrlTtl().toMillis();
         stagingLocation = config.getStagingLocation();
         project = config.getProject();
@@ -108,7 +111,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         } else {
             try (ReadChannel reader = blob.reader(BlobSourceOption.userProject(project))) {
                 reader.seek(rangeStart);
-                try(WritableByteChannel writer = Channels.newChannel(outputStream)) {
+                try (WritableByteChannel writer = Channels.newChannel(outputStream)) {
                     long maxRead = totalBytesToRead - bufferSize;
 
                     ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);

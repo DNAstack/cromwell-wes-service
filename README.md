@@ -7,12 +7,95 @@ used to present a standardized way of submitting and querying workflows. Current
 is [Cromwell](https://github.com/Broadinstitute/cromwell). Other then cromwell, there are no hard external dependencies
 (ie a database).
 
+# Table of Contents
+
+- [Requirements](#requirements)
+- [Getting Started](#getting-started)
+- [Building](#building)
+- [Running](#running)
+- [Configuration](#configuration)
+    - [Authentication](#authentication)
+        - [Passport Authentication](#passport-configuration)
+        - [External OAuth 2.0 token Issuer](#external-oauth-20-token-issuer)
+        - [No Auth](#no-auth)
+        - [mTLS Authorization](#mtls-authorization)
+    - [Configuring Cromwell](#configuring-cromwell)
+    - [Storage](#storage)
+        - [Local File System](#local-file-system)
+        - [Google Cloud Storage](#google-cloud-storage)
+        - [Azure Blob Storage](#azure-blob-storage)
+    - [Configuring Path Translations](#configuring-path-translations)
+    - [Configure Service Info](#configure-service-info)
+- [CI](#ci)
+- [Building and Running Tests](#building-and-running-testsu)
+- [Rest - API](#rest---api)
+    - [Service Info](#service-info-get-ga4ghwesv1service-info)
+    - [Submit a Run](#submit-a-run-post-ga4ghwesv1runs)
+    - [List Runs](#list-runs-get-ga4ghwesv1runs)
+    - [Run Summary](#run-summary-get-ga4ghwesv1runsid)
+    - [Run Status](#run-status-get-ga4ghwesv1runsidstatus)
+    - [Cancel Run](#cancel-run-post-ga4ghwesv1runsidstatus)
+
 # Requirements
 
 - Java 17+
-- [Cromwell](https://github.com/Broadinstitute/cromwell) running somewhere that is accessible to the WES service
+- [Cromwell](https://github.com/Broadinstitute/cromwell) running somewhere that is accessible to the WES service. Please
+  refer to the cromwell [documentation](https://cromwell.readthedocs.io/en/stable/) for instructions on how to configure
+  cromwell.
+
+# Getting Started
+
+You can get up and running with the WES Service locally for testing in minutes.
+
+1. Download the latest [cromwell release](https://github.com/broadinstitute/cromwell/releases/latest)  and start
+   Cromwell in server mode on port 8000.
+   ```bash
+   CROMWELL_VERSION=85
+   wget https://github.com/broadinstitute/cromwell/releases/download/${CROMWELL_VERSION}/cromwell-${CROMWELL_VERSION}.jar
+   java -jar cromwell-${CROMWELL_VERSION}.jar server
+   ```
+2. Build the WES Service or download the jar file from
+   the [latest release](https://github.com/DNAstack/cromwell-wes-service/releases/latest).
+   ```bash
+   WES_SERVICE_VERSION=1.0.0
+   wget https://github.com/DNAstack/cromwell-wes-service/releases/${WES_SERVICE_VERSION}/cromwell-wes-service-${WES_SERVICE_VERSION}.jar
+   ```
+3. Start the WES Service in `no-auth` mode allowing unrestricted access to the API locally
+   ```bash
+   java -Dspring.profiles.active=no-auth -jar cromwell-wes-service-${WES_SERVICE_VERSION}.jar
+   ```
+4. Submit a test workflow using curl. If the run submission is successful, the response should have a json object with a
+   single
+   property: `run_id`. The `run_id` corresponds to the internal cromwell id as well, so you can reference the cromwell
+   API
+   separately if wish youThis value can be used to track the progress of the workflow over time.
+   ```bash
+   curl -X POST -H "Content-Type: multipart/form-data" http://localhost:8090/ga4gh/wes/v1/runs -F "workflow_url=hello-world.wdl" -F "workflow_attachment=@examples/hello-world.wdl;filename=hello-world.wdl"
+   {"run_id": "ecc32f8a-68cd-45c4-8def-f5de020bbc9a"}
+   ```
+5. Poll the workflow until completion. The example below uses [jq](https://jqlang.github.io/jq/) for extracting JSON
+   values from the output
+   ```bash
+   run_id="ecc32f8a-68cd-45c4-8def-f5de020bbc9a"
+   while true; do
+     state=$(curl http://localhost:8090/ga4gh/wes/v1/runs/${run_id}/status | jq -r '.state')
+     if [[ "$state" =~ .*(COMPLETE|.*ERROR|CANCELED).* ]]; then
+       break
+     fi
+     sleep 5
+   done
+   ```
+6. Once the workflow completes retrieve the outputs
+   ```bash
+   curl http://localhost:8090/ga4gh/wes/v1/runs/${run_id}
+   ```
+
+--- 
 
 # Building
+
+The WES Service uses apache maven as a build system and is bundled with a script to install the appropriate version
+of maven locally. No external dependencies are needed, just run the `./mvnw` command
 
 ```bash
 ./mvnw clean install
@@ -21,34 +104,31 @@ is [Cromwell](https://github.com/Broadinstitute/cromwell). Other then cromwell, 
 # Running
 
 By default, the WES service will start on port `8090`. You can change this by specifying the `SERVER_PORT` environment
-variable.
+variable or specifying the `-Dserver.poort=<PORT>` property from the command line. After building, the self-contained
+jar file is in the target directory and can be run with
 
 ```bash
 java -jar target/cromwell-wes-service-1.0-SNAPSHOT.jar
 ```
 
-## Basic Configuration
-
-The WES Service has basic configuration for interacting with a local cromwell instance out of the box and provides
-support for the File object type without any subsequent configuration.
-
-By default, the API is protected by [DNAstack Passport](https://passport.dnastack.com), however you can configure
+# Configuration
 
 ## Authentication
 
-By default, the API is setup to use a local installation of [DNAstack Passport](https://passport.dnastack.com) as a
-token
-issuer, however any valid OAuth OAuth 2.0 Token issuer can be used. There is also a mechanism to run
+By default, the API is set up to use a local installation of [DNAstack Passport](https://passport.dnastack.com) as a
+token issuer, however any valid OAuth 2.0 Token issuer can be used or no authentication can also be used
 
 ### Passport Configuration
 
 Many Configuration fields are automatically filled when using passport as the authentication mechanism. The only
-required
-property is the `WES_AUTH_ISSUER_URI` which can be set as defined below
+required property is the `WES_AUTH_ISSUER_URI` which corresponds to the base passport URI (and `iss` field). If passport
+is running locally this is not needed
 
-| Env Variable          | Default                 | Description                              |
-|-----------------------|-------------------------|------------------------------------------|
-| `WES_AUTH_ISSUER_URI` | `http://localhost:8081` | The URI of a local passport installation |
+**Configuration**
+
+`WES_AUTH_ISSUER_URI` (`http://localhost:8081`)
+
+The URI of a passport installation
 
 ### External OAuth 2.0 token Issuer
 
@@ -57,17 +137,30 @@ the `WES_AUTH_ISSUER_URI`.
 Additionally, you will also need to disable passport permission authorization enforcement. This can be accomplished by
 disabling the authorization:
 
-`SECURIT_AUTHORIZATION_ENABLED=false`
+`SECURITY_AUTHORIZATION_ENABLED=false`
 
-Additional configuration values available:
+**Configuration**
 
-| Env Variable                           | Default                                          | Description                                                                                                                                                                                            |
-|----------------------------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `WES_AUTH_TOKEN_ISSUER_ISSUER_URI`     | `http://localhost:8081`                          | The Issuer URI, corresponding to the `iss` field in the JWT                                                                                                                                            |
-| `WES_AUTH_TOKEN_ISSUER_AUDIENCES`      | `[${WES_URL}]`                                   | A list of acceptable audiences to enforce corresponding to the `aud` field in the JWD                                                                                                                  |
-| `WES_AUTH_TOKEN_ISSUER_SCOPES`         | `[wes]`                                          | A list of scopes to enforce are present in the token, corresponding to the `scope` field in the JWT                                                                                                    |
-| `WES_AUTH_TOKEN_ISSUER_JWK_SET_URI`    | `${WES_AUTH_TOKEN_ISSUER_ISSUER_URI}/oauth/jwks` | The URI to fetch the [Json Web Key Set](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets) to validate the signature of tokens. Either the JWKS or the RSA Public key is required |
-| `WES_AUTH_TOKEN_ISSUER_RSA_PUBLIC_KEY` | `null`                                           | The public key to use to verify the signature of the JWT's. Eiuther the RSA Public Key or JKWS is required                                                                                             |
+`WES_AUTH_ISSUER_URI` (`http://localhost:8081`)
+
+The Issuer URI, corresponding to the iss field which will be present in the JWT. The WES Service will validate that
+the JWTs come from the configured issuer
+
+`WES_AUTH_TOKEN_ISSUER_AUDIENCES` (`[${WES_URL}]`)
+
+A list of acceptable audiences to enforce corresponding to the `aud` field in the JWT.
+
+`WES_AUTH_TOKEN_ISSUER_SCOPES` (`[wes]`)
+
+A list of scopes to enforce are present in the token, corresponding to the `scope` field in the JWT.
+
+`WES_AUTH_TOKEN_ISSUER_JWK_SET_URI` (`${WES_AUTH_TOKEN_ISSUER_ISSUER_URI}/oauth/jwks`)
+
+The URI to fetch the [Json Web Key Set](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets) to
+validate the signature of tokens. Either the JWKS or the RSA Public key is required
+
+`WES_AUTH_TOKEN_ISSUER_RSA_PUBLIC_KEY`
+The public key to use to verify the signature of the JWT's. Either the RSA Public Key or JWKS
 
 ### No Auth
 
@@ -75,19 +168,17 @@ You can start the WES Service in a mode that does not require any authentication
 if you are using the WES service locally for testing, do not have access to a OAuth 2.0 provider, or want to run the
 service behind a reverse proxy which provides authentication
 
-_note_ All endpoints will be accessible without any authentication at all
+_All endpoints will be accessible without any authentication at all_
 
-You can enable the `no-auth` spring profile to turn off all authentication
-
-`SPRING_PROFILES_ACTIVE=no-auth`
+You can enable the `no-auth` spring profile to turn off all authentication with an environment
+variable `SPRING_PROFILES_ACTIVE=no-auth` or by setting the java property `-Dspring.profiles.active=no-auth`
 
 ### mTLS Authorization
 
 One possible alternative to using OAuth 2.0 is to setup a reverse proxy that
 uses [Mutual TLS](https://en.wikipedia.org/wiki/Mutual_authentication).
 The benefit to mTLS is that it wraps the authentication of both the server and the client directly in the transport
-layer of the
-request.
+layer of the request.
 
 mTLS does not prevent you from also using OAuth 2.0 or any other form of authentication in addition to mTLS, howver it
 is not
@@ -95,28 +186,127 @@ necessary. You can start the WES Service in the [no-auth](#no-auth) setup
 
 You can see an example nginx configuration using mTLS in front of the WES service [here](nginx/README.md)
 
-## Service Info
-
-The service info served by `WES` can easily be configured through environment variables as well. Please see the
-(application.yaml)[src/main/java/resources/application.yaml] or (
-ServiceInfo.java)[src/main/java/com/dnastack/wes/model/wes/ServiceInfo.java]
-for more information.
-
 ## Configuring Cromwell
 
 The WES service can be layered on top of any cromwell API (only versions greater than 38 have been tested) to provide a
-fully featured WES API. By default, a cromwell instance on localhost running on port 8000 is used however this can be
+fully featured WES API. By default, a cromwell instance on localhost running on port 8000 is expected however this can
+be
 easily configured through environment variables.
 
-| Env Variable            | Default                 | Description                                       |
-|-------------------------|-------------------------|---------------------------------------------------|
-| `WES_CROMWELL_URL`      | `http://localhost:8000` | The cromwell instance to connect to               |
-| `WES_CROMWELL_USERNAME` | `null`                  | A username to use if cromwell requires basic auth |
-| `WES_CROMWELL_PASSWORD` | `null`                  | A password to use if cromwell requires basic auth |
+**Configuration**
+
+`WES_CROMWELL_URL` (`http://localhost:8000`)
+
+The URI of the cromwell instance to connect to
+
+`WES_CROMWELL_USERNAME` (`null`)
+
+Optional username to use for authentication with basic auth when connecting to cromwell
+
+`WES_CROMWELL_PASSWORD` (`null`)
+
+Optional password to use for authentication with basic auth when connecting to cromwell
+
+## Storage
+
+The WES service has been designed to run on Cromwell in most of the environments that cromwell currently supports. In
+order to access the log data and write `workflow_attachments` to storage, it may be necessary to provide credentials
+for file system access.
+
+The following file storage systems are currently supported:
+
+- Local
+- [Google Cloud Storage](https://cloud.google.com/storage/)
+- [Azure Blob Storage](https://azure.microsoft.com/en-ca/products/storage/blobs)
+
+By Default, the service will use the local file-system accessible to WES. There is an assumption that Cromwell has
+access to the same file system in all cases. Only one file system is supported at a given time.
+
+## Local File System
+
+You can enable the local file system by specifying `LOCAL` as the storage client name
+
+`WES_BLOB_STORAGE_CLIENT_NAME=LOCAL`.
+
+**Configuration**
+
+`WES_BLOB_STORAGE_CLIENT_LOCAL_STAGING_PATH` (`uploads/`)
+
+The path accessible to cromwell to write workflow attachments to
+
+## Google Cloud Storage
+
+You can enable google cloud storage by specifying `GCP` as the storage client name.
+
+`WES_BLOB_STORAGE_CLIENT_NAME=GCP`.
+
+**Configuration**
+
+`WES_BLOB_STORAGE_CLIENT_GCP_STAGING_LOCATION` (_required_)
+
+The bucket and path prefix (specified as `gs://...`) where workflow attachments will be uploaded to and made available
+to cromwell. Cromwell should have READ access to the bucket
+
+`WES_BLOB_STORAGE_CLIENT_GCP_SERVICE_ACCOUNT_JSON` (Application Default)
+
+An optional string containing the contents of
+a [json service account key](https://cloud.google.com/iam/docs/service-account-overview)
+to use for authentication with the gcloud storage API. If this value is not defined and GCP storage is enabled, the WES
+service
+will attempt to use
+the [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+configured.
+
+The Service account should be given READ ONLY permission to the log output bucket of cromwell, and WRITE access to
+the staging location for writing the `workflow_attachment`s
+
+`WES_BLOB_STORAGE_CLIENT_GCP_PROJECT` (_required_)
+
+The [google cloud project](https://cloud.google.com/storage/docs/projects) where the bucket exists
+
+`WES_BLOB_STORAGE_CLIENT_GCP_BILLING_PROJECT` (`${WES_BLOB_STORAGE_CLIENT_GCP_PROJECT}`)
+
+The [google cloud project](https://cloud.google.com/storage/docs/projects) to use for billing purposes, in the case
+of requester pays buckets.
+
+`WES_BLOB_STORAGE_CLIENT_GCP_SIGNED_URL_TTL` (`P1D`)
+
+When streaming logs the WES service will generate a signed URL that it will redirect API calls to. You can configure
+the TTL of the signed URL using
+the [Java Duration](https://docs.oracle.com/javase/8/docs/api/java/time/Duration.html#parse-java.lang.CharSequence-)
+format.
+
+### Azure Blob Storage
+
+You can enable azure blob storage by specifying `ABS` as the storage client name.
+
+`WES_BLOB_STORAGE_CLIENT_NAME=ABS`.
+
+**Configuration**
+
+`WES_BLOB_STORAGE_CLIENT_ABS_CONNECTION_STRING` (_required_)
+
+The Azure blob
+storage [connection string](https://learn.microsoft.com/en-us/azure/data-explorer/kusto/api/connection-strings/storage-connection-strings)
+that can be used for read/write access to a specific storage account
+
+`WES_BLOB_STORAGE_CLIENT_ABS_CONTAINER` (_required_)
+
+The container in the Azure Blob Storage account to write workflow attachments to
+
+`WES_BLOB_STORAGE_CLIENT_ABS_STAGING_PATH` (_required_)
+
+The relative path prefix to prepend to workflow attachments prior to writing them to the configured bucket
+
+`WES_BLOB_STORAGE_CLIENT_ABS_SIGNED_URL_TTL` (`86400000`)
+
+When streaming logs the WES service will generate a signed URL that it will redirect API calls to. You can configure the
+TTL
+of the signed URL in milliseconds.
 
 ## Configuring Path Translations
 
-It certain circumstances, File input URI's may need to be mapped into a separate internal representation for cromwell to
+In certain circumstances, File input URI's may need to be mapped into a separate internal representation for cromwell to
 be able to localize the files. A good example of this is
 with [CromwellOnAzure](https://github.com/microsoft/CromwellOnAzure), which leverages blob fuse to mount Blob storage
 containers to the local file system. Outside of Cromwell/Wes users will interact with the files using the microsoft blob
@@ -130,32 +320,26 @@ Path translators will be applied to the input `params` prior to passing the inpu
 always be returned to the user. Path Translators will also be applied to the task logs (the stderr and stdout) as well
 as the outputs.
 
-| Env Variable                               | Default | Description                                                                           |
-|--------------------------------------------|---------|---------------------------------------------------------------------------------------|
-| `WES_PATHTRANSLATIONS_[INDEX]_PREFIX`      | `null`  | The prefix to test inputs and outputs against                                         |
-| `WES_PATHTRANSLATIONS_[INDEX]_REPLACEMENT` | `null`  | The replacement string to use instead of the prefix                                   |
-| `WES_PATHTRANSLATIONS_[INDEX]_LOCATION`    | `ALL`   | The location that this path translation applies to. values [`ALL`,`INPUTS`,`OUTPUTS`] |
+**Configuration**
 
-# Storage
+`WES_PATHTRANSLATIONS_[INDEX]_PREFIX` (`null`)
 
-The WES service has been designed to run on Cromwell in most of the environments that cromwell currently supports. In
-order
-to access the log data and write `workflow_attachments` to storage, it may be necessary to provide credentials for file
-system access.
+The regex prefix to test inputs and outputs against
 
-By Default, the service will use the local file-system accessible to WES. There is an assumption that Cromwell has
-access
-to the same file system. Only one file system is supported at a given time
+`WES_PATHTRANSLATIONS_[INDEX]_REPLACEMENT` (`null`)
 
-## Local File System
+The replacement string to use instead of the matched prefix
 
-You can enable the local file system by specifying `LOCAL` as the storage client name
+`WES_PATHTRANSLATIONS_[INDEX]_LOCATION` (`ALL`)
 
-`WES_BLOB_STORAGE_CLIENT_NAME=LOCAL`.
+The location that this path translation applies to. values [`ALL`,`INPUTS`,`OUTPUTS`]
 
-| Env Variable                                 | Default    | Description                                                      |
-|----------------------------------------------|------------|------------------------------------------------------------------|
-| `WES_BLOB_STORAGE_CLIENT_LOCAL_STAGING_PATH` | `uploads/` | The path accessible to cromwell to write workflow attachments to |
+## Configure Service Info
+
+The service info served by `WES` can easily be configured through environment variables as well. Please see the
+(application.yaml)[src/main/java/resources/application.yaml] or (
+ServiceInfo.java)[src/main/java/com/dnastack/wes/model/wes/ServiceInfo.java]
+for more information.
 
 # CI
 
@@ -168,19 +352,39 @@ Building containers requires an installation of docker
 
 # Building and Running Tests
 
+The e2e tests assume a WES Service running with [Passport Authentication/Authorization](#passport-configuration) enabled
+
 ```bash
 docker run --network host -it cromwell-wes-service-e2e:$(git describe)
 ```
 
-| Env Variable           | Default                                    | Description                                                         |
-|------------------------|--------------------------------------------|---------------------------------------------------------------------|
-| `E2E_BASE_URI`         | `http://localhost:8090`                    | The base uri for the e2e tests                                      |
-| `E2E_TOKEN_URI`        | `http://localhost:8081/oauth/token`        | The endpoint to get access token from wallet                        |
-| `E2E_CLIENT_ID`        | `wes-service-development-client`           | WES client id for development                                       |
-| `E2E_CLIENT_SECRET`    | `wes-service-development-secret`           | WES client secret for development                                   |
-| `E2E_CLIENT_AUDIENCE`  | `http://localhost:8090`                    | The audience of the access token received from wallet               |
-| `E2E_CLIENT_SCOPE`     | `read:execution write:execution`           | The scope of the access token received from wallet                  |
-| `E2E_CLIENT_RESOURCES` | `http://localhost:8090/ga4gh/wes/v1/runs/` | The resources accessible with the access token received from wallet |
+`E2E_BASE_URI` (`http://localhost:8090`)
+
+The base uri for the e2e tests
+
+`E2E_TOKEN_URI` (`http://localhost:8081/oauth/token`)
+
+The endpoint to get access token from passport
+
+`E2E_CLIENT_ID` (`wes-service-development-client`)
+
+Testing WES client id for development
+
+`E2E_CLIENT_SECRET` (`dev-secret-never-use-in-production`)
+
+Testing WES client secret for development
+
+`E2E_CLIENT_AUDIENCE` (`http://localhost:8090`)
+
+The audience of the access token received from passport
+
+`E2E_CLIENT_SCOPE` (`wes`)
+
+The scope of the access token received from wallet
+
+`E2E_CLIENT_RESOURCES` (`http://localhost:8090/ga4gh/wes/v1/runs/`)
+
+The resources accessible with the access token received from wallet
 
 # REST - API
 
@@ -226,7 +430,7 @@ multi-tenant support is turned on, only their runs will be shown here.
 }
 ```
 
-## Create a Run `POST /ga4gh/wes/v1/runs`
+## Submit a Run `POST /ga4gh/wes/v1/runs`
 
 This endpoint allows for the creation of a new workflow run according to the WES specification. For information on how
 to configure the request, please see

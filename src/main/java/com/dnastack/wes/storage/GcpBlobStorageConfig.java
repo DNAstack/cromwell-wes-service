@@ -11,6 +11,7 @@ public class GcpBlobStorageConfig {
     private URI stagingLocation;
     private String serviceAccountJson = null;
     private String project;
+    private String billingProject;
     private Duration signdUrlTtl = Duration.ofDays(1);
 
 }
