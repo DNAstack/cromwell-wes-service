@@ -169,7 +169,9 @@ The public key to use to verify the signature of the JWT's. Either the RSA Publi
 
 You can start the WES Service in a mode that does not require any authentication or authorization. This may be useful
 if you are using the WES service locally for testing, do not have access to a OAuth 2.0 provider, or want to run the
-service behind a reverse proxy which provides authentication
+service behind a reverse proxy which provides authentication. When running in no-auth mode, the server binds to localhost
+instead of to all available addresses, it will only be accessible locally. To access the server externally, it is advised
+that you use a reverse proxy such as [nginx](nginx/README.md).
 
 _All endpoints will be accessible without any authentication at all_
 

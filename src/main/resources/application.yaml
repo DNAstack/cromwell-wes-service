@@ -213,7 +213,9 @@ security:
     enabled: false
   authorization:
     enabled: false
-
+server:
+  # Bind this only to localhost
+  address: 127.0.0.1
 
 ---
 spring:
