@@ -9,7 +9,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 
 @Configuration
-@ConditionalOnExpression("!${security.authentication.enabled:false}")
+@ConditionalOnExpression("'${wes.auth.method}' == 'NO_AUTH'")
 public class NoAuthSecurityConfig {
 
     @Bean
@@ -24,5 +24,6 @@ public class NoAuthSecurityConfig {
             .permitAll();
         return http.build();
     }
+
 
 }

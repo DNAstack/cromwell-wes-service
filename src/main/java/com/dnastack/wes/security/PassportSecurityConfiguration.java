@@ -29,28 +29,12 @@ import java.util.concurrent.TimeUnit;
  */
 @Configuration
 @EnableMethodSecurity
-@ConditionalOnExpression("${security.authentication.enabled:true} && ${securtiy.authorization.enabled:true}")
-public class AuthorizedSecurityConfiguration {
+@ConditionalOnExpression("'${wes.auth.method}' == 'PASSPORT'")
+public class PassportSecurityConfiguration {
 
     @Bean
     public AccessEvaluator accessEvaluator(AuthConfig authConfig, PermissionChecker permissionChecker) {
         return new AccessEvaluator(authConfig, permissionChecker);
-    }
-
-    @Bean
-    // purposefully uses same qualifier as bean in spring-wallet-token-validator library in case we ever start using
-    // that library in Explorer
-    @Qualifier("com.dnastack.auth.token-validator-connection-pool")
-    public ConnectionPool getConnectionPool(AuthConfig authConfig) {
-        final AuthConfig.HttpClientConfig httpClientConfig = authConfig.getHttpClientConfig();
-        final Duration keepAliveTimeout = httpClientConfig.getKeepAliveTimeout();
-        if (keepAliveTimeout.toNanosPart() > 0 || keepAliveTimeout.toMillisPart() > 0) {
-            throw new IllegalArgumentException("Given keep alive value of [%s] must not have granularity below seconds".formatted(keepAliveTimeout));
-        }
-        final long convertedTimeout = keepAliveTimeout.toSeconds();
-        final TimeUnit convertedTimeUnit = TimeUnit.SECONDS;
-
-        return new ConnectionPool(httpClientConfig.getMaxIdleConnections(), convertedTimeout, convertedTimeUnit);
     }
 
     @Bean
