@@ -26,7 +26,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Configure JWT Authentication for the WES server
@@ -34,8 +36,8 @@ import java.util.List;
 @Slf4j
 @EnableWebSecurity
 @Configuration
-@ConditionalOnExpression("${security.authentication.enabled:true}")
-public class AuthenticatedSecurityConfig {
+@ConditionalOnExpression("'${wes.auth.method}' == 'PASSPORT' || '${wes.auth.method}' == 'OAUTH'")
+public class OAuthSecurityConfig {
 
 
     @Bean
@@ -60,6 +62,22 @@ public class AuthenticatedSecurityConfig {
             .oauth2ResourceServer()
             .jwt();
         return http.build();
+    }
+
+    @Bean
+    // purposefully uses same qualifier as bean in spring-wallet-token-validator library in case we ever start using
+    // that library in Explorer
+    @Qualifier("com.dnastack.auth.token-validator-connection-pool")
+    public ConnectionPool getConnectionPool(AuthConfig authConfig) {
+        final AuthConfig.HttpClientConfig httpClientConfig = authConfig.getHttpClientConfig();
+        final Duration keepAliveTimeout = httpClientConfig.getKeepAliveTimeout();
+        if (keepAliveTimeout.toNanosPart() > 0 || keepAliveTimeout.toMillisPart() > 0) {
+            throw new IllegalArgumentException("Given keep alive value of [%s] must not have granularity below seconds".formatted(keepAliveTimeout));
+        }
+        final long convertedTimeout = keepAliveTimeout.toSeconds();
+        final TimeUnit convertedTimeUnit = TimeUnit.SECONDS;
+
+        return new ConnectionPool(httpClientConfig.getMaxIdleConnections(), convertedTimeout, convertedTimeUnit);
     }
 
     @Bean
@@ -88,7 +106,7 @@ public class AuthenticatedSecurityConfig {
 
 
     @Bean
-    @ConditionalOnExpression("!${security.authoriation.enabled:true}")
+    @ConditionalOnExpression("'${wes.auth.method}' != 'PASSPORT'")
     public JwtDecoder jwtDecoder(JwtTokenParser jwtTokenParser) {
         return jwtToken -> {
             try {

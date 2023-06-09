@@ -1,11 +1,11 @@
 Workflow Execution Schema Service
 =================================
 
-This repo contains a spring boot application which provides a fully
-featured [Workflow Execution Service (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) api that can be
-used to present a standardized way of submitting and querying workflows. Currently, the only execution engine supported
-is [Cromwell](https://github.com/Broadinstitute/cromwell). Other then cromwell, there are no hard external dependencies
-(ie a database).
+This repo contains a Spring Boot application which provides a fully
+featured [Workflow Execution Service (WES)](https://github.com/ga4gh/workflow-execution-service-schemas) API that can be
+used to present a standardized way of submitting and querying workflows. This implementation integrates
+with [Cromwell](https://github.com/Broadinstitute/cromwell)
+and can be used as an engine for running workflows with [DNAstack Workbench](https://workbench.dnastack.com)
 
 # Table of Contents
 
@@ -13,12 +13,13 @@ is [Cromwell](https://github.com/Broadinstitute/cromwell). Other then cromwell, 
 - [Getting Started](#getting-started)
 - [Building](#building)
 - [Running](#running)
+- [Workbench](#workbench)
 - [Configuration](#configuration)
     - [Authentication](#authentication)
         - [Passport Authentication](#passport-configuration)
         - [External OAuth 2.0 token Issuer](#external-oauth-20-token-issuer)
         - [No Auth](#no-auth)
-        - [mTLS Authorization](#mtls-authorization)
+        - [mTLS Authorization](#mtls-authentication)
     - [Configuring Cromwell](#configuring-cromwell)
     - [Storage](#storage)
         - [Local File System](#local-file-system)
@@ -114,6 +115,21 @@ jar file is in the target directory and can be run with
 java -jar target/cromwell-wes-service-1.0-SNAPSHOT.jar
 ```
 
+# Workbench
+
+Workbench is a software product created by DNAstack for bioinformatics workflow execution. Workbench enables you to run
+workflows reproducibly and at scale on major cloud computing platforms as well as on on-premises high-performance
+computing (HPC) installations.
+
+The Cromwell WES Server can be used as an [engine](https://docs.dnastack.com/docs/connecting-to-a-workflow-engine)
+for [Workbench](https://workbench.dnastack.com) to enable executing workflows on any cloud supported by cromwell and is
+the suggested way for running workflows on-premises.
+
+When connecting the Cromwell WES Server to Workbench, both [mTLS](#mtls-authentication)
+and [Passport authentication](#passport-configuration) are supported however using an arbitrary 3rd party OAuth 2.0
+server is currently not. To configure and connect the Cromwell WES Server with workbench, you can follow guide on the
+[DNAstack documentation](https://docs.dnastack.com/docs/introduction-to-workbench).
+
 # Configuration
 
 ## Authentication
@@ -123,9 +139,10 @@ token issuer, however any valid OAuth 2.0 Token issuer can be used or no authent
 
 ### Passport Configuration
 
-Many Configuration fields are automatically filled when using passport as the authentication mechanism. The only
-required property is the `WES_AUTH_ISSUER_URI` which corresponds to the base passport URI (and `iss` field). If passport
-is running locally this is not needed
+This is the default configuration. Many Configuration fields are automatically filled when using passport as the
+authentication mechanism. The only required property is the `WES_AUTH_ISSUER_URI` which corresponds to the base passport
+URI (and `iss` field). If passport
+is running locally this is not needed.
 
 **Configuration**
 
@@ -136,11 +153,10 @@ The URI of a passport installation
 ### External OAuth 2.0 token Issuer
 
 If using an external token issue that is not Passport, you will need to provide additional configuration beyond
-the `WES_AUTH_ISSUER_URI`.
-Additionally, you will also need to disable passport permission authorization enforcement. This can be accomplished by
-disabling the authorization:
+the `WES_AUTH_ISSUER_URI`. Using this authentication method will disable passport permission enforcement.
 
-`SECURITY_AUTHORIZATION_ENABLED=false`
+You can enable the `oauth` spring profile with an environment variable `SPRING_PROFILES_ACTIVE=oauth` or by setting
+the java property `-Dspring.profiles.active=oauth`
 
 **Configuration**
 
@@ -165,12 +181,45 @@ validate the signature of tokens. Either the JWKS or the RSA Public key is requi
 `WES_AUTH_TOKEN_ISSUER_RSA_PUBLIC_KEY`
 The public key to use to verify the signature of the JWT's. Either the RSA Public Key or JWKS
 
+### Basic Auth
+
+You can run the Cromwell WES Service using a simpler "Basic" authentication approach, using a set of username
+and passwords that are provided to the service at runtime
+
+You can enable the `basic-auth` spring profile with an environment
+variable `SPRING_PROFILES_ACTIVE=basic-auth` or by setting the java property `-Dspring.profiles.active=basic-auth`
+
+**Configuration**
+
+`WES_AUTH_BASIC_AUTH_USERS_[INDEX]_USERNAME` (`null`) 
+`WES_AUTH_BASIC_AUTH_USERS_[INDEX]_PASSWORD` (`null`)
+
+The List of usernames and passwords to allow authentication for. For example, if you wanted to set the username `foo`
+and the password `bar`, as well as the username `biz` with the password `baz` then you can set the following environment
+variables
+
+```bash
+WES_AUTH_BASIC_AUTH_USERS_0_USERNAME=foo
+WES_AUTH_BASIC_AUTH_USERS_0_PASSWORD=bar
+WES_AUTH_BASIC_AUTH_USERS_0_USERNAME=biz
+WES_AUTH_BASIC_AUTH_USERS_0_PASSWORD=baz
+```
+
+`WES_AUTH_BASIC_AUTH_USERS_PASSWORD_BCRYPTED` (`false`)
+
+Set to `true` if the list of passwords provided have been encrypted using
+the [bcrypt](https://en.wikipedia.org/wiki/Bcrypt) hashing algorithm. This is recommended since it prevents
+storing plain-text passwords while running. Bcrypt is a one way encryption algorithm, so if you are planning on using
+this approach you will not be able to recover your passwords once they have been encrypted.
+
 ### No Auth
 
 You can start the WES Service in a mode that does not require any authentication or authorization. This may be useful
 if you are using the WES service locally for testing, do not have access to a OAuth 2.0 provider, or want to run the
-service behind a reverse proxy which provides authentication. When running in no-auth mode, the server binds to localhost
-instead of to all available addresses, it will only be accessible locally. To access the server externally, it is advised
+service behind a reverse proxy which provides authentication. When running in no-auth mode, the server binds to
+localhost
+instead of to all available addresses, it will only be accessible locally. To access the server externally, it is
+advised
 that you use a reverse proxy such as [nginx](nginx/README.md).
 
 _All endpoints will be accessible without any authentication at all_
@@ -178,7 +227,7 @@ _All endpoints will be accessible without any authentication at all_
 You can enable the `no-auth` spring profile to turn off all authentication with an environment
 variable `SPRING_PROFILES_ACTIVE=no-auth` or by setting the java property `-Dspring.profiles.active=no-auth`
 
-### mTLS Authorization
+### mTLS Authentication
 
 One possible alternative to using OAuth 2.0 is to setup a reverse proxy that
 uses [Mutual TLS](https://en.wikipedia.org/wiki/Mutual_authentication).
@@ -315,7 +364,7 @@ In certain circumstances, File input URI's may need to be mapped into a separate
 be able to localize the files. A good example of this is
 with [CromwellOnAzure](https://github.com/microsoft/CromwellOnAzure), which leverages blob fuse to mount Blob storage
 containers to the local file system. Outside of Cromwell/Wes users will interact with the files using the microsoft blob
-storage api, however internally they must specify files as if they were on the local file system.
+storage API, however internally they must specify files as if they were on the local file system.
 
 Path Translators, allow you to define a `Regex` pattern for a prefix and a replacement string to use instead. Any number
 of path translators can be provided, and they will be applied in the order they were defined, allowing you to apply

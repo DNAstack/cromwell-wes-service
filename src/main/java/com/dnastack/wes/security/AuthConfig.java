@@ -5,9 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 
@@ -17,9 +20,10 @@ import java.util.List;
 @ConfigurationProperties(prefix = "wes.auth")
 public class AuthConfig {
 
+    AuthMethod method;
 
     /**
-     * The list of trusted token issuers for incoming requests. All Tokens must have originated at at least one of these
+     * The trusted token issuer for incoming requests. All Tokens must have originated at at least one of these
      * configured issues. Validity of the token is determined by a 1) Validity of the JWT (time), 2) Validity of the
      * issuerUri in the JWT header 3) validity of the audience if it is present in the issuerConfig 4) validity of the
      * configured scopes, if they are present in the issuer config
@@ -28,10 +32,44 @@ public class AuthConfig {
 
     HttpClientConfig httpClientConfig;
 
+    BasicAuthConfig basicAuth;
+
+
+    public enum AuthMethod {
+        NO_AUTH,
+        BASIC_AUTH,
+        PASSPORT,
+        OAUTH;
+    }
+
     @Data
     public static class HttpClientConfig {
+
         private int maxIdleConnections;
         private Duration keepAliveTimeout;
+
+    }
+
+
+    @Data
+    public static class BasicAuthConfig {
+
+        List<User> users;
+        boolean bcrypted = false;
+
+    }
+
+    @Data
+    public static class User implements UserDetails {
+
+        private final Collection<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        private final boolean accountNonExpired = true;
+        private final boolean accountNonLocked = true;
+        private final boolean credentialsNonExpired = true;
+        private final boolean enabled = true;
+        private String password;
+        private String username;
+
     }
 
 

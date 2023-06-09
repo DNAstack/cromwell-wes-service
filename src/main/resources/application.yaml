@@ -81,6 +81,8 @@ wes:
       staging-path: uploads/
 
   auth:
+    # Can be BASIC_AUTH, NO_AUTH, OAUTH, PASSPORT
+    method: PASSPORT
     issuer-uri: http://localhost:8081
     token-issuer:
       # Default Token issuer to use
@@ -196,27 +198,45 @@ springdoc:
     path: /docs/openapi.json
   swagger-ui:
     path: /docs/swagger-ui.html
-
 security:
   authentication:
     enabled: true
-  authorization:
-    enabled: true
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: oauth
+wes:
+  auth:
+    method: OAUTH
+
+---
+spring:
+  config:
+    activate:
+      on-profile: basic-auth
+wes:
+  auth:
+    method: BASIC_AUTH
+    basic-auth:
+      bcrypted: false
 
 ---
 spring:
   config:
     activate:
       on-profile: no-auth
-security:
-  authentication:
-    enabled: false
-  authorization:
-    enabled: false
+wes:
+  auth:
+    method: NO_AUTH
 server:
   # Bind this only to localhost
   address: 127.0.0.1
-
+security:
+  authentication:
+    enabled: false
 ---
 spring:
   config:
