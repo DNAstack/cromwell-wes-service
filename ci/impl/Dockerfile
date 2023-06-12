@@ -63,7 +63,7 @@ EXPOSE 8090
 # If the container doesn't have a set memory limit, the file will be blank, hence we fall back to a default value of 2GiB
 CMD container_mem=$(cat "/sys/fs/cgroup/memory.max" || cat "/sys/fs/cgroup/memory/memory.limit_in_bytes") ; \
     exec java $(/java-buildpack-memory-calculator \
-    --total-memory=$([ "$container_mem" = "max" -o -z "$container_mem" -o "$container_mem" -eq 9223372036854771712 ] && echo "2097152000" || echo "$container_mem")B \
+    --total-memory=$([ "$container_mem" = "max" -o -z "$container_mem" -o "$container_mem" = "9223372036854771712" ] && echo "2097152000" || echo "$container_mem")B \
     --loaded-class-count="${ESTIMATED_LOADED_CLASSES:-25000}" \
     --thread-count="${ESTIMATED_THREADS:-100}" \
     --jvm-options="${JAVA_OPTS}") ${JAVA_OPTS} \
