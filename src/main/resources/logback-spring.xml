@@ -1,5 +1,5 @@
 <configuration>
-	<springProfile name="gcp">
+	<springProfile name="cloud">
 		<include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 		<include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 		<appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
@@ -16,7 +16,7 @@
 			<appender-ref ref="stdout"/>
 		</root>
 	</springProfile>
-	<springProfile name="!gcp">
+	<springProfile name="!cloud">
 		<include resource="org/springframework/boot/logging/logback/base.xml"/>
 	</springProfile>
 </configuration>
