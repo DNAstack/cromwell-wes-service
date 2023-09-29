@@ -1,13 +1,18 @@
 package com.dnastack.wes.storage;
 
 import com.dnastack.wes.shared.ConfigurationException;
+import org.springframework.http.HttpRange;
 
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.channels.Channel;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class LocalBlobStorageClient implements BlobStorageClient {
 
@@ -47,8 +52,9 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
     @Override
     public String writeBytes(InputStream stream, long uploadSize, String stagingFolder, String fileName) throws IOException {
-        String path = stagingPath + "/" + stagingFolder + "/" + fileName;
-        File fileToWrite = new File(path);
+
+        Path path = Paths.get(stagingPath, stagingFolder ,fileName);
+        File fileToWrite = path.toFile();
         String filePath = fileToWrite.getAbsolutePath();
 
         if (!filePath.startsWith(stagingPath)) {
@@ -62,52 +68,30 @@ public class LocalBlobStorageClient implements BlobStorageClient {
         fileToWrite.getParentFile().mkdirs();
 
         try (FileOutputStream fileOutputStream = new FileOutputStream(fileToWrite)) {
-            byte[] bytes = new byte[64 * 1024];
-            int bytesRead;
-            while ((bytesRead = stream.read(bytes)) > 0) {
-                fileOutputStream.write(bytes, 0, bytesRead);
-            }
+            stream.transferTo(fileOutputStream);
         }
 
         return filePath;
     }
 
     @Override
-    public void readBytes(OutputStream outputStream, String blobUri, Long rangeStart, Long rangeEnd) throws IOException {
+    public void readBytes(OutputStream outputStream, String blobUri, HttpRange httpRange) throws IOException {
         File fileToRead = new File(blobUri);
         if (!fileToRead.exists()) {
             throw new IOException("Could not read from file: " + fileToRead + ". File does not exist");
         }
 
-        if (rangeStart == null) {
-            rangeStart = 0L;
+        long rangeStart = 0L;
+        long rangeEnd = fileToRead.length();
+        if (httpRange != null){
+            rangeStart = httpRange.getRangeStart(fileToRead.length());
         }
 
-        if (rangeEnd == null) {
-            rangeEnd = fileToRead.length();
-        }
 
-
-        try (RandomAccessFile randomAccessFile = new RandomAccessFile(fileToRead, "r")) {
-            randomAccessFile.seek(rangeStart);
-
-            int byteArrayLength = 64 * 1024;
-
-            if (rangeEnd - rangeStart < byteArrayLength) {
-                byteArrayLength = rangeEnd.intValue() - rangeStart.intValue();
-            }
-
-            long bytesRemaining = rangeEnd - rangeStart;
-            byte[] bytesIn = new byte[byteArrayLength];
-            int bytesRead;
-            while ((bytesRead = randomAccessFile.read(bytesIn)) > 0 && bytesRemaining > 0) {
-                if (bytesRead > bytesRemaining) {
-                    bytesRead = (int) bytesRemaining;
-                }
-
-                outputStream.write(bytesIn, 0, bytesRead);
-
-                bytesRemaining -= bytesRead;
+        try (FileChannel channel = new RandomAccessFile(fileToRead, "r").getChannel()) {
+            channel.position(rangeStart);
+            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)){
+                inputStream.transferTo(outputStream);
             }
         }
     }

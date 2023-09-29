@@ -22,7 +22,7 @@ following will provide certificates for hostname `127.0.0.1`.
 cd cert
 
 # Generate server cert to be signed
-openssl req -new -nodes -x509 -days 365 -keyout server.key -out server.crt -config server.conf
+openssl req -new -nodes -x509 -days 365 -keyout server.pem -out server.crt -config server.conf
 
 # Generate client cert to be signed
 openssl req -new -nodes -x509 -days 365 -keyout client.key -out client.crt -config client.conf

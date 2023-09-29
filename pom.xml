@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.12</version>
+        <version>2.7.15</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -28,13 +28,13 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
-        <spring-cloud.version>2021.0.5</spring-cloud.version>
+        <spring-cloud.version>2021.0.8</spring-cloud.version>
         <logback.version>1.2.10</logback.version>
         <logback-extensions.version>1.0.0</logback-extensions.version>
         <logback.contrib.version>0.1.5</logback.contrib.version>
         <springdoc.version>1.6.13</springdoc.version>
-        <dnastack-token-validator.version>1.0.8</dnastack-token-validator.version>
-        <audit-event-logger.version>1.0.9</audit-event-logger.version>
+        <dnastack-token-validator.version>1.0.9</dnastack-token-validator.version>
+        <audit-event-logger.version>1.0.15</audit-event-logger.version>
         <okhttpclient.version>4.9.3</okhttpclient.version>
         <jwt.version>0.11.2</jwt.version>
         <feign-form.version>3.8.0</feign-form.version>
@@ -42,7 +42,9 @@
         <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json</sonar.dependencyCheck.jsonReportPath>
         <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html</sonar.dependencyCheck.htmlReportPath>
         <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
-        <gcloud.version>9.1.0</gcloud.version>
+        <azure-sdk.version>1.2.8</azure-sdk.version>
+        <gcloud.storage.version>2.20.1</gcloud.storage.version>
+        <gcloud.auth.version>1.16.0</gcloud.auth.version>
     </properties>
 
     <dependencyManagement>
@@ -72,9 +74,23 @@
                 <version>${logback.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>${azure-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.google.cloud</groupId>
-                <artifactId>libraries-bom</artifactId>
-                <version>${gcloud.version}</version>
+                <artifactId>google-cloud-storage-bom</artifactId>
+                <version>${gcloud.storage.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.auth</groupId>
+                <artifactId>google-auth-library-bom</artifactId>
+                <version>${gcloud.auth.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -198,11 +214,14 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-storage-blob</artifactId>
-            <version>${azurestorage.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
         </dependency>
 
         <dependency>

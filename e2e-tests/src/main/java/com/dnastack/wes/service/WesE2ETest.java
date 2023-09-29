@@ -7,6 +7,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.http.ContentType;
+import io.restassured.http.Header;
 import io.restassured.specification.MultiPartSpecification;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.*;
@@ -605,7 +606,6 @@ public class WesE2ETest extends BaseE2eTest {
                 .jsonPath()
                 .getString("run_id");
             //@formatter:on
-            final String runPathStatus = format("%s/%s/status", path, workflowJobId);
             pollUntilJobCompletes(workflowJobId);
         }
 
@@ -649,6 +649,43 @@ public class WesE2ETest extends BaseE2eTest {
 
             Assertions.assertEquals("Hello Frank\n",body);
 
+            // test range offset
+            body = given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=0-4")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stdout"))
+                .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("Hello",body);
+
+            body = given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=6-")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stdout"))
+                .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("Frank\n",body);
+
+            body = given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=1-3")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stdout"))
+                .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("ell",body);
+
             //@formatter:on
 
             //@formatter:off
@@ -663,6 +700,43 @@ public class WesE2ETest extends BaseE2eTest {
 
             Assertions.assertEquals("Goodbye Frank\n",body);
             //@formatter:on
+
+            // test range offset
+            body = given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=0-4")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stderr"))
+                .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("Goodb",body);
+
+            body = given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=8-")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stderr"))
+                .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("Frank\n",body);
+
+            body = given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=1-3")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stderr"))
+                .then()
+                .statusCode(200)
+                .extract().asString();
+
+            Assertions.assertEquals("ood",body);
         }
 
         @Test

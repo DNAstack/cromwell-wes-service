@@ -6,6 +6,7 @@ import com.azure.storage.blob.models.DownloadRetryOptions;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.dnastack.wes.shared.ConfigurationException;
+import org.springframework.http.HttpRange;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.BufferedInputStream;
@@ -76,7 +77,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
         String objectName = builder.pathSegment(stagingFolder, fileName).build().toString();
         BlobClient blobClient = containerClient.getBlobClient(objectName);
-        if (blobClient.exists()) {
+        if (Boolean.TRUE.equals(blobClient.exists())) {
             throw new IOException("Could not write object " + fileName + "to target destination " + objectName
                                   + ". Object already exists");
         }
@@ -86,7 +87,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
     }
 
     @Override
-    public void readBytes(OutputStream outputStream, String blobUri, Long rangeStart, Long rangeEnd) throws IOException {
+    public void readBytes(OutputStream outputStream, String blobUri, HttpRange httpRange) throws IOException {
         String containerName;
         String blobName;
         if (blobUri.startsWith("https")) {
@@ -102,16 +103,18 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
         BlobClient blobClient = containerClient.getBlobClient(blobName);
 
-        if (!blobClient.exists()) {
+        if (Boolean.FALSE.equals(blobClient.exists())) {
             throw new IOException("Could not read from blob: " + blobUri + ", object does not exist");
         }
 
-        if (rangeStart == null) {
-            rangeStart = 0L;
-        }
+        final long blobSize = blobClient.getProperties().getBlobSize();
 
-        if (rangeEnd == null) {
-            rangeEnd = blobClient.getProperties().getBlobSize();
+        long rangeStart = 0;
+        long rangeEnd = blobSize;
+
+        if (httpRange != null){
+            rangeStart = httpRange.getRangeStart(blobSize);
+            rangeEnd = httpRange.getRangeEnd(blobSize);
         }
 
         BlobRange range = new BlobRange(rangeStart, rangeEnd - rangeStart);

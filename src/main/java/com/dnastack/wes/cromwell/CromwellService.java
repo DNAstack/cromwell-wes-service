@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpRange;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -217,9 +218,10 @@ public class CromwellService {
         return RunId.builder().runId(runId).build();
     }
 
-    public void getLogBytes(OutputStream outputStream, String runId, String taskId, String logKey) throws IOException {
+    public void getLogBytes(OutputStream outputStream, String runId, String taskId, String logKey, HttpRange range) throws IOException {
         String logPath = getLogPath(runId, taskId, logKey);
-        storageClient.readBytes(outputStream, logPath, null, null);
+
+        storageClient.readBytes(outputStream, logPath, range);
     }
 
     private String getLogPath(String runId, String taskId, String logKey) throws IOException {
@@ -236,9 +238,9 @@ public class CromwellService {
         }
     }
 
-    public void getLogBytes(OutputStream outputStream, String runId, String taskName, int index, String logKey) throws IOException {
+    public void getLogBytes(OutputStream outputStream, String runId, String taskName, int index, String logKey, HttpRange httpRange) throws IOException {
         String logPath = getLogPath(runId, taskName, index, logKey);
-        storageClient.readBytes(outputStream, logPath, null, null);
+        storageClient.readBytes(outputStream, logPath, httpRange);
     }
 
     //legacy
@@ -258,10 +260,16 @@ public class CromwellService {
         }
     }
 
-    public void getLogBytes(OutputStream outputStream, String runId) throws IOException {
+    public void getLogBytes(OutputStream outputStream, String runId, HttpRange range) throws IOException {
         CromwellMetadataResponse response = client.getMetadata(runId);
         if (response.getFailures() != null) {
-            outputStream.write(mapper.writeValueAsBytes(response.getFailures()));
+
+            byte[] bytes = mapper.writeValueAsBytes(response.getFailures());
+            if (range != null) {
+                outputStream.write(Arrays.copyOfRange(bytes, (int) range.getRangeStart(bytes.length), (int) range.getRangeEnd(bytes.length) + 1));
+            } else {
+                outputStream.write(bytes);
+            }
         }
     }
 

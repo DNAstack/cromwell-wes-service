@@ -10,6 +10,8 @@ import com.dnastack.wes.workflow.WorkflowAuthorizerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -123,36 +126,68 @@ public class WesV1Controller {
     @AuditActionUri("wes:run:stderr")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void getStderr(HttpServletResponse response, @PathVariable String runId) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId);
+    public void getStderr(HttpServletResponse response, @RequestHeader HttpHeaders headers, @PathVariable String runId) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId,getRangeFromHeaders(headers));
     }
 
     @AuditActionUri("wes:run:stderr")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskId}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskId) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr");
+    public void getTaskStderr(
+        HttpServletResponse response,
+        @RequestHeader HttpHeaders headers,
+        @PathVariable String runId,
+        @PathVariable String taskId
+    ) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr",getRangeFromHeaders(headers));
     }
 
     @AuditActionUri("wes:run:stdout")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskId}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskId) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout");
+    public void getTaskStdout(
+        HttpServletResponse response,
+        @RequestHeader HttpHeaders headers,
+        @PathVariable String runId,
+        @PathVariable String taskId
+    ) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout",getRangeFromHeaders(headers));
     }
 
     @AuditActionUri("wes:run:stderr")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void getStderr(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr");
+    public void getTaskStderr(
+        HttpServletResponse response,
+        @RequestHeader HttpHeaders headers,
+        @PathVariable String runId,
+        @PathVariable String taskName,
+        @PathVariable int index
+    ) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr",getRangeFromHeaders(headers));
     }
 
     @AuditActionUri("wes:run:stdout")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void getStdout(HttpServletResponse response, @PathVariable String runId, @PathVariable String taskName, @PathVariable int index) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout");
+    public void getTaskStdout(
+        HttpServletResponse response,
+        @RequestHeader HttpHeaders headers,
+        @PathVariable String runId,
+        @PathVariable String taskName,
+        @PathVariable int index
+    ) throws IOException {
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout", getRangeFromHeaders(headers));
+    }
+
+    private HttpRange getRangeFromHeaders(HttpHeaders headers){
+        List<HttpRange> ranges = headers.getRange();
+        if (ranges.isEmpty()){
+            return null;
+        } else {
+            // only return the first range parsed
+            return ranges.get(0);
+        }
     }
 
 }
