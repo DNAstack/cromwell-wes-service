@@ -1,6 +1,7 @@
 package com.dnastack.wes.shared;
 
 import com.dnastack.wes.api.ErrorResponse;
+import com.dnastack.wes.api.RangeNotSatisfiableException;
 import com.dnastack.wes.workflow.UnauthorizedWorkflowException;
 import feign.FeignException;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +38,12 @@ public class GlobalControllerExceptionHandler {
     public ResponseEntity<ErrorResponse> handle(FeignException ex) {
         return ResponseEntity.status(ex.status())
             .body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(ex.status()).build());
+    }
+
+    @ExceptionHandler(RangeNotSatisfiableException.class)
+    public ResponseEntity<ErrorResponse> handle(RangeNotSatisfiableException ex) {
+        return ResponseEntity.status(416)
+            .body(ErrorResponse.builder().msg(ex.getMessage()).errorCode(416).build());
     }
 
 }

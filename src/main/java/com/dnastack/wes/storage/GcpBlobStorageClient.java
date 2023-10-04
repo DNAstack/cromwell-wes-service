@@ -9,6 +9,7 @@ import com.google.cloud.storage.Blob.BlobSourceOption;
 import com.google.cloud.storage.Storage.BlobWriteOption;
 import com.google.cloud.storage.Storage.SignUrlOption;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpRange;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.*;
@@ -16,7 +17,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -87,7 +87,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     }
 
     @Override
-    public void readBytes(OutputStream outputStream, String blobUri, Long rangeStart, Long rangeEnd) throws IOException {
+    public void readBytes(OutputStream outputStream, String blobUri, HttpRange httpRange) throws IOException {
         BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
         Blob blob = client.get(blobId);
 
@@ -95,44 +95,24 @@ public class GcpBlobStorageClient implements BlobStorageClient {
             throw new FileNotFoundException("Could not open open file: " + blobUri + " it does not appear to exist");
         }
 
-        if (rangeStart == null) {
-            rangeStart = 0L;
+
+        long rangeStart = 0L;
+        long rangeEnd = blob.getSize();
+
+        if (httpRange != null) {
+            rangeStart = httpRange.getRangeStart(blob.getSize());
+            // httpRange is inclusive, but google limit is not
+            rangeEnd = httpRange.getRangeEnd(blob.getSize()) + 1;
         }
 
-        if (rangeEnd == null) {
-            rangeEnd = blob.getSize();
-        }
-
-        long totalBytesToRead = rangeEnd - rangeStart;
-        int bufferSize = 64 * 1024;
-
-        if (totalBytesToRead <= bufferSize) {
-            outputStream.write(blob.getContent());
-        } else {
-            try (ReadChannel reader = blob.reader(BlobSourceOption.userProject(project))) {
-                reader.seek(rangeStart);
-                try (WritableByteChannel writer = Channels.newChannel(outputStream)) {
-                    long maxRead = totalBytesToRead - bufferSize;
-
-                    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
-                    int totalBytes = 0;
-                    while ((totalBytes += reader.read(byteBuffer)) < maxRead) {
-                        byteBuffer.flip();
-                        writer.write(byteBuffer);
-                        byteBuffer.clear();
-                    }
-
-                    if (totalBytes < totalBytesToRead) {
-                        byteBuffer = ByteBuffer.allocate((int) totalBytesToRead - totalBytes);
-                        reader.read(byteBuffer);
-                        byteBuffer.flip();
-                        writer.write(byteBuffer);
-                        byteBuffer.clear();
-                    }
+        try (ReadChannel readChannel = blob.reader(BlobSourceOption.userProject(project))) {
+                readChannel.seek(rangeStart);
+                readChannel.limit(rangeEnd);
+                // the outer stream is
+                try (InputStream inputStream = Channels.newInputStream(readChannel)) {
+                    inputStream.transferTo(outputStream);
                 }
-            }
         }
-
     }
 
 }

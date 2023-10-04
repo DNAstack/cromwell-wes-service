@@ -4,6 +4,7 @@ import com.dnastack.wes.storage.LocalBlobStorageClient;
 import com.dnastack.wes.storage.LocalBlobStorageClientConfig;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpRange;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -73,7 +74,7 @@ class LocalBlobStorageClientTest {
         Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        storageClient.readBytes(outputStream, targetPath.toString(), 0L, (long) toWrite.length());
+        storageClient.readBytes(outputStream, targetPath.toString(), HttpRange.createByteRange(0L,toWrite.length()));
         String readValue = outputStream.toString();
         Assertions.assertEquals(readValue, toWrite);
 
@@ -90,7 +91,8 @@ class LocalBlobStorageClientTest {
         Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        storageClient.readBytes(outputStream, targetPath.toString(), 5L, (long) toWrite.length());
+
+        storageClient.readBytes(outputStream, targetPath.toString(), HttpRange.createByteRange(5L,toWrite.length()));
         String readValue = outputStream.toString();
         Assertions.assertEquals(toWrite.substring(5), readValue);
     }
