@@ -657,7 +657,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .header(getHeader(getResource(path)))
                 .get(taskLogs.get("stdout"))
                 .then()
-                .statusCode(200)
+                .statusCode(206)
                 .extract().asString();
 
             Assertions.assertEquals("Hello",body);
@@ -669,7 +669,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .header(getHeader(getResource(path)))
                 .get(taskLogs.get("stdout"))
                 .then()
-                .statusCode(200)
+                .statusCode(206)
                 .extract().asString();
 
             Assertions.assertEquals("Frank\n",body);
@@ -681,7 +681,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .header(getHeader(getResource(path)))
                 .get(taskLogs.get("stdout"))
                 .then()
-                .statusCode(200)
+                .statusCode(206)
                 .extract().asString();
 
             Assertions.assertEquals("ell",body);
@@ -709,7 +709,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .header(getHeader(getResource(path)))
                 .get(taskLogs.get("stderr"))
                 .then()
-                .statusCode(200)
+                .statusCode(206)
                 .extract().asString();
 
             Assertions.assertEquals("Goodb",body);
@@ -721,7 +721,7 @@ public class WesE2ETest extends BaseE2eTest {
                 .header(getHeader(getResource(path)))
                 .get(taskLogs.get("stderr"))
                 .then()
-                .statusCode(200)
+                .statusCode(206)
                 .extract().asString();
 
             Assertions.assertEquals("Frank\n",body);
@@ -733,10 +733,19 @@ public class WesE2ETest extends BaseE2eTest {
                 .header(getHeader(getResource(path)))
                 .get(taskLogs.get("stderr"))
                 .then()
-                .statusCode(200)
+                .statusCode(206)
                 .extract().asString();
 
             Assertions.assertEquals("ood",body);
+
+            given()
+                .log().uri()
+                .log().method()
+                .header("Range","bytes=1-3,6-9")
+                .header(getHeader(getResource(path)))
+                .get(taskLogs.get("stderr"))
+                .then()
+                .statusCode(416);
         }
 
         @Test

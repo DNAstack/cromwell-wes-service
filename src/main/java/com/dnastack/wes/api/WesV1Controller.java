@@ -2,7 +2,7 @@ package com.dnastack.wes.api;
 
 
 import com.dnastack.audit.aspect.AuditActionUri;
-import com.dnastack.audit.aspect.AuditIgnore;
+import com.dnastack.audit.util.AuditIgnore;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.cromwell.CromwellService;
 import com.dnastack.wes.security.AuthenticatedUser;
@@ -127,7 +127,7 @@ public class WesV1Controller {
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @RequestHeader HttpHeaders headers, @PathVariable String runId) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId,getRangeFromHeaders(headers));
+        adapter.getLogBytes(response.getOutputStream(), runId,getRangeFromHeaders(response,headers));
     }
 
     @AuditActionUri("wes:run:stderr")
@@ -139,7 +139,7 @@ public class WesV1Controller {
         @PathVariable String runId,
         @PathVariable String taskId
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr",getRangeFromHeaders(headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr",getRangeFromHeaders(response,headers));
     }
 
     @AuditActionUri("wes:run:stdout")
@@ -151,7 +151,7 @@ public class WesV1Controller {
         @PathVariable String runId,
         @PathVariable String taskId
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout",getRangeFromHeaders(headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout",getRangeFromHeaders(response,headers));
     }
 
     @AuditActionUri("wes:run:stderr")
@@ -164,7 +164,7 @@ public class WesV1Controller {
         @PathVariable String taskName,
         @PathVariable int index
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr",getRangeFromHeaders(headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr",getRangeFromHeaders(response,headers));
     }
 
     @AuditActionUri("wes:run:stdout")
@@ -177,15 +177,18 @@ public class WesV1Controller {
         @PathVariable String taskName,
         @PathVariable int index
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout", getRangeFromHeaders(headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout", getRangeFromHeaders(response, headers));
     }
 
-    private HttpRange getRangeFromHeaders(HttpHeaders headers){
+    private HttpRange getRangeFromHeaders(HttpServletResponse response, HttpHeaders headers){
         List<HttpRange> ranges = headers.getRange();
         if (ranges.isEmpty()){
             return null;
-        } else {
+        } else if (ranges.size() > 1) {
             // only return the first range parsed
+            throw new RangeNotSatisfiableException("Streaming of multiple ranges is not supported");
+        } else {
+            response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
             return ranges.get(0);
         }
     }
