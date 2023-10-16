@@ -211,11 +211,42 @@ public class CromwellService {
      *
      * @param runId The cromwell id
      *
-     * @return a complete run log
+     * @return the cromwell id
      */
     public RunId cancel(String runId) {
         client.abortWorkflow(runId);
         return RunId.builder().runId(runId).build();
+    }
+
+    /**
+     * Get the files for a specific run.
+     *
+     * @param runId The cromwell id
+     *
+     * @return a list of generated files for the run
+     */
+    public RunFiles getRunFiles(String runId) {
+        CromwellMetadataResponse metadataResponse = getMetadata(runId);
+        Set<String> finalFileSet = new HashSet<>();
+        Set<String> secondaryFileSet = new HashSet<>();
+        Set<String> logFileSet = new HashSet<>();
+        RunFiles runFiles = new RunFiles();
+
+        metadataResponse.getOutputs().values().forEach(output -> extractFilesFromValue(finalFileSet, output));
+        extractSecondaryAndLogFilesFromCalls(secondaryFileSet, logFileSet, metadataResponse);
+
+        finalFileSet.forEach(path -> runFiles.addRunFile(new RunFile(RunFile.type.FINAL, path)));
+        secondaryFileSet.forEach(path -> {
+            if (!finalFileSet.contains(path)) {
+                runFiles.addRunFile(new RunFile(RunFile.type.SECONDARY, path));
+            }
+        });
+        logFileSet.forEach(path -> {
+            if (!finalFileSet.contains(path)) {
+                runFiles.addRunFile(new RunFile(RunFile.type.LOG, path));
+            }
+        });
+        return runFiles;
     }
 
     public void getLogBytes(OutputStream outputStream, String runId, String taskId, String logKey, HttpRange range) throws IOException {
@@ -446,6 +477,46 @@ public class CromwellService {
         } catch (JsonParseException parseException) {
             return new TextNode(value);
         }
+    }
+
+    private void extractSecondaryAndLogFilesFromCalls(Set<String> secondaryFileSet, Set<String> logFileSet, CromwellMetadataResponse metadataResponse) {
+        metadataResponse.getCalls().values().forEach(cromwellTaskCallList -> cromwellTaskCallList.forEach(call -> {
+            call.getOutputs().values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
+            String stderr = call.getStderr();
+            String stdout = call.getStdout();
+            if (storageClient.isFile(stderr)) {
+                logFileSet.add(stderr);
+            }
+            if (storageClient.isFile(stdout)) {
+                logFileSet.add(stdout);
+            }
+            call.getBackendLogs().values().forEach(log -> extractFilesFromValue(logFileSet, log));
+            CromwellMetadataResponse subWorkflowMetadata = call.getSubWorkflowMetadata();
+            if (subWorkflowMetadata != null) {
+                subWorkflowMetadata.getOutputs().values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
+                extractSecondaryAndLogFilesFromCalls(secondaryFileSet, logFileSet, subWorkflowMetadata);
+            }
+        }));
+    }
+
+    private void extractFilesFromValue(Set<String> fileSet, Object output) {
+        if (output instanceof String && storageClient.isFile(output.toString())) {
+            fileSet.add(output.toString());
+        }
+        else if (output instanceof Object[]) {
+            extractFiles(fileSet, (List<Object>) output);
+        }
+        else {
+            extractFiles(fileSet, (Map<String, Object>) output);
+        }
+    }
+
+    private void extractFiles(Set<String> fileSet, List<Object> outputs) {
+        outputs.forEach(output -> extractFilesFromValue(fileSet, output));
+    }
+
+    private void extractFiles(Set<String> fileSet, Map<String, Object> outputs) {
+        outputs.values().forEach(output -> extractFilesFromValue(fileSet, output));
     }
 
     private void setWorkflowSourceAndDependencies(Path tempDirectory, RunRequest runRequest, CromwellExecutionRequest cromwellRequest) throws IOException {

@@ -122,4 +122,9 @@ public class AzureBlobStorageClient implements BlobStorageClient {
             .setMaxRetryRequests(3), null, false, null, null);
     }
 
+    @Override
+    public boolean isFile(String filePath) {
+        return filePath.startsWith("https://%s.blob.core.windows.net/".formatted(client.getAccountName()));
+    }
+
 }

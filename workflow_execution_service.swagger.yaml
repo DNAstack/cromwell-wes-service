@@ -377,6 +377,53 @@ paths:
           format: int64
       tags:
         - WorkflowExecutionService
+  /runs/{run_id}/files:
+    get:
+      summary: Get files associated with a workflow run.
+      description: >-
+        This endpoint provides all the generated files from the associated storage 
+        client for a workflow run. The returned result has information about the 
+        files of the given run and the type of the given file.
+      x-swagger-router-controller: ga4gh.wes.server
+      operationId: GetRunFiles
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/RunFiles'
+        '401':
+          description: The request is unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: The requested workflow run not found.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '403':
+          description: The requester is not authorized to perform this action.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: An unexpected error occurred.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          type: string
+        - name: orgId
+          in: path
+          required: true
+          type: integer
+          format: int64
+        - name: projectId
+          in: path
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - WorkflowExecutionService
 definitions:
   DefaultWorkflowEngineParameter:
     type: object
@@ -553,6 +600,27 @@ definitions:
 
 
         - CANCELING: The task was canceled by the user, and is in the process of stopping.       
+  File:
+    type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - FINAL
+          - SECONDARY
+          - LOG
+        default: FINAL
+        description: >-
+          - FINAL: The file exists directly as an output of the metadata response for the specified run.
+          
+          - SECONDARY: The file exists as a part of a task call output or a sub-workflow metadata 
+          response for the specified run
+          
+          - LOG: The file exists as a part of the backend logs or stderr and stdout for the workflow or 
+          sub-workflow metadata for the specified run.
+      path:
+        type: string
+        description: The path of the file.
   RunListResponse:
     type: object
     properties:
@@ -653,6 +721,15 @@ definitions:
       state:
         $ref: '#/definitions/State'
     description: Small description of a workflow run, returned by server during listing
+  RunFiles:
+    type: object
+    required:
+      - run_id
+    properties:
+      files:
+        type: array
+        items:
+          $ref: '#/definitions/File'
   WorkflowTypeVersion:
     type: object
     properties:

@@ -18,7 +18,8 @@ public interface BlobStorageClient {
         readBytes(outputStream, blobUri, null);
     }
 
-
     void readBytes(OutputStream outputStream, String blobUri, @Nullable HttpRange  httpRange) throws IOException;
+
+    boolean isFile(String filePath);
 
 }

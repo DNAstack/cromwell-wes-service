@@ -115,4 +115,9 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         }
     }
 
+    @Override
+    public boolean isFile(String filePath) {
+        return filePath.startsWith("gs://");
+    }
+
 }

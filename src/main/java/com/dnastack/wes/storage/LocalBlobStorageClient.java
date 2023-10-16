@@ -7,7 +7,6 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.channels.Channel;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -94,6 +93,11 @@ public class LocalBlobStorageClient implements BlobStorageClient {
                 inputStream.transferTo(outputStream);
             }
         }
+    }
+
+    @Override
+    public boolean isFile(String filePath) {
+        return filePath.startsWith("/");
     }
 
 }
