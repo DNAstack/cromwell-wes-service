@@ -35,7 +35,6 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
     }
 
-
     public String getStagingPath() {
         return stagingPath;
     }
@@ -86,7 +85,6 @@ public class LocalBlobStorageClient implements BlobStorageClient {
             rangeStart = httpRange.getRangeStart(fileToRead.length());
         }
 
-
         try (FileChannel channel = new RandomAccessFile(fileToRead, "r").getChannel()) {
             channel.position(rangeStart);
             try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)){
@@ -97,7 +95,12 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
     @Override
     public boolean isFile(String filePath) {
-        return filePath.startsWith("/");
+        return filePath.startsWith("/") && Files.exists(Path.of(filePath));
+    }
+
+    @Override
+    public void deleteFile(String filePath) throws IOException {
+        Files.delete(Path.of(filePath));
     }
 
 }

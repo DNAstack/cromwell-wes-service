@@ -22,4 +22,6 @@ public interface BlobStorageClient {
 
     boolean isFile(String filePath);
 
+    void deleteFile(String filePath) throws IOException;
+
 }

@@ -105,7 +105,9 @@ public class WesV1Controller {
     @AuditActionUri("wes:run:read")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/'+#runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}", produces = { MediaType.APPLICATION_JSON_VALUE })
-    public RunLog getRun(@PathVariable("run_id") String runId) { return adapter.getRun(runId); }
+    public RunLog getRun(@PathVariable("run_id") String runId) {
+        return adapter.getRun(runId);
+    }
 
     @AuditActionUri("wes:run:status")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:read', 'wes')")
@@ -117,12 +119,26 @@ public class WesV1Controller {
     @AuditActionUri("wes:run:cancel")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:cancel', 'wes')")
     @PostMapping(path = "/runs/{runId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
-    public RunId cancelRun(@PathVariable("runId") String runId) { return adapter.cancel(runId); }
+    public RunId cancelRun(@PathVariable("runId") String runId) {
+        return adapter.cancel(runId);
+    }
 
     @AuditActionUri("wes:run:files")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
-    public RunFiles getRunFiles(@PathVariable("run_id") String runId) { return adapter.getRunFiles(runId); }
+    public RunFiles getRunFiles(@PathVariable("run_id") String runId) {
+        return adapter.getRunFiles(runId);
+    }
+
+    @AuditActionUri("wes:run:files")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:delete', 'wes')")
+    @DeleteMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
+    public RunId deleteRunFiles(
+        @PathVariable("run_id") String runId,
+        @RequestParam(value = "async", required = false) boolean async
+    ) {
+        return adapter.deleteRunFiles(runId, async);
+    }
 
     @AuditActionUri("wes:run:stderr")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")

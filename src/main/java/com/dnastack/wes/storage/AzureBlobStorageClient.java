@@ -20,7 +20,6 @@ import java.time.temporal.ChronoUnit;
 
 public class AzureBlobStorageClient implements BlobStorageClient {
 
-
     private final BlobServiceClient client;
     private final long signedUrlTtl;
     private final String container;
@@ -48,7 +47,6 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         signedUrlTtl = config.getSignedUrlTtl();
         stagingPath = config.getStagingPath();
     }
-
 
     @Override
     public URL getSignedUrl(String blobUri) {
@@ -99,7 +97,6 @@ public class AzureBlobStorageClient implements BlobStorageClient {
             containerName = container;
         }
 
-
         BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
         BlobClient blobClient = containerClient.getBlobClient(blobName);
 
@@ -124,7 +121,13 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
     @Override
     public boolean isFile(String filePath) {
-        return filePath.startsWith("https://%s.blob.core.windows.net/".formatted(client.getAccountName()));
+        BlobClient blobClient = client.getBlobContainerClient(container).getBlobClient(filePath);
+        return filePath.startsWith("https://%s.blob.core.windows.net/".formatted(client.getAccountName())) && blobClient.exists();
+    }
+
+    @Override
+    public void deleteFile(String filePath) {
+        client.getBlobContainerClient(container).getBlobClient(filePath).delete();
     }
 
 }

@@ -424,6 +424,59 @@ paths:
           format: int64
       tags:
         - WorkflowExecutionService
+    delete:
+      summary: Cleanup files associated with a workflow run.
+      description: >-
+        This endpoint cleans up the generated files associated with a workflow run.
+
+
+        The `async` query parameter is by default false, blocking the request until all
+        files are cleaned up. When true the delete operation will be done asynchronously
+        with faster execution but higher risk of not doing a "clean" cleanup.
+      x-swagger-router-controller: ga4gh.wes.server
+      operationId: GetRunFiles
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/RunId'
+        '401':
+          description: The request is unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: The requested workflow run not found.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '403':
+          description: The requester is not authorized to perform this action.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: An unexpected error occurred.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          type: string
+        - name: orgId
+          in: path
+          required: true
+          type: integer
+          format: int64
+        - name: projectId
+          in: path
+          required: true
+          type: integer
+          format: int64
+        - name: async
+          in: query
+          type: boolean
+          default: false
+      tags:
+        - WorkflowExecutionService
 definitions:
   DefaultWorkflowEngineParameter:
     type: object

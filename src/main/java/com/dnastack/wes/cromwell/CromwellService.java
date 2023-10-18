@@ -3,6 +3,7 @@ package com.dnastack.wes.cromwell;
 import com.dnastack.wes.AppConfig;
 import com.dnastack.wes.api.*;
 import com.dnastack.wes.security.AuthenticatedUser;
+import com.dnastack.wes.shared.FileDeletionException;
 import com.dnastack.wes.shared.InvalidRequestException;
 import com.dnastack.wes.shared.NotFoundException;
 import com.dnastack.wes.storage.BlobStorageClient;
@@ -31,6 +32,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -225,14 +230,17 @@ public class CromwellService {
      *
      * @return a list of generated files for the run
      */
-    public RunFiles getRunFiles(String runId) {
+    public RunFiles getRunFiles(String runId) throws NotFoundException {
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
         Set<String> finalFileSet = new HashSet<>();
         Set<String> secondaryFileSet = new HashSet<>();
         Set<String> logFileSet = new HashSet<>();
         RunFiles runFiles = new RunFiles();
 
-        metadataResponse.getOutputs().values().forEach(output -> extractFilesFromValue(finalFileSet, output));
+        Map<String, Object> outputs = metadataResponse.getOutputs();
+        if (!outputs.isEmpty()) {
+            outputs.values().forEach(output -> extractFilesFromValue(finalFileSet, output));
+        }
         extractSecondaryAndLogFilesFromCalls(secondaryFileSet, logFileSet, metadataResponse);
 
         finalFileSet.forEach(path -> runFiles.addRunFile(new RunFile(RunFile.type.FINAL, path)));
@@ -246,7 +254,64 @@ public class CromwellService {
                 runFiles.addRunFile(new RunFile(RunFile.type.LOG, path));
             }
         });
-        return runFiles;
+
+        if (runFiles.getFiles() != null) {
+            return runFiles;
+        } else {
+            throw new NotFoundException("No files were found for the runId: " + runId);
+        }
+    }
+
+    /**
+     * Request to delete the files associated with the run.
+     *
+     * @param runId The cromwell id
+     *
+     * @return the cromwell id
+     */
+    public RunId deleteRunFiles(String runId, boolean async) {
+        List<RunFile> files = getRunFiles(runId).getFiles();
+        files = files.stream().filter(runFile -> runFile.getType() == RunFile.type.SECONDARY).toList();
+        if (!files.isEmpty()) {
+            if (async) {
+                // Asynchronous deletion of files
+                ExecutorService executor = Executors.newFixedThreadPool(files.size());
+                List<Future<?>> deletionTasks = new ArrayList<>();
+                files.forEach(file -> {
+                    Future<?> submit = executor.submit(() -> {
+                        try {
+                            storageClient.deleteFile(file.getPath());
+                        } catch (IOException e) {
+                            throw new FileDeletionException("Failed to delete file with path: " + file.getPath(), e);
+                        }
+                    });
+                    deletionTasks.add(submit);
+                });
+                // Block until all deletion tasks have completed
+                deletionTasks.forEach(future -> {
+                    try {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Thread.currentThread().interrupt();
+                        Throwable cause = e.getCause();
+                        throw new FileDeletionException(cause.getMessage(), cause.getCause());
+                    }
+                });
+                executor.shutdown();
+            } else {
+                // Synchronous deletion of files
+                files.forEach(file -> {
+                    try {
+                        storageClient.deleteFile(file.getPath());
+                    } catch (IOException e) {
+                        throw new FileDeletionException("Failed to delete file with path: " + file.getPath(), e);
+                    }
+                });
+            }
+        } else {
+            throw new NotFoundException("No deletable files were found for the runId: " + runId);
+        }
+        return RunId.builder().runId(runId).build();
     }
 
     public void getLogBytes(OutputStream outputStream, String runId, String taskId, String logKey, HttpRange range) throws IOException {
@@ -480,28 +545,42 @@ public class CromwellService {
     }
 
     private void extractSecondaryAndLogFilesFromCalls(Set<String> secondaryFileSet, Set<String> logFileSet, CromwellMetadataResponse metadataResponse) {
-        metadataResponse.getCalls().values().forEach(cromwellTaskCallList -> cromwellTaskCallList.forEach(call -> {
-            call.getOutputs().values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
-            String stderr = call.getStderr();
-            String stdout = call.getStdout();
-            if (storageClient.isFile(stderr)) {
-                logFileSet.add(stderr);
-            }
-            if (storageClient.isFile(stdout)) {
-                logFileSet.add(stdout);
-            }
-            call.getBackendLogs().values().forEach(log -> extractFilesFromValue(logFileSet, log));
-            CromwellMetadataResponse subWorkflowMetadata = call.getSubWorkflowMetadata();
-            if (subWorkflowMetadata != null) {
-                subWorkflowMetadata.getOutputs().values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
-                extractSecondaryAndLogFilesFromCalls(secondaryFileSet, logFileSet, subWorkflowMetadata);
-            }
-        }));
+        Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
+        if (calls != null && !calls.isEmpty()) {
+            calls.values().forEach(cromwellTaskCallList -> cromwellTaskCallList.forEach(call -> {
+                Map<String, Object> outputs = call.getOutputs();
+                if (outputs != null && !outputs.isEmpty()) {
+                    outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
+                    String stderr = call.getStderr();
+                    String stdout = call.getStdout();
+                    if (storageClient.isFile(stderr)) {
+                        logFileSet.add(stderr);
+                    }
+                    if (storageClient.isFile(stdout)) {
+                        logFileSet.add(stdout);
+                    }
+                    Map<String, String> backendLogs = call.getBackendLogs();
+                    if (backendLogs != null && !backendLogs.isEmpty()) {
+                        backendLogs.values().forEach(log -> extractFilesFromValue(logFileSet, log));
+                    }
+                    CromwellMetadataResponse subWorkflowMetadata = call.getSubWorkflowMetadata();
+                    if (subWorkflowMetadata != null) {
+                        Map<String, Object> subOutputs = subWorkflowMetadata.getOutputs();
+                        if (subOutputs != null && !subOutputs.isEmpty()) {
+                            subOutputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
+                        }
+                        extractSecondaryAndLogFilesFromCalls(secondaryFileSet, logFileSet, subWorkflowMetadata);
+                    }
+                }
+            }));
+        }
     }
 
     private void extractFilesFromValue(Set<String> fileSet, Object output) {
-        if (output instanceof String && storageClient.isFile(output.toString())) {
-            fileSet.add(output.toString());
+        if (output instanceof String) {
+            if (storageClient.isFile(output.toString())) {
+                fileSet.add(output.toString());
+            }
         }
         else if (output instanceof Object[]) {
             extractFiles(fileSet, (List<Object>) output);
