@@ -87,7 +87,7 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
         try (FileChannel channel = new RandomAccessFile(fileToRead, "r").getChannel()) {
             channel.position(rangeStart);
-            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)){
+            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)) {
                 inputStream.transferTo(outputStream);
             }
         }
@@ -95,7 +95,11 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
     @Override
     public boolean isFile(String filePath) {
-        return filePath.startsWith("/") && Files.exists(Path.of(filePath));
+        try {
+            return filePath.startsWith("/") && Files.exists(Path.of(filePath));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     @Override

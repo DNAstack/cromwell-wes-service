@@ -123,17 +123,17 @@ public class WesV1Controller {
         return adapter.cancel(runId);
     }
 
-    @AuditActionUri("wes:run:files")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:read', 'wes')")
+    @AuditActionUri("wes:run:files:list")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId + '/files', 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFiles getRunFiles(@PathVariable("run_id") String runId) {
         return adapter.getRunFiles(runId);
     }
 
-    @AuditActionUri("wes:run:files")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:delete', 'wes')")
+    @AuditActionUri("wes:run:files:delete")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId + '/files', 'wes:runs:write', 'wes')")
     @DeleteMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
-    public RunId deleteRunFiles(
+    public RunFileDeletions deleteRunFiles(
         @PathVariable("run_id") String runId,
         @RequestParam(value = "async", required = false) boolean async
     ) {

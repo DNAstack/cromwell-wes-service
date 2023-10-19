@@ -121,8 +121,11 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
     @Override
     public boolean isFile(String filePath) {
-        BlobClient blobClient = client.getBlobContainerClient(container).getBlobClient(filePath);
-        return filePath.startsWith("https://%s.blob.core.windows.net/".formatted(client.getAccountName())) && blobClient.exists();
+        try {
+            return client.getBlobContainerClient(container).getBlobClient(filePath).exists();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     @Override

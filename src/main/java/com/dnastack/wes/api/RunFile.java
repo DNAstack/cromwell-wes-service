@@ -12,13 +12,12 @@ import lombok.*;
 @Builder
 public class RunFile {
 
-    @JsonProperty(value = "type")
-    Enum<type> type;
+    @JsonProperty(value = "file_type")
+    FileType fileType;
 
-    @JsonProperty(value = "path")
     String path;
 
-    public enum type {
+    public enum FileType {
         FINAL,
         SECONDARY,
         LOG

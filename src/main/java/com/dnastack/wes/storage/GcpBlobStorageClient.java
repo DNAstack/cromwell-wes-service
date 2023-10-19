@@ -115,8 +115,11 @@ public class GcpBlobStorageClient implements BlobStorageClient {
 
     @Override
     public boolean isFile(String filePath) {
-        Blob blob = client.get(GcpStorageUtils.blobIdFromGsUrl(filePath));
-        return filePath.startsWith("gs://") && blob != null && blob.exists();
+        try {
+            return client.get(GcpStorageUtils.blobIdFromGsUrl(filePath)).exists();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     @Override
