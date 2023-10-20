@@ -4,6 +4,7 @@ task echo {
         echo "Hello ${name}"
         >&2 echo "Goodbye ${name}"
         echo "Bye" > "test.txt"
+        echo "Bye" > "test2.txt"
     }
 
     runtime {
@@ -13,7 +14,7 @@ task echo {
     output {
         File out = stdout()
         File out2 = "test.txt"
-        Array[File] arrayOut = [out, out2]
+        Array[File] arrayOut = [out, out2, "test2.txt"]
     }
 }
 
