@@ -10,6 +10,7 @@ import java.io.UncheckedIOException;
 public class WdlSupplier {
 
     public static final String WORKFLOW_WITHOUT_FILE = "workflow_without_file.wdl";
+    public static final String WORKFLOW_WITH_ALL_OUTPUT_TYPES = "workflow_with_all_output_types.wdl";
     public static final String WORKFLOW_WITH_IMPORTS_1 = "workflow_with_imports_1.wdl";
     public static final String WORKFLOW_WITH_IMPORTS_2 = "workflow_with_imports_2.wdl";
     public static final String WORKFLOW_WITH_IMPORTS_INPUTS = "workflow_with_imports.json";
