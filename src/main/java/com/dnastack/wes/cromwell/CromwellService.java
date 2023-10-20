@@ -20,9 +20,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpRange;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,7 +54,7 @@ public class CromwellService {
     private final PathTranslatorFactory pathTranslatorFactory;
     private final CromwellWesMapper cromwellWesMapper;
     private final CromwellConfig cromwellConfig;
-    private final ThreadPoolTaskExecutor executor;
+    private final TaskExecutor defaultAsyncOperationExecutor;
 
     private final AppConfig appConfig;
 
@@ -67,7 +66,7 @@ public class CromwellService {
         CromwellWesMapper cromwellWesMapper,
         AppConfig appConfig,
         CromwellConfig config,
-        @Qualifier("defaultAsyncOperationExecutor") ThreadPoolTaskExecutor executor
+        TaskExecutor defaultAsyncOperationExecutor
     ) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
@@ -75,7 +74,7 @@ public class CromwellService {
         this.cromwellWesMapper = cromwellWesMapper;
         this.appConfig = appConfig;
         this.cromwellConfig = config;
-        this.executor = executor;
+        this.defaultAsyncOperationExecutor = defaultAsyncOperationExecutor;
     }
 
 
@@ -240,8 +239,8 @@ public class CromwellService {
         List<RunFile> files = new ArrayList<>();
 
         Map<String, Object> outputs = metadataResponse.getOutputs();
-        if (!outputs.isEmpty()) {
-            outputs.values().forEach(output -> extractFilesFromValue(finalFileSet, output));
+        if (outputs != null && !outputs.isEmpty()) {
+            outputs.values().forEach(output -> extractFilesFromValue(finalFileSet, mapper.valueToTree(output)));
         }
         extractSecondaryLogFiles(secondaryFileSet, logFileSet, metadataResponse);
 
@@ -280,15 +279,17 @@ public class CromwellService {
     }
 
     public RunFileDeletion deleteRunFileAsync(RunFile runFile) {
-        CompletableFuture.runAsync(() -> deleteRunFile(runFile), executor);
+        CompletableFuture.runAsync(() -> deleteRunFile(runFile), defaultAsyncOperationExecutor);
         return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.ASYNC,null);
     }
 
     public RunFileDeletion deleteRunFile(RunFile runFile) {
         try {
             storageClient.deleteFile(runFile.getPath());
+            log.info("Deleting file '{}'", runFile.getPath());
             return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.DELETED, null);
         } catch (IOException e) {
+            log.error("Encountered exception while deleting file '%s': '%s'".formatted(runFile.getPath(), e.getMessage()), e);
             return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.FAILED, ErrorResponse.builder().errorCode(400).msg(e.getMessage()).build());
         }
     }
@@ -526,7 +527,7 @@ public class CromwellService {
     private void extractSecondaryLogFiles(Set<String> secondaryFileSet, Set<String> logFileSet, CromwellMetadataResponse metadataResponse){
         Map<String, Object> outputs = metadataResponse.getOutputs();
         if (outputs != null && !outputs.isEmpty()) {
-            outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
+            outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, mapper.valueToTree(output)));
         }
         Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
         if (calls != null && !calls.isEmpty()) {
@@ -537,7 +538,7 @@ public class CromwellService {
     private void extractSecondaryLogFilesFromCall(Set<String> secondaryFileSet, Set<String> logFileSet, CromwellTaskCall call){
         Map<String, Object> outputs = call.getOutputs();
         if (outputs != null && !outputs.isEmpty()) {
-            outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, output));
+            outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, mapper.valueToTree(output)));
         }
         String stderr = call.getStderr();
         String stdout = call.getStdout();
@@ -549,7 +550,7 @@ public class CromwellService {
         }
         Map<String, String> backendLogs = call.getBackendLogs();
         if (backendLogs != null && !backendLogs.isEmpty()) {
-            backendLogs.values().forEach(log -> extractFilesFromValue(logFileSet, log));
+            backendLogs.values().forEach(log -> extractFilesFromValue(logFileSet, mapper.valueToTree(log)));
         }
         CromwellMetadataResponse subWorkflowMetadata = call.getSubWorkflowMetadata();
         if (subWorkflowMetadata != null) {
@@ -557,18 +558,15 @@ public class CromwellService {
         }
     }
 
-    private void extractFilesFromValue(Set<String> fileSet, Object output) {
-        JsonNode node = mapper.valueToTree(output);
+    private void extractFilesFromValue(Set<String> fileSet, JsonNode node) {
         if (node.isTextual()) {
             if (storageClient.isFile(node.asText())) {
                 fileSet.add(node.asText());
             }
         } else if (node.isArray()) {
-            ArrayNode arrayOutput = mapper.valueToTree(output);
-            extractFilesFromArrayNode(fileSet, arrayOutput);
+            extractFilesFromArrayNode(fileSet, (ArrayNode) node);
         } else if (node.isObject()) {
-            ObjectNode objectOutput = mapper.valueToTree(output);
-            extractFilesFromObjectNode(fileSet, objectOutput);
+            extractFilesFromObjectNode(fileSet, (ObjectNode) node);
         }
     }
 

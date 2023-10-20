@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.ThreadPoolExecutor;
@@ -13,7 +14,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class AsyncConfig {
 
     @Bean
-    public ThreadPoolTaskExecutor defaultAsyncOperationExecutor(
+    public TaskExecutor defaultAsyncOperationExecutor(
         @Value("${app.executors.default.core-pool-size:8}") int corePoolSize,
         @Value("${app.executors.default.max-pool-size:16}") int maxPoolSize,
         @Value("${app.executors.default.queue-capacity:5000}") int queueCapacity
