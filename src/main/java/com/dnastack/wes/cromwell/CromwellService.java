@@ -231,7 +231,7 @@ public class CromwellService {
      *
      * @return a list of generated files for the run
      */
-    public RunFiles getRunFiles(String runId) throws NotFoundException {
+    public RunFiles getRunFiles(String runId) {
         CromwellMetadataResponse metadataResponse = getMetadata(runId);
         Set<String> finalFileSet = new HashSet<>();
         Set<String> secondaryFileSet = new HashSet<>();
@@ -554,7 +554,7 @@ public class CromwellService {
         }
         CromwellMetadataResponse subWorkflowMetadata = call.getSubWorkflowMetadata();
         if (subWorkflowMetadata != null) {
-            extractSecondaryLogFiles(secondaryFileSet,logFileSet,subWorkflowMetadata);
+            extractSecondaryLogFiles(secondaryFileSet, logFileSet, subWorkflowMetadata);
         }
     }
 
