@@ -62,9 +62,7 @@ class LocalBlobStorageClientTest {
     @Test
     public void testReadingFile() throws IOException {
         LocalBlobStorageClient storageClient = new LocalBlobStorageClient();
-        Path targetPath = Path.of(storageClient.getStagingPath() + "/" + directory + "/" + fileName);
-        Files.createDirectory(targetPath.getParent());
-        Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
+        Path targetPath = createFile();
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         storageClient.readBytes(outputStream, targetPath.toString(), HttpRange.createByteRange(0L,toWrite.length()));
@@ -76,9 +74,7 @@ class LocalBlobStorageClientTest {
     @Test
     public void testReadingFile_withTruncation() throws IOException {
         LocalBlobStorageClient storageClient = new LocalBlobStorageClient();
-        Path targetPath = Path.of(storageClient.getStagingPath() + "/" + directory + "/" + fileName);
-        Files.createDirectory(targetPath.getParent());
-        Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
+        Path targetPath = createFile();
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
@@ -90,9 +86,7 @@ class LocalBlobStorageClientTest {
     @Test
     public void testIsFile() throws IOException {
         LocalBlobStorageClient storageClient = new LocalBlobStorageClient();
-        Path targetPath = Path.of(storageClient.getStagingPath() + "/" + directory + "/" + fileName);
-        Files.createDirectory(targetPath.getParent());
-        Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
+        Path targetPath = createFile();
 
         Assertions.assertTrue(storageClient.isFile(targetPath.toString()));
     }
@@ -100,7 +94,7 @@ class LocalBlobStorageClientTest {
     @Test
     public void testIsFile_noFileExists() throws IOException {
         LocalBlobStorageClient storageClient = new LocalBlobStorageClient();
-        Path targetPath = Path.of(storageClient.getStagingPath() + "/" + directory + "/" + fileName);
+        Path targetPath = Path.of(directory + "/" + fileName);
 
         Assertions.assertFalse(storageClient.isFile(targetPath.toString()));
     }
@@ -108,9 +102,7 @@ class LocalBlobStorageClientTest {
     @Test
     public void testDeletingFile() throws IOException {
         LocalBlobStorageClient storageClient = new LocalBlobStorageClient();
-        Path targetPath = Path.of(storageClient.getStagingPath() + "/" + directory + "/" + fileName);
-        Files.createDirectory(targetPath.getParent());
-        Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
+        Path targetPath = createFile();
 
         Assertions.assertTrue(Files.exists(targetPath));
         storageClient.deleteFile(targetPath.toString());
@@ -120,10 +112,17 @@ class LocalBlobStorageClientTest {
     @Test
     public void testDeletingFile_throwsError() throws IOException {
         LocalBlobStorageClient storageClient = new LocalBlobStorageClient();
-        Path targetPath = Path.of(storageClient.getStagingPath() + "/" + directory + "/" + fileName);
+        Path targetPath = Path.of(directory + "/" + fileName);
 
         Assertions.assertFalse(Files.exists(targetPath));
         Assertions.assertThrows(IOException.class, () -> storageClient.deleteFile(targetPath.toString()));
+    }
+
+    private Path createFile() throws IOException {
+        Path tempDir = Files.createTempDirectory(directory);
+        Path targetPath = tempDir.resolve(fileName);
+        Files.write(targetPath, toWrite.getBytes(), StandardOpenOption.CREATE_NEW);
+        return targetPath;
     }
 
 }
