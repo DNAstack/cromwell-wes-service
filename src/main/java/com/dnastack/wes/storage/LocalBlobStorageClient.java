@@ -7,7 +7,6 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.channels.Channel;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -35,7 +34,6 @@ public class LocalBlobStorageClient implements BlobStorageClient {
         }
 
     }
-
 
     public String getStagingPath() {
         return stagingPath;
@@ -87,13 +85,26 @@ public class LocalBlobStorageClient implements BlobStorageClient {
             rangeStart = httpRange.getRangeStart(fileToRead.length());
         }
 
-
         try (FileChannel channel = new RandomAccessFile(fileToRead, "r").getChannel()) {
             channel.position(rangeStart);
-            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)){
+            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)) {
                 inputStream.transferTo(outputStream);
             }
         }
+    }
+
+    @Override
+    public boolean isFile(String filePath) {
+        try {
+            return filePath.startsWith("/") && Files.exists(Path.of(filePath));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public void deleteFile(String filePath) throws IOException {
+        Files.delete(Path.of(filePath));
     }
 
 }

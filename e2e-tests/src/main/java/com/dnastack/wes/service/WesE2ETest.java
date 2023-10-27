@@ -7,20 +7,23 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.http.ContentType;
-import io.restassured.http.Header;
 import io.restassured.specification.MultiPartSpecification;
+import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
-import static java.lang.String.format;
 import static org.awaitility.Awaitility.with;
 import static org.hamcrest.Matchers.*;
 
@@ -567,6 +570,158 @@ public class WesE2ETest extends BaseE2eTest {
                     .body("runs.size()",greaterThan(0))
                     .body("runs.findAll { it.run_id == /" + workflowJobId +"/ }",notNullValue());
                 //@formatter:on
+            }
+
+
+            @ParameterizedTest
+            @MethodSource("completeWorkflowWithFilesProvider")
+            @DisplayName("Get Run Files for existing run returns all files")
+            public void getRunFilesReturnsNonEmptyCollection(String runId) {
+                String path = getRootPath() + "/runs/" + runId + "/files";
+
+                //@formatter:off
+                given()
+                    .log().uri()
+                    .log().method()
+                    .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                    .accept(ContentType.JSON)
+                    .get(path)
+                    .then()
+                    .assertThat()
+                    .statusCode(200)
+                    .body("runFiles.size()", greaterThan(0))
+                    .body("runFiles.every { it.path != null && it.file_type in ['FINAL', 'SECONDARY', 'LOG'] }", equalTo(true));
+                //@formatter:on
+            }
+
+
+            @Test
+            @DisplayName("Get Run Files for non-existent run fails with status 401 or 404")
+            public void getRunFilesForNonExistentRunShouldFail() {
+                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
+                String path = resourcePath + "/files";
+
+                //@formatter:off
+                given()
+                    .log().uri()
+                    .log().method()
+                    .header(getHeader(getResource(resourcePath)))
+                    .accept(ContentType.JSON)
+                    .get(path)
+                    .then()
+                    .assertThat()
+                    .statusCode(anyOf(equalTo(404), equalTo(401)));
+                //@formatter:on
+            }
+
+
+            @ParameterizedTest
+            @MethodSource("completeWorkflowWithFilesProvider")
+            @DisplayName("Delete Run Files for existing run returns all deleted files")
+            public void deleteRunFilesReturnsNonEmptyCollection(String runId) {
+                String path = getRootPath() + "/runs/" + runId + "/files";
+
+                //@formatter:off
+                given()
+                    .log().uri()
+                    .log().method()
+                    .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                    .accept(ContentType.JSON)
+                    .delete(path)
+                    .then()
+                    .assertThat()
+                    .statusCode(200)
+                    .body("deletions.size()", greaterThan(0))
+                    .body("deletions.every { it.path != null && it.file_type == 'SECONDARY' && it.state == 'DELETED' }", equalTo(true));
+                //@formatter:on
+            }
+
+
+            @ParameterizedTest
+            @MethodSource("completeWorkflowWithFilesProvider")
+            @DisplayName("Delete Run Files for existing run asynchronously returns all deleted files")
+            public void deleteRunFilesAsyncReturnsNonEmptyCollection(String runId) {
+                String path = getRootPath() + "/runs/" + runId + "/files";
+
+                //@formatter:off
+                given()
+                    .log().uri()
+                    .log().method()
+                    .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                    .accept(ContentType.JSON)
+                    .queryParam("async", true)
+                    .delete(path)
+                    .then()
+                    .assertThat()
+                    .statusCode(200)
+                    .body("deletions.size()", greaterThan(0))
+                    .body("deletions.every { it.path != null && it.file_type == 'SECONDARY' && it.state == 'ASYNC' }", equalTo(true));
+                //@formatter:on
+
+                Awaitility.await()
+                    .atMost(Duration.ofSeconds(30))
+                    .pollInterval(Duration.ofSeconds(5))
+                    .untilAsserted(() ->
+                        //@formatter:off
+                        given()
+                            .log().uri()
+                            .log().method()
+                            .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                            .accept(ContentType.JSON)
+                            .get(path)
+                            .then()
+                            .assertThat()
+                            .statusCode(200)
+                            .body("runFiles.size()", greaterThan(0))
+                            .body("runFiles.every { it.path != null && it.file_type in ['FINAL', 'LOG'] }", equalTo(true)));
+                        //@formatter:on
+            }
+
+
+            @Test
+            @DisplayName("Delete Run Files for non-existent run fails with status 401 or 404")
+            public void deleteRunFilesForNonExistentRunShouldFail() {
+                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
+                String path = resourcePath + "/files";
+
+                //@formatter:off
+                given()
+                    .log().uri()
+                    .log().method()
+                    .header(getHeader(getResource(resourcePath)))
+                    .accept(ContentType.JSON)
+                    .delete(path)
+                    .then()
+                    .assertThat()
+                    .statusCode(anyOf(equalTo(404),equalTo(401)));
+                //@formatter:on
+            }
+
+
+            private Stream<Arguments> completeWorkflowWithFilesProvider() throws Exception {
+                String path = getRootPath() + "/runs";
+                Map<String, String> inputs = Collections.singletonMap("hello_world.name", "Some sort of String");
+
+                //@formatter:off
+                String workflowJobIdWithAllOutputTypes = given()
+                    .log().uri()
+                    .log().method()
+                    .header(getHeader(getResource(path)))
+                    .multiPart(getWorkflowUrlMultipart("echo.wdl"))
+                    .multiPart(getMultipartAttachment("echo.wdl", supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_ALL_OUTPUT_TYPES).getBytes()))
+                    .multiPart(getJsonMultipart("workflow_params", inputs))
+                    .post(path)
+                    .then()
+                    .assertThat()
+                    .statusCode(200)
+                    .body("run_id", is(notNullValue()))
+                    .extract()
+                    .jsonPath()
+                    .getString("run_id");
+                //@formatter:on
+
+                pollUntilJobCompletes(workflowJobIdWithAllOutputTypes);
+                return Stream.of(Arguments.of(workflowJobIdWithAllOutputTypes));
             }
 
         }

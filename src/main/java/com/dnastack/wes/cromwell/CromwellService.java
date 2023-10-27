@@ -13,12 +13,14 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpRange;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -51,6 +54,7 @@ public class CromwellService {
     private final PathTranslatorFactory pathTranslatorFactory;
     private final CromwellWesMapper cromwellWesMapper;
     private final CromwellConfig cromwellConfig;
+    private final TaskExecutor defaultAsyncOperationExecutor;
 
     private final AppConfig appConfig;
 
@@ -61,7 +65,8 @@ public class CromwellService {
         PathTranslatorFactory pathTranslatorFactory,
         CromwellWesMapper cromwellWesMapper,
         AppConfig appConfig,
-        CromwellConfig config
+        CromwellConfig config,
+        TaskExecutor defaultAsyncOperationExecutor
     ) {
         this.client = cromwellClient;
         this.pathTranslatorFactory = pathTranslatorFactory;
@@ -69,6 +74,7 @@ public class CromwellService {
         this.cromwellWesMapper = cromwellWesMapper;
         this.appConfig = appConfig;
         this.cromwellConfig = config;
+        this.defaultAsyncOperationExecutor = defaultAsyncOperationExecutor;
     }
 
 
@@ -211,11 +217,81 @@ public class CromwellService {
      *
      * @param runId The cromwell id
      *
-     * @return a complete run log
+     * @return the cromwell id
      */
     public RunId cancel(String runId) {
         client.abortWorkflow(runId);
         return RunId.builder().runId(runId).build();
+    }
+
+    /**
+     * Get the files for a specific run.
+     *
+     * @param runId The cromwell id
+     *
+     * @return a list of generated files for the run
+     */
+    public RunFiles getRunFiles(String runId) {
+        CromwellMetadataResponse metadataResponse = getMetadata(runId);
+        Set<String> finalFileSet = new HashSet<>();
+        Set<String> secondaryFileSet = new HashSet<>();
+        Set<String> logFileSet = new HashSet<>();
+        List<RunFile> files = new ArrayList<>();
+
+        Map<String, Object> outputs = metadataResponse.getOutputs();
+        if (outputs != null && !outputs.isEmpty()) {
+            outputs.values().forEach(output -> extractFilesFromValue(finalFileSet, mapper.valueToTree(output)));
+        }
+        extractSecondaryLogFiles(secondaryFileSet, logFileSet, metadataResponse);
+
+        finalFileSet.forEach(path -> files.add(new RunFile(RunFile.FileType.FINAL, path)));
+        secondaryFileSet.forEach(path -> {
+            if (!finalFileSet.contains(path) && !logFileSet.contains(path)) {
+                files.add(new RunFile(RunFile.FileType.SECONDARY, path));
+            }
+        });
+        logFileSet.forEach(path -> {
+            if (!finalFileSet.contains(path)) {
+                files.add(new RunFile(RunFile.FileType.LOG, path));
+            }
+        });
+        return new RunFiles(files);
+    }
+
+    /**
+     * Request to delete the files associated with the run.
+     *
+     * @param runId The cromwell id
+     *
+     * @return the cromwell id
+     */
+    public RunFileDeletions deleteRunFiles(String runId, boolean async) {
+        List<RunFile> files = getRunFiles(runId).runFiles();
+        List<RunFileDeletion> outcomes = files.stream().filter(runFile -> RunFile.FileType.SECONDARY.equals(runFile.getFileType()))
+            .map(runFile -> {
+                if (async) {
+                    return deleteRunFileAsync(runFile);
+                } else {
+                    return deleteRunFile(runFile);
+                }
+            }).toList();
+        return new RunFileDeletions(outcomes);
+    }
+
+    public RunFileDeletion deleteRunFileAsync(RunFile runFile) {
+        CompletableFuture.runAsync(() -> deleteRunFile(runFile), defaultAsyncOperationExecutor);
+        return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.ASYNC,null);
+    }
+
+    public RunFileDeletion deleteRunFile(RunFile runFile) {
+        try {
+            storageClient.deleteFile(runFile.getPath());
+            log.info("Deleting file '{}'", runFile.getPath());
+            return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.DELETED, null);
+        } catch (IOException e) {
+            log.error("Encountered exception while deleting file '%s': '%s'".formatted(runFile.getPath(), e.getMessage()), e);
+            return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.FAILED, ErrorResponse.builder().errorCode(400).msg(e.getMessage()).build());
+        }
     }
 
     public void getLogBytes(OutputStream outputStream, String runId, String taskId, String logKey, HttpRange range) throws IOException {
@@ -446,6 +522,60 @@ public class CromwellService {
         } catch (JsonParseException parseException) {
             return new TextNode(value);
         }
+    }
+
+    private void extractSecondaryLogFiles(Set<String> secondaryFileSet, Set<String> logFileSet, CromwellMetadataResponse metadataResponse){
+        Map<String, Object> outputs = metadataResponse.getOutputs();
+        if (outputs != null && !outputs.isEmpty()) {
+            outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, mapper.valueToTree(output)));
+        }
+        Map<String, List<CromwellTaskCall>> calls = metadataResponse.getCalls();
+        if (calls != null && !calls.isEmpty()) {
+            calls.values().stream().flatMap(List::stream).forEach(call -> extractSecondaryLogFilesFromCall(secondaryFileSet, logFileSet, call));
+        }
+    }
+
+    private void extractSecondaryLogFilesFromCall(Set<String> secondaryFileSet, Set<String> logFileSet, CromwellTaskCall call){
+        Map<String, Object> outputs = call.getOutputs();
+        if (outputs != null && !outputs.isEmpty()) {
+            outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, mapper.valueToTree(output)));
+        }
+        String stderr = call.getStderr();
+        String stdout = call.getStdout();
+        if (stderr != null && storageClient.isFile(stderr)) {
+            logFileSet.add(stderr);
+        }
+        if (stdout != null && storageClient.isFile(stdout)) {
+            logFileSet.add(stdout);
+        }
+        Map<String, String> backendLogs = call.getBackendLogs();
+        if (backendLogs != null && !backendLogs.isEmpty()) {
+            backendLogs.values().forEach(log -> extractFilesFromValue(logFileSet, mapper.valueToTree(log)));
+        }
+        CromwellMetadataResponse subWorkflowMetadata = call.getSubWorkflowMetadata();
+        if (subWorkflowMetadata != null) {
+            extractSecondaryLogFiles(secondaryFileSet, logFileSet, subWorkflowMetadata);
+        }
+    }
+
+    private void extractFilesFromValue(Set<String> fileSet, JsonNode node) {
+        if (node.isTextual()) {
+            if (storageClient.isFile(node.asText())) {
+                fileSet.add(node.asText());
+            }
+        } else if (node.isArray()) {
+            extractFilesFromArrayNode(fileSet, (ArrayNode) node);
+        } else if (node.isObject()) {
+            extractFilesFromObjectNode(fileSet, (ObjectNode) node);
+        }
+    }
+
+    private void extractFilesFromArrayNode(Set<String> fileSet, ArrayNode outputs) {
+        outputs.forEach(output -> extractFilesFromValue(fileSet, output));
+    }
+
+    private void extractFilesFromObjectNode(Set<String> fileSet, ObjectNode outputs) {
+        outputs.forEach(output -> extractFilesFromValue(fileSet, output));
     }
 
     private void setWorkflowSourceAndDependencies(Path tempDirectory, RunRequest runRequest, CromwellExecutionRequest cromwellRequest) throws IOException {

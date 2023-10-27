@@ -52,7 +52,6 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         project = config.getProject();
     }
 
-
     @Override
     public URL getSignedUrl(String blobUri) {
         BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
@@ -95,7 +94,6 @@ public class GcpBlobStorageClient implements BlobStorageClient {
             throw new FileNotFoundException("Could not open open file: " + blobUri + " it does not appear to exist");
         }
 
-
         long rangeStart = 0L;
         long rangeEnd = blob.getSize();
 
@@ -113,6 +111,20 @@ public class GcpBlobStorageClient implements BlobStorageClient {
                     inputStream.transferTo(outputStream);
                 }
         }
+    }
+
+    @Override
+    public boolean isFile(String filePath) {
+        try {
+            return client.get(GcpStorageUtils.blobIdFromGsUrl(filePath)).exists();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public void deleteFile(String filePath) {
+        client.delete(GcpStorageUtils.blobIdFromGsUrl(filePath));
     }
 
 }

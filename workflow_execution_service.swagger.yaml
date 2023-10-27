@@ -377,6 +377,106 @@ paths:
           format: int64
       tags:
         - WorkflowExecutionService
+  /runs/{run_id}/files:
+    get:
+      summary: Get files associated with a workflow run.
+      description: >-
+        This endpoint provides all the generated files from the associated storage 
+        client for a workflow run. The returned result has information about the 
+        files of the given run, including the path and the type of the given file.
+      x-swagger-router-controller: ga4gh.wes.server
+      operationId: GetRunFiles
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/RunFiles'
+        '401':
+          description: The request is unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: The requested workflow run not found.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '403':
+          description: The requester is not authorized to perform this action.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: An unexpected error occurred.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          type: string
+        - name: orgId
+          in: path
+          required: true
+          type: integer
+          format: int64
+        - name: projectId
+          in: path
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - WorkflowExecutionService
+    delete:
+      summary: Cleanup files associated with a workflow run.
+      description: >-
+        This endpoint cleans up the generated files associated with a workflow run.
+
+
+        The `async` query parameter is by default false, blocking the request until all
+        files are cleaned up. When true the delete operation will be done asynchronously
+        with faster execution but higher risk of not doing a "clean" cleanup.
+      x-swagger-router-controller: ga4gh.wes.server
+      operationId: DeleteRunFiles
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/RunFileDeletions'
+        '401':
+          description: The request is unauthorized.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '404':
+          description: The requested workflow run not found.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '403':
+          description: The requester is not authorized to perform this action.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '500':
+          description: An unexpected error occurred.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          type: string
+        - name: orgId
+          in: path
+          required: true
+          type: integer
+          format: int64
+        - name: projectId
+          in: path
+          required: true
+          type: integer
+          format: int64
+        - name: async
+          in: query
+          type: boolean
+          default: false
+      tags:
+        - WorkflowExecutionService
 definitions:
   DefaultWorkflowEngineParameter:
     type: object
@@ -553,6 +653,21 @@ definitions:
 
 
         - CANCELING: The task was canceled by the user, and is in the process of stopping.       
+  FileType:
+    type: string
+    enum:
+      - FINAL
+      - SECONDARY
+      - LOG
+    default: FINAL
+    description: >-
+      - FINAL: The file exists directly as an output of the metadata response for the specified run.
+
+      - SECONDARY: The file exists as a part of a task call output or a sub-workflow metadata 
+      response for the specified run
+
+      - LOG: The file exists as a part of the backend logs or stderr and stdout for the workflow or 
+      sub-workflow metadata for the specified run.
   RunListResponse:
     type: object
     properties:
@@ -653,6 +768,54 @@ definitions:
       state:
         $ref: '#/definitions/State'
     description: Small description of a workflow run, returned by server during listing
+  RunFiles:
+    type: object
+    required:
+      - run_id
+    properties:
+      files:
+        type: array
+        items:
+          $ref: '#/definitions/RunFile'
+  RunFile:
+    type: object
+    properties:
+      file_type:
+        $ref: '#/definitions/FileType'
+      path:
+        type: string
+        description: The path of the file.
+  RunFileDeletions:
+    type: object
+    required:
+      - run_id
+    properties:
+      deletions:
+        type: array
+        items:
+          $ref: '#/definitions/RunFileDeletion'
+  RunFileDeletion:
+    type: object
+    properties:
+      path:
+        type: string
+        description: The path of the file.
+      file_type:
+        $ref: '#/definitions/FileType'
+      state:
+        type: string
+        enum:
+          - DELETED
+          - ASYNC
+          - FAILED
+        description: >-
+          - DELETED: The file has been successfully deleted from storage.
+
+
+          - ASYNC: The file is being deleted asynchronously.
+
+
+          - FAILED: An error occurred during the process of deleting the file.
   WorkflowTypeVersion:
     type: object
     properties:

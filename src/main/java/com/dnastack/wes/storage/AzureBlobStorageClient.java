@@ -20,7 +20,6 @@ import java.time.temporal.ChronoUnit;
 
 public class AzureBlobStorageClient implements BlobStorageClient {
 
-
     private final BlobServiceClient client;
     private final long signedUrlTtl;
     private final String container;
@@ -48,7 +47,6 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         signedUrlTtl = config.getSignedUrlTtl();
         stagingPath = config.getStagingPath();
     }
-
 
     @Override
     public URL getSignedUrl(String blobUri) {
@@ -99,7 +97,6 @@ public class AzureBlobStorageClient implements BlobStorageClient {
             containerName = container;
         }
 
-
         BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
         BlobClient blobClient = containerClient.getBlobClient(blobName);
 
@@ -120,6 +117,20 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         BlobRange range = new BlobRange(rangeStart, rangeEnd - rangeStart);
         blobClient.downloadWithResponse(outputStream, range, new DownloadRetryOptions()
             .setMaxRetryRequests(3), null, false, null, null);
+    }
+
+    @Override
+    public boolean isFile(String filePath) {
+        try {
+            return client.getBlobContainerClient(container).getBlobClient(filePath).exists();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public void deleteFile(String filePath) {
+        client.getBlobContainerClient(container).getBlobClient(filePath).delete();
     }
 
 }

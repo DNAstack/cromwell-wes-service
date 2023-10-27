@@ -123,11 +123,28 @@ public class WesV1Controller {
         return adapter.cancel(runId);
     }
 
+    @AuditActionUri("wes:run:files:list")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId + '/files', 'wes:runs:read', 'wes')")
+    @GetMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
+    public RunFiles getRunFiles(@PathVariable("run_id") String runId) {
+        return adapter.getRunFiles(runId);
+    }
+
+    @AuditActionUri("wes:run:files:delete")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId + '/files', 'wes:runs:write', 'wes')")
+    @DeleteMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
+    public RunFileDeletions deleteRunFiles(
+        @PathVariable("run_id") String runId,
+        @RequestParam(value = "async", required = false) boolean async
+    ) {
+        return adapter.deleteRunFiles(runId, async);
+    }
+
     @AuditActionUri("wes:run:stderr")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @RequestHeader HttpHeaders headers, @PathVariable String runId) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId,getRangeFromHeaders(response,headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, getRangeFromHeaders(response, headers));
     }
 
     @AuditActionUri("wes:run:stderr")
@@ -139,7 +156,7 @@ public class WesV1Controller {
         @PathVariable String runId,
         @PathVariable String taskId
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr",getRangeFromHeaders(response,headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stderr", getRangeFromHeaders(response, headers));
     }
 
     @AuditActionUri("wes:run:stdout")
@@ -151,7 +168,7 @@ public class WesV1Controller {
         @PathVariable String runId,
         @PathVariable String taskId
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout",getRangeFromHeaders(response,headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskId, "stdout", getRangeFromHeaders(response, headers));
     }
 
     @AuditActionUri("wes:run:stderr")
@@ -164,7 +181,7 @@ public class WesV1Controller {
         @PathVariable String taskName,
         @PathVariable int index
     ) throws IOException {
-        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr",getRangeFromHeaders(response,headers));
+        adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stderr", getRangeFromHeaders(response, headers));
     }
 
     @AuditActionUri("wes:run:stdout")
@@ -180,9 +197,9 @@ public class WesV1Controller {
         adapter.getLogBytes(response.getOutputStream(), runId, taskName, index, "stdout", getRangeFromHeaders(response, headers));
     }
 
-    private HttpRange getRangeFromHeaders(HttpServletResponse response, HttpHeaders headers){
+    private HttpRange getRangeFromHeaders(HttpServletResponse response, HttpHeaders headers) {
         List<HttpRange> ranges = headers.getRange();
-        if (ranges.isEmpty()){
+        if (ranges.isEmpty()) {
             return null;
         } else if (ranges.size() > 1) {
             // only return the first range parsed
