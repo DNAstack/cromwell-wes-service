@@ -103,14 +103,14 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:run:read")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/'+#runId, 'wes:runs:read', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunLog getRun(@PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
     @AuditActionUri("wes:run:status")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId , 'wes:runs:read', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}/status", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunStatus getRunStatus(@PathVariable("run_id") String runId) {
         return adapter.getRunStatus(runId);

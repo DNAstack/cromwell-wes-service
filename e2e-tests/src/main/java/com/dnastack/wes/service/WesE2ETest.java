@@ -583,10 +583,10 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
-                    .get(path)
-                    .then()
+                .get(path)
+                .then()
                     .assertThat()
                     .statusCode(200)
                     .body("runFiles.size()", greaterThan(0))
@@ -598,17 +598,16 @@ public class WesE2ETest extends BaseE2eTest {
             @Test
             @DisplayName("Get Run Files for non-existent run fails with status 401 or 404")
             public void getRunFilesForNonExistentRunShouldFail() {
-                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
-                String path = resourcePath + "/files";
+                String path = getRootPath() + "/runs/" + UUID.randomUUID() + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(resourcePath)))
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
-                    .get(path)
-                    .then()
+                .get(path)
+                .then()
                     .assertThat()
                     .statusCode(anyOf(equalTo(404), equalTo(401)));
                 //@formatter:on
@@ -625,10 +624,10 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
-                    .delete(path)
-                    .then()
+                .delete(path)
+                .then()
                     .assertThat()
                     .statusCode(200)
                     .body("deletions.size()", greaterThan(0))
@@ -647,11 +646,11 @@ public class WesE2ETest extends BaseE2eTest {
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
                     .queryParam("async", true)
-                    .delete(path)
-                    .then()
+                .delete(path)
+                .then()
                     .assertThat()
                     .statusCode(200)
                     .body("deletions.size()", greaterThan(0))
@@ -666,10 +665,10 @@ public class WesE2ETest extends BaseE2eTest {
                         given()
                             .log().uri()
                             .log().method()
-                            .header(getHeader(getResource(getRootPath() + "/runs/" + runId)))
+                            .header(getHeader(getResource(path)))
                             .accept(ContentType.JSON)
-                            .get(path)
-                            .then()
+                        .get(path)
+                        .then()
                             .assertThat()
                             .statusCode(200)
                             .body("runFiles.size()", greaterThan(0))
@@ -681,17 +680,16 @@ public class WesE2ETest extends BaseE2eTest {
             @Test
             @DisplayName("Delete Run Files for non-existent run fails with status 401 or 404")
             public void deleteRunFilesForNonExistentRunShouldFail() {
-                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
-                String path = resourcePath + "/files";
+                String path = getRootPath() + "/runs/" + UUID.randomUUID() + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(resourcePath)))
+                    .header(getHeader(getResource(path)))
                     .accept(ContentType.JSON)
-                    .delete(path)
-                    .then()
+                .delete(path)
+                .then()
                     .assertThat()
                     .statusCode(anyOf(equalTo(404),equalTo(401)));
                 //@formatter:on
@@ -710,8 +708,8 @@ public class WesE2ETest extends BaseE2eTest {
                     .multiPart(getWorkflowUrlMultipart("echo.wdl"))
                     .multiPart(getMultipartAttachment("echo.wdl", supplier.getFileContent(WdlSupplier.WORKFLOW_WITH_ALL_OUTPUT_TYPES).getBytes()))
                     .multiPart(getJsonMultipart("workflow_params", inputs))
-                    .post(path)
-                    .then()
+                .post(path)
+                .then()
                     .assertThat()
                     .statusCode(200)
                     .body("run_id", is(notNullValue()))
