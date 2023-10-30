@@ -117,7 +117,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     public boolean isFile(String filePath) {
         try {
             return client.get(GcpStorageUtils.blobIdFromGsUrl(filePath)).exists();
-        } catch (IllegalArgumentException e) {
+        } catch (RuntimeException e) {
             return false;
         }
     }

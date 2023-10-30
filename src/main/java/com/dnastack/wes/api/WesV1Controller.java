@@ -124,14 +124,14 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:run:files:list")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId + '/files', 'wes:runs:read', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFiles getRunFiles(@PathVariable("run_id") String runId) {
         return adapter.getRunFiles(runId);
     }
 
     @AuditActionUri("wes:run:files:delete")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId + '/files', 'wes:runs:write', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:write', 'wes')")
     @DeleteMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFileDeletions deleteRunFiles(
         @PathVariable("run_id") String runId,

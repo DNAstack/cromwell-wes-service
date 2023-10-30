@@ -123,7 +123,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
     public boolean isFile(String filePath) {
         try {
             return client.getBlobContainerClient(container).getBlobClient(filePath).exists();
-        } catch (IllegalArgumentException e) {
+        } catch (RuntimeException e) {
             return false;
         }
     }
