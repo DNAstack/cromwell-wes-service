@@ -577,13 +577,14 @@ public class WesE2ETest extends BaseE2eTest {
             @MethodSource("completeWorkflowWithFilesProvider")
             @DisplayName("Get Run Files for existing run returns all files")
             public void getRunFilesReturnsNonEmptyCollection(String runId) {
-                String path = getRootPath() + "/runs/" + runId + "/files";
+                String resourcePath = getRootPath() + "/runs/" + runId;
+                String path = resourcePath + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(path)))
+                    .header(getHeader(getResource(resourcePath)))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -598,13 +599,14 @@ public class WesE2ETest extends BaseE2eTest {
             @Test
             @DisplayName("Get Run Files for non-existent run fails with status 401 or 404")
             public void getRunFilesForNonExistentRunShouldFail() {
-                String path = getRootPath() + "/runs/" + UUID.randomUUID() + "/files";
+                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
+                String path = resourcePath + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(path)))
+                    .header(getHeader(getResource(resourcePath)))
                     .accept(ContentType.JSON)
                 .get(path)
                 .then()
@@ -618,13 +620,14 @@ public class WesE2ETest extends BaseE2eTest {
             @MethodSource("completeWorkflowWithFilesProvider")
             @DisplayName("Delete Run Files for existing run returns all deleted files")
             public void deleteRunFilesReturnsNonEmptyCollection(String runId) {
-                String path = getRootPath() + "/runs/" + runId + "/files";
+                String resourcePath = getRootPath() + "/runs/" + runId;
+                String path = resourcePath + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(path)))
+                    .header(getHeader(getResource(resourcePath)))
                     .accept(ContentType.JSON)
                 .delete(path)
                 .then()
@@ -640,13 +643,14 @@ public class WesE2ETest extends BaseE2eTest {
             @MethodSource("completeWorkflowWithFilesProvider")
             @DisplayName("Delete Run Files for existing run asynchronously returns all deleted files")
             public void deleteRunFilesAsyncReturnsNonEmptyCollection(String runId) {
-                String path = getRootPath() + "/runs/" + runId + "/files";
+                String resourcePath = getRootPath() + "/runs/" + runId;
+                String path = resourcePath + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(path)))
+                    .header(getHeader(getResource(resourcePath)))
                     .accept(ContentType.JSON)
                     .queryParam("async", true)
                 .delete(path)
@@ -665,7 +669,7 @@ public class WesE2ETest extends BaseE2eTest {
                         given()
                             .log().uri()
                             .log().method()
-                            .header(getHeader(getResource(path)))
+                            .header(getHeader(getResource(resourcePath)))
                             .accept(ContentType.JSON)
                         .get(path)
                         .then()
@@ -680,13 +684,14 @@ public class WesE2ETest extends BaseE2eTest {
             @Test
             @DisplayName("Delete Run Files for non-existent run fails with status 401 or 404")
             public void deleteRunFilesForNonExistentRunShouldFail() {
-                String path = getRootPath() + "/runs/" + UUID.randomUUID() + "/files";
+                String resourcePath = getRootPath() + "/runs/" + UUID.randomUUID();
+                String path = resourcePath + "/files";
 
                 //@formatter:off
                 given()
                     .log().uri()
                     .log().method()
-                    .header(getHeader(getResource(path)))
+                    .header(getHeader(getResource(resourcePath)))
                     .accept(ContentType.JSON)
                 .delete(path)
                 .then()
