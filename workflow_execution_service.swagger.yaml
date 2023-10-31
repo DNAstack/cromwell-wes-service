@@ -816,6 +816,8 @@ definitions:
 
 
           - FAILED: An error occurred during the process of deleting the file.
+      error_response:
+        $ref: '#/definitions/ErrorResponse'
   WorkflowTypeVersion:
     type: object
     properties:

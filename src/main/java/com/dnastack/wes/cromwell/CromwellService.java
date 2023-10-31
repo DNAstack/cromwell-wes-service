@@ -280,7 +280,7 @@ public class CromwellService {
 
     public RunFileDeletion deleteRunFileAsync(RunFile runFile) {
         CompletableFuture.runAsync(() -> deleteRunFile(runFile), defaultAsyncOperationExecutor);
-        return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.ASYNC,null);
+        return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.ASYNC, null);
     }
 
     public RunFileDeletion deleteRunFile(RunFile runFile) {
