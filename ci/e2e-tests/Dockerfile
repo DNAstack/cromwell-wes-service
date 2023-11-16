@@ -35,7 +35,7 @@ ADD target/src ./src
 #     org.apache.maven.artifact.resolver.MultipleArtifactsNotFoundException: Missing:
 # then update the version number of surefire-junit4 in pom.xml under the
 # dynamicDependencies section of go-offline-maven-plugin configuration.
-RUN ./mvnw -P -dnastack -B -o package
+RUN ./mvnw -P -dnastack -B -o process-test-classes
 
 
 ##
@@ -45,14 +45,26 @@ RUN ./mvnw -P -dnastack -B -o package
 # This stage uses a JRE rather than JDK because it doesn't have to build anything; it just runs the fat jar
 # produced by the previous stage.
 FROM amazoncorretto:17-alpine
+
 ARG APP_NAME
 ARG APP_VERSION
 
-ADD target/e2e-exec-pom.xml /pom.xml
-ADD target/.mvn /.mvn
-ADD target/mvnw /
-COPY --from=0 /build/target/wes-service-e2e-tests-*.jar /e2e-tests.jar
-RUN ./mvnw -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
+# Create a non-root user
+RUN adduser -D -h /home/testuser testuser
+
+USER root
+RUN mkdir /target && chown testuser /target
+
+# Copy required files from build stage into image
+COPY --from=build --chown=testuser /build/target/ /target
+COPY --from=build --chown=testuser /root/.m2 /home/testuser/.m2/
+COPY --chown=testuser target/pom.xml /pom.xml
+COPY --chown=testuser target/.mvn /.mvn
+COPY --chown=testuser target/mvnw /
+
+USER testuser
+
+ENV E2E_SCREENSHOT_DIR /target
 
 # If the container has a memory limit, that limit (in bytes) is present in a file under /sys/fs/cgroup
 # In Linux 5.10.76, the value comes from memory.max.
