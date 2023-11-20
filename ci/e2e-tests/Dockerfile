@@ -26,6 +26,9 @@ RUN ./mvnw -P -dnastack -B -Presolve-dependencies initialize
 RUN ./mvnw -P -dnastack -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 RUN ./mvnw -P -dnastack -B versions:set -DnewVersion=${APP_VERSION}
 
+# Delete settings*.xml files that contain GitHub credentials
+RUN rm /root/.m2/settings*.xml
+
 # Now add sources, which will bust the cache.
 ADD target/src ./src
 
@@ -35,7 +38,7 @@ ADD target/src ./src
 #     org.apache.maven.artifact.resolver.MultipleArtifactsNotFoundException: Missing:
 # then update the version number of surefire-junit4 in pom.xml under the
 # dynamicDependencies section of go-offline-maven-plugin configuration.
-RUN ./mvnw -P -dnastack -B -o package
+RUN ./mvnw -P -dnastack -B -o process-test-classes
 
 
 ##
@@ -45,18 +48,32 @@ RUN ./mvnw -P -dnastack -B -o package
 # This stage uses a JRE rather than JDK because it doesn't have to build anything; it just runs the fat jar
 # produced by the previous stage.
 FROM amazoncorretto:17-alpine
+
 ARG APP_NAME
 ARG APP_VERSION
 
-ADD target/e2e-exec-pom.xml /pom.xml
-ADD target/.mvn /.mvn
-ADD target/mvnw /
-COPY --from=0 /build/target/wes-service-e2e-tests-*.jar /e2e-tests.jar
-RUN ./mvnw -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
+# Create a non-root user
+RUN adduser -D -h /home/testuser testuser
+
+USER root
+RUN mkdir /target && chown testuser /target
+
+# Copy required files from build stage into image
+COPY --from=build --chown=testuser /build/target/ /home/testuser/target
+COPY --from=build --chown=testuser /root/.m2/ /home/testuser/.m2/
+COPY --chown=testuser target/pom.xml /home/testuser/pom.xml
+COPY --chown=testuser target/.mvn /home/testuser/.mvn
+COPY --chown=testuser target/mvnw /home/testuser
+
+USER testuser
+
+WORKDIR /home/testuser
+
+ENV E2E_SCREENSHOT_DIR /target
 
 # If the container has a memory limit, that limit (in bytes) is present in a file under /sys/fs/cgroup
 # In Linux 5.10.76, the value comes from memory.max.
 # If the container doesn't have a set memory limit, the file contains "max", hence we fall back to a default value of 2GiB
 # In Linux 5.4.129, the value comes from memory/memory.limit_in_bytes
 # If the container doesn't have a set memory limit, the file will be blank, hence we fall back to a default value of 2Gib
-ENTRYPOINT ["./mvnw", "-B", "-o", "test"]
+ENTRYPOINT ["./mvnw", "-B", "-o", "-DreportsDirectory=/target/surefire-reports", "test"]
