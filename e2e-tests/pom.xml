@@ -17,6 +17,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
+        <reportsDirectory/>
         <junit.version>5.8.2</junit.version>
         <restassured.version>4.5.1</restassured.version>
         <slf4j.version>2.0.1</slf4j.version>
@@ -178,6 +179,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
+                    <reportsDirectory>${reportsDirectory}</reportsDirectory>
                     <dependenciesToScan>
                         <dependency>com.dnastack:actuator-e2e-test</dependency>
                     </dependenciesToScan>
