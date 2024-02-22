@@ -10,8 +10,7 @@ FROM amazoncorretto:21-al2023 AS build
 ARG APP_NAME
 ARG APP_VERSION
 
-RUN apt-get update
-RUN apt-get install -y curl
+RUN yum install -y curl tar gzip --allowerasing
 
 WORKDIR /build
 

@@ -9,18 +9,19 @@ on:
 jobs:
   build-and-test-java-app:
     name: Build & Test Java App
-    uses: DNAstack/dnastack-development-tools/.github/workflows/build-test-java-app.yml@60321a2d7bd83b31dee31376bfcdba24b65ccf99
+    uses: DNAstack/dnastack-development-tools/.github/workflows/build-test-java-app.yml@4e75ec231d7c954329f7e47bacd5b02928c5f28e
     with:
-      java-version: 17
+      java-version: 21
     secrets:
       pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
   code-analysis-and-dependency-check:
     name: Code Analysis and OWASP Dependency Check
-    uses: DNAstack/dnastack-development-tools/.github/workflows/code-analysis-and-dependency-check.yml@60321a2d7bd83b31dee31376bfcdba24b65ccf99
+    uses: DNAstack/dnastack-development-tools/.github/workflows/code-analysis-and-dependency-check.yml@4e75ec231d7c954329f7e47bacd5b02928c5f28e
     with:
       with-frontend: false
-      java-version: 17
+      java-version: 21
     secrets:
       pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
       sonar-token: ${{ secrets.SONAR_TOKEN }}
       sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+      nvd-api-key: ${{ secrets.NVD_API_KEY }}

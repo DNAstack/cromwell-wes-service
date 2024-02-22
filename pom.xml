@@ -30,11 +30,12 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
         <maven.go-offline.plugin.version>1.2.8</maven.go-offline.plugin.version>
-        <!-- Sonar -->
-        <sonar.dependency-check.plugin.version>7.4.1</sonar.dependency-check.plugin.version>
-        <sonar.dependency-check.jsonReportPath>target/dependency-check-report.json</sonar.dependency-check.jsonReportPath>
-        <sonar.dependency-check.htmlReportPath>target/dependency-check-report.html</sonar.dependency-check.htmlReportPath>
-        <sonar.dependency-check.summarize>true</sonar.dependency-check.summarize>
+        <!-- Sonar: https://jeremylong.github.io/DependencyCheck/dependency-check-maven/configuration.html -->
+        <!-- Note: sonar plugin picks up sonar.dependencyCheck.* properties -->
+        <sonar.dependency-check.plugin.version>9.0.9</sonar.dependency-check.plugin.version>
+        <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json</sonar.dependencyCheck.jsonReportPath>
+        <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html</sonar.dependencyCheck.htmlReportPath>
+        <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
         <!-- DNAstack Libs -->
         <dnastack.token-validator.version>1.0.11</dnastack.token-validator.version>
         <dnastack.spring-boot-audit-event-logger.version>1.0.17</dnastack.spring-boot-audit-event-logger.version>
