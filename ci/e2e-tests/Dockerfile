@@ -6,7 +6,8 @@
 
 # This stage depends on a JDK image and uses Maven Wrapper to pull in dependencies and build the project
 # from source.
-FROM amazoncorretto:17-alpine AS build
+FROM amazoncorretto:21-al2023 AS build
+
 ARG APP_NAME
 ARG APP_VERSION
 
@@ -47,10 +48,7 @@ RUN ./mvnw -P -dnastack -B -o process-test-classes
 
 # This stage uses a JRE rather than JDK because it doesn't have to build anything; it just runs the fat jar
 # produced by the previous stage.
-FROM amazoncorretto:17-alpine
-
-ARG APP_NAME
-ARG APP_VERSION
+FROM amazoncorretto:21-alpine
 
 # Create a non-root user
 RUN adduser -D -h /home/testuser testuser
@@ -71,9 +69,4 @@ WORKDIR /home/testuser
 
 ENV E2E_SCREENSHOT_DIR /target
 
-# If the container has a memory limit, that limit (in bytes) is present in a file under /sys/fs/cgroup
-# In Linux 5.10.76, the value comes from memory.max.
-# If the container doesn't have a set memory limit, the file contains "max", hence we fall back to a default value of 2GiB
-# In Linux 5.4.129, the value comes from memory/memory.limit_in_bytes
-# If the container doesn't have a set memory limit, the file will be blank, hence we fall back to a default value of 2Gib
 ENTRYPOINT ["./mvnw", "-B", "-o", "-DreportsDirectory=/target/surefire-reports", "test"]

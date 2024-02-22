@@ -7,55 +7,55 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.15</version>
+        <version>3.2.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <groupId>com.dnastack</groupId>
     <artifactId>cromwell-wes-service</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>cromwell-wes-service</name>
-    <description>Light weight shim that sits on top of cromwell converting the cromwell REST API into a powerful WES
-        api
+    <description>
+        Light weight shim that sits on top of cromwell
+        converting the cromwell REST API into a powerful WES api
     </description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-        <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
-        <spring-cloud.version>2021.0.8</spring-cloud.version>
-        <logback.version>1.2.10</logback.version>
-        <logback-extensions.version>1.0.0</logback-extensions.version>
-        <logback.contrib.version>0.1.5</logback.contrib.version>
-        <springdoc.version>1.6.13</springdoc.version>
-        <dnastack-token-validator.version>1.0.9</dnastack-token-validator.version>
-        <audit-event-logger.version>1.0.15</audit-event-logger.version>
-        <okhttpclient.version>4.9.3</okhttpclient.version>
-        <jwt.version>0.11.2</jwt.version>
-        <feign-form.version>3.8.0</feign-form.version>
+        <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
+        <maven.go-offline.plugin.version>1.2.8</maven.go-offline.plugin.version>
+        <!-- Sonar -->
+        <sonar.dependency-check.plugin.version>7.4.1</sonar.dependency-check.plugin.version>
+        <sonar.dependency-check.jsonReportPath>target/dependency-check-report.json</sonar.dependency-check.jsonReportPath>
+        <sonar.dependency-check.htmlReportPath>target/dependency-check-report.html</sonar.dependency-check.htmlReportPath>
+        <sonar.dependency-check.summarize>true</sonar.dependency-check.summarize>
+        <!-- DNAstack Libs -->
+        <dnastack.token-validator.version>1.0.11</dnastack.token-validator.version>
+        <dnastack.spring-boot-audit-event-logger.version>1.0.17</dnastack.spring-boot-audit-event-logger.version>
+        <dnastack.logback-extensions.version>1.0.0</dnastack.logback-extensions.version>
+        <!-- SDKs and APIs -->
         <azurestorage.version>12.9.0</azurestorage.version>
-        <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json</sonar.dependencyCheck.jsonReportPath>
-        <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html</sonar.dependencyCheck.htmlReportPath>
-        <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
         <azure-sdk.version>1.2.8</azure-sdk.version>
         <gcloud.storage.version>2.20.1</gcloud.storage.version>
         <gcloud.auth.version>1.16.0</gcloud.auth.version>
+        <!-- Other -->
+        <spring-cloud.version>2023.0.0</spring-cloud.version>
+        <springdoc-openapi.version>2.3.0</springdoc-openapi.version>
+        <logback.version>1.4.5</logback.version>
+        <logback.contrib.version>0.1.5</logback.contrib.version>
+        <jjwt.version>0.12.3</jjwt.version>
+        <okhttp3.version>4.12.0</okhttp3.version>
+        <feign-form.version>3.8.0</feign-form.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-parent</artifactId>
-                <type>pom</type>
-                <scope>import</scope>
-                <version>2.7.5</version>
-            </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -98,6 +98,24 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- DNAstack -->
+        <dependency>
+            <groupId>com.dnastack</groupId>
+            <artifactId>dnastack-token-validator</artifactId>
+            <version>${dnastack.token-validator.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dnastack</groupId>
+            <artifactId>logback-extensions</artifactId>
+            <version>${dnastack.logback-extensions.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dnastack</groupId>
+            <artifactId>spring-boot-audit-event-logger</artifactId>
+            <version>${dnastack.spring-boot-audit-event-logger.version}</version>
+        </dependency>
+
+        <!-- Spring -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -106,35 +124,47 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-actuator-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- Metrics -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+
+        <!-- Springdoc -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <version>${springdoc-openapi.version}</version>
+        </dependency>
 
         <!--Supporting-->
-        <dependency>
-            <groupId>com.dnastack</groupId>
-            <artifactId>dnastack-token-validator</artifactId>
-            <version>${dnastack-token-validator.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.dnastack</groupId>
-            <artifactId>spring-boot-audit-event-logger</artifactId>
-            <version>${audit-event-logger.version}</version>
-        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-sleuth</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
+            <version>${okhttp.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -161,9 +191,25 @@
             <groupId>io.github.openfeign</groupId>
             <artifactId>feign-jackson</artifactId>
         </dependency>
-
         <dependency>
-            <!-- Starter for using Spring Security -->
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+        <!-- Security -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
@@ -176,40 +222,15 @@
             <artifactId>spring-security-oauth2-resource-server</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.security.oauth.boot</groupId>
-            <artifactId>spring-security-oauth2-autoconfigure</artifactId>
-        </dependency>
-
-        <!-- JSON Web Token Support -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Parseable Stackdriver Logs -->
-        <dependency>
-            <groupId>com.dnastack</groupId>
-            <artifactId>logback-extensions</artifactId>
-            <version>${logback-extensions.version}</version>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback.contrib</groupId>
             <artifactId>logback-jackson</artifactId>
             <version>${logback.contrib.version}</version>
         </dependency>
+
         <!-- Cloud Dependencies -->
         <dependency>
             <groupId>com.azure</groupId>
@@ -224,29 +245,17 @@
             <artifactId>google-auth-library-oauth2-http</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-
-        <!-- Springfox -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>${springdoc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-security</artifactId>
-            <version>${springdoc.version}</version>
-        </dependency>
-
-
-        <!--        Test Dependencies -->
+        <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -254,19 +263,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <repositories>
-        <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-        </repository>
-    </repositories>
 
     <build>
         <pluginManagement>
@@ -274,7 +275,7 @@
                 <plugin>
                     <groupId>org.owasp</groupId>
                     <artifactId>dependency-check-maven</artifactId>
-                    <version>7.1.0</version>
+                    <version>${sonar.dependency-check.plugin.version}</version>
                     <configuration>
                         <format>ALL</format>
                     </configuration>
@@ -304,17 +305,17 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>${maven-resources-plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M5</version>
+                <version>${maven.surefire.plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>de.qaware.maven</groupId>
                 <artifactId>go-offline-maven-plugin</artifactId>
-                <version>1.2.8</version>
+                <version>${maven.go-offline.plugin.version}</version>
                 <configuration>
                     <downloadSources>false</downloadSources>
                     <downloadJavadoc>false</downloadJavadoc>
@@ -322,7 +323,7 @@
                         <DynamicDependency>
                             <groupId>org.apache.maven.surefire</groupId>
                             <artifactId>surefire-junit-platform</artifactId>
-                            <version>3.0.0-M5</version>
+                            <version>${maven.surefire.plugin.version}</version>
                             <repositoryType>PLUGIN</repositoryType>
                         </DynamicDependency>
                         <dynamicDependency>

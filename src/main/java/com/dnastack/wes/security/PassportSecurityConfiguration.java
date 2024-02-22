@@ -19,9 +19,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
-import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Configure API level Authorization enforcing the <code>@PreAuthorize</code> annotations for all controller methods. Permissions
@@ -54,8 +52,8 @@ public class PassportSecurityConfiguration {
             try {
                 permissionChecker.checkPermissions(jwtToken);
                 final Jws<Claims> jws = jwtTokenParser.parseTokenClaims(jwtToken);
-                final JwsHeader<?> headers = jws.getHeader();
-                final Claims claims = jws.getBody();
+                final JwsHeader headers = jws.getHeader();
+                final Claims claims = jws.getPayload();
                 return new Jwt(jwtToken, claims.getIssuedAt().toInstant(), claims.getExpiration().toInstant(), headers, claims);
             } catch (JwtException e) {
                 throw new org.springframework.security.oauth2.jwt.BadJwtException(e.getMessage(), e);

@@ -32,7 +32,7 @@ public class Ga4ghService implements Cloneable {
     private List<PublicAuthenticationConfiguration> authentication;
 
     @Override
-    public Ga4ghService clone() {
+    public Ga4ghService clone() throws CloneNotSupportedException {
         Ga4ghService ga4ghService;
         try {
             ga4ghService = (Ga4ghService) super.clone();

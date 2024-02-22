@@ -16,7 +16,7 @@ public class ServiceType implements Cloneable {
     private String version;
 
     @Override
-    protected ServiceType clone() {
+    protected ServiceType clone() throws CloneNotSupportedException {
         try {
             return (ServiceType) super.clone();
         } catch (CloneNotSupportedException e) {
