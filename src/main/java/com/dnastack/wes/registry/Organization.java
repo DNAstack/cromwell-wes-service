@@ -15,7 +15,7 @@ public class Organization implements Cloneable {
     private String url;
 
     @Override
-    protected Organization clone() {
+    protected Organization clone() throws CloneNotSupportedException {
         try {
             return (Organization) super.clone();
         } catch (CloneNotSupportedException e) {

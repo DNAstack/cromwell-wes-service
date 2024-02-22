@@ -2,7 +2,7 @@ package com.dnastack.wes.storage;
 
 import org.springframework.http.HttpRange;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

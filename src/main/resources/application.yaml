@@ -4,6 +4,8 @@ server:
     include-message: always         # To include "message" attribute
     include-binding-errors: always  # To include "errors" attribute
 
+build.version: @project.version@
+
 spring:
   application:
     name: cromwell-wes-service
@@ -14,8 +16,6 @@ spring:
   servlet:
     multipart:
       enabled: true
-  zipkin:
-    enabled: false
 
 logging:
   level:
@@ -46,8 +46,6 @@ info:
     description: "Interface Layering WES API on top of an execution engine"
     url: ${wes.url}
     version: "${project.version}"
-
-build.version: @project.version@
 
 wes:
   url: http://localhost:${server.port}

@@ -115,8 +115,16 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         }
 
         BlobRange range = new BlobRange(rangeStart, rangeEnd - rangeStart);
-        blobClient.downloadWithResponse(outputStream, range, new DownloadRetryOptions()
-            .setMaxRetryRequests(3), null, false, null, null);
+        blobClient.downloadStreamWithResponse(
+            outputStream,
+            range,
+            new DownloadRetryOptions()
+            .setMaxRetryRequests(3),
+            null,
+            false,
+            null,
+            null
+        );
     }
 
     @Override
