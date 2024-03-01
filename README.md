@@ -42,7 +42,7 @@ and can be used as an engine for running workflows with [DNAstack Workbench](htt
 
 # Requirements
 
-- Java 17+
+- Java 21+
 - [Cromwell](https://github.com/Broadinstitute/cromwell) running somewhere that is accessible to the WES service. Please
   refer to the cromwell [documentation](https://cromwell.readthedocs.io/en/stable/) for instructions on how to configure
   cromwell.
