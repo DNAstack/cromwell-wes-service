@@ -311,8 +311,8 @@ will attempt to use
 the [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc)
 configured.
 
-The Service account should be given READ ONLY permission to the log output bucket of cromwell, and WRITE access to
-the staging location for writing the `workflow_attachment`s
+The Service account should be given READ ONLY permission to the log output bucket of cromwell, WRITE access to
+the staging location for writing the `workflow_attachment`s, and `serviceusage.services.use` permission in the project (e.g. through the Service Usage Consumer role).
 
 `WES_BLOB_STORAGE_CLIENT_GCP_PROJECT` (_required_)
 
