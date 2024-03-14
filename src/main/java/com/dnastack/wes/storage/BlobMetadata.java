@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -16,10 +17,29 @@ import java.time.Instant;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class BlobMetadata {
 
-    String name;
-    String contentType;
-    String contentEncoding;
-    long size;
-    Instant creationTime;
-    Instant lastModifiedTime;
+    private String name;
+    private String contentType;
+    private String contentEncoding;
+    private long size;
+    private Instant creationTime;
+    private Instant lastModifiedTime;
+    private List<Checksum> checksums;
+
+
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class Checksum {
+
+        private ChecksumType type;
+        private String value;
+
+    }
+
+    public enum ChecksumType {
+        MD5,
+        CRC32
+    }
 }

@@ -15,10 +15,10 @@ import lombok.*;
 public class RunFile {
 
     @JsonProperty(value = "file_type")
-    FileType fileType;
-    String path;
+    private FileType fileType;
+    private String path;
     @JsonUnwrapped
-    BlobMetadata blobMetadata;
+    private BlobMetadata blobMetadata;
 
 
     public RunFile(FileType fileType, String path) {

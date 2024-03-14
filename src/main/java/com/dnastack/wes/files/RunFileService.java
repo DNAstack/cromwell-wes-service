@@ -152,7 +152,7 @@ public class RunFileService {
     }
 
     private String evaluateJsonPath(String runId, String jsonPath) {
-        String metadataResponse = null;
+        String metadataResponse;
         try {
             metadataResponse = OBJECT_MAPPER.writeValueAsString(cromwellService.getRun(runId));
         } catch (JsonProcessingException e) {
@@ -168,12 +168,12 @@ public class RunFileService {
 
     public void streamRunFile(HttpServletResponse response, String runId, String path, HttpRange httpRange) throws IOException {
         RunFile runFile = getRunFile(runId, path);
-        long contentLength = runFile.blobMetadata.getSize();
+        long contentLength = runFile.getBlobMetadata().getSize();
         if (httpRange != null) {
             long start = httpRange.getRangeStart(runFile.getBlobMetadata().getSize());
             long end = httpRange.getRangeEnd(runFile.getBlobMetadata().getSize());
             contentLength = end - start + 1;
-            if (contentLength != runFile.blobMetadata.getSize()) {
+            if (contentLength != runFile.getBlobMetadata().getSize()) {
                 response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
             }
         }

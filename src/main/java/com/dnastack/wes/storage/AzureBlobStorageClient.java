@@ -8,6 +8,7 @@ import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.dnastack.wes.shared.ConfigurationException;
 import com.dnastack.wes.shared.NotFoundException;
+import org.apache.tomcat.util.buf.HexUtils;
 import org.springframework.http.HttpRange;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -19,6 +20,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 public class AzureBlobStorageClient implements BlobStorageClient {
 
@@ -139,10 +141,11 @@ public class AzureBlobStorageClient implements BlobStorageClient {
             .contentType(properties.getContentType())
             .contentEncoding(properties.getContentEncoding())
             .size(properties.getBlobSize())
+            .checksums(
+                List.of(BlobMetadata.Checksum.builder().type(BlobMetadata.ChecksumType.MD5).value(HexUtils.toHexString(properties.getContentMd5())).build()))
             .creationTime(TimeUtils.offsetToInstant(properties.getCreationTime()))
             .lastModifiedTime(TimeUtils.offsetToInstant(properties.getLastModified())).build();
     }
-
 
 
     private BlobClient getBlobClient(String filePath) {
@@ -156,7 +159,6 @@ public class AzureBlobStorageClient implements BlobStorageClient {
             blobName = filePath;
             containerName = container;
         }
-
 
         BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
         return containerClient.getBlobClient(blobName);
