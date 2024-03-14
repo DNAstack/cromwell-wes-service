@@ -1,5 +1,6 @@
-package com.dnastack.wes.api;
+package com.dnastack.wes.files;
 
+import com.dnastack.wes.api.ErrorResponse;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 

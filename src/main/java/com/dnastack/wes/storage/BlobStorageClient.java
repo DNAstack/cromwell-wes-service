@@ -24,4 +24,6 @@ public interface BlobStorageClient {
 
     void deleteFile(String filePath) throws IOException;
 
+    BlobMetadata getBlobMetadata(String filePath);
+
 }

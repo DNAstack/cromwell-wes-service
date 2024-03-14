@@ -1,6 +1,8 @@
 package com.dnastack.wes.storage;
 
+import com.azure.storage.blob.BlobUrlParts;
 import com.dnastack.wes.shared.ConfigurationException;
+import com.dnastack.wes.shared.NotFoundException;
 import org.springframework.http.HttpRange;
 
 import java.io.*;
@@ -12,10 +14,11 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 
 public class LocalBlobStorageClient implements BlobStorageClient {
 
-    private final String stagingPath;
+    private final Path stagingPath;
 
     public LocalBlobStorageClient() throws IOException {
         this(new LocalBlobStorageClientConfig());
@@ -28,15 +31,15 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
         if (config.getStagingPath() == null || config.getStagingPath().isEmpty()) {
             Path directory = Files.createTempDirectory("workflow_attachments");
-            stagingPath = directory.toAbsolutePath().toString();
+            stagingPath = directory.toAbsolutePath();
         } else {
-            stagingPath = config.getStagingPath();
+            stagingPath = Paths.get(config.getStagingPath()).toAbsolutePath();
         }
 
     }
 
     public String getStagingPath() {
-        return stagingPath;
+        return stagingPath.toString();
     }
 
     @Override
@@ -50,10 +53,8 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
     @Override
     public String writeBytes(InputStream stream, long uploadSize, String stagingFolder, String fileName) throws IOException {
-
-        Path path = Paths.get(stagingPath, stagingFolder ,fileName);
-        File fileToWrite = path.toFile();
-        String filePath = fileToWrite.getAbsolutePath();
+        Path filePath = stagingPath.resolve(Paths.get(stagingFolder, fileName));
+        File fileToWrite = filePath.toFile();
 
         if (!filePath.startsWith(stagingPath)) {
             throw new IOException("Could not write to file path " + filePath + ". Path outside of protected scope");
@@ -69,7 +70,7 @@ public class LocalBlobStorageClient implements BlobStorageClient {
             stream.transferTo(fileOutputStream);
         }
 
-        return filePath;
+        return filePath.toString();
     }
 
     @Override
@@ -81,13 +82,13 @@ public class LocalBlobStorageClient implements BlobStorageClient {
 
         long rangeStart = 0L;
         long rangeEnd = fileToRead.length();
-        if (httpRange != null){
+        if (httpRange != null) {
             rangeStart = httpRange.getRangeStart(fileToRead.length());
         }
 
         try (FileChannel channel = new RandomAccessFile(fileToRead, "r").getChannel()) {
             channel.position(rangeStart);
-            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel),rangeEnd - rangeStart)) {
+            try (InputStream inputStream = new BoundedInputStream(Channels.newInputStream(channel), rangeEnd - rangeStart)) {
                 inputStream.transferTo(outputStream);
             }
         }
@@ -105,6 +106,20 @@ public class LocalBlobStorageClient implements BlobStorageClient {
     @Override
     public void deleteFile(String filePath) throws IOException {
         Files.delete(Path.of(filePath));
+    }
+
+    @Override
+    public BlobMetadata getBlobMetadata(String filePath) {
+        File file = new File(filePath);
+
+        if (!file.exists()) {
+            throw new NotFoundException("File: " + filePath + ", does not exist");
+        }
+
+        return BlobMetadata.builder().name(file.getName())
+            .size(file.length())
+            .lastModifiedTime(Instant.ofEpochMilli(file.lastModified())).build();
+
     }
 
 }
