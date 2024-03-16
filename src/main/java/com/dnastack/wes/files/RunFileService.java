@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -78,23 +79,12 @@ public class RunFileService {
 
         finalFileSet.forEach(path -> files.add(new RunFile(RunFile.FileType.FINAL, path)));
 
-        inputFileSet.forEach(path -> {
-            if (!finalFileSet.contains(path)) {
-                files.add(new RunFile(RunFile.FileType.INPUT, path));
-            }
-        });
+        inputFileSet.stream().filter(path -> !finalFileSet.contains(path)).map(path -> new RunFile(RunFile.FileType.INPUT, path)).forEach(files::add);
+        logFileSet.stream().filter(path -> !finalFileSet.contains(path)).map(path -> new RunFile(RunFile.FileType.LOG, path)).forEach(files::add);
+        secondaryFileSet.stream()
+            .filter(path -> !logFileSet.contains(path) && !inputFileSet.contains(path) && !finalFileSet.contains(path))
+            .map(path -> new RunFile(RunFile.FileType.SECONDARY, path)).forEach(files::add);
 
-        secondaryFileSet.forEach(path -> {
-            if (!finalFileSet.contains(path) && !logFileSet.contains(path) && !inputFileSet.contains(path)) {
-                files.add(new RunFile(RunFile.FileType.SECONDARY, path));
-            }
-        });
-
-        logFileSet.forEach(path -> {
-            if (!finalFileSet.contains(path)) {
-                files.add(new RunFile(RunFile.FileType.LOG, path));
-            }
-        });
         return new RunFiles(files);
     }
 
@@ -175,6 +165,7 @@ public class RunFileService {
             contentLength = end - start + 1;
             if (contentLength != runFile.getBlobMetadata().getSize()) {
                 response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+                response.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + contentLength);
             }
         }
         response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
@@ -201,14 +192,12 @@ public class RunFileService {
         if (outputs != null && !outputs.isEmpty()) {
             outputs.values().forEach(output -> extractFilesFromValue(secondaryFileSet, OBJECT_MAPPER.valueToTree(output)));
         }
-        String stderr = call.getStderr();
-        String stdout = call.getStdout();
-        if (stderr != null && storageClient.isFile(stderr)) {
-            logFileSet.add(stderr);
-        }
-        if (stdout != null && storageClient.isFile(stdout)) {
-            logFileSet.add(stdout);
-        }
+
+        Stream.of(call.getStderr(), call.getStdout())
+            .filter(Objects::nonNull)
+            .filter(storageClient::isFile)
+            .forEach(logFileSet::add);
+
         Map<String, String> backendLogs = call.getBackendLogs();
         if (backendLogs != null && !backendLogs.isEmpty()) {
             backendLogs.values().forEach(log -> extractFilesFromValue(logFileSet, OBJECT_MAPPER.valueToTree(log)));

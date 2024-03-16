@@ -21,21 +21,21 @@ public class RunFileController {
 
     public RunFileController(RunFileService runFileService) {this.runFileService = runFileService;}
 
-    @AuditActionUri("wes:run:files:list")
+    @AuditActionUri("wes:runs:files:list")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFiles getRunFiles(@PathVariable String runId) {
         return runFileService.getRunFiles(runId);
     }
 
-    @AuditActionUri("wes:run:files:get-metadata")
+    @AuditActionUri("wes:runs:files:get-metadata")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/file", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFile getRunFile(@PathVariable String runId, @RequestParam String path) {
         return runFileService.getRunFile(runId,path);
     }
 
-    @AuditActionUri("wes:run:files:get-metadata")
+    @AuditActionUri("wes:run:files:get-content")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/file", produces = { MediaType.APPLICATION_OCTET_STREAM_VALUE })
     public void streamFileContents(
