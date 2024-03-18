@@ -1,6 +1,7 @@
 package com.dnastack.wes.storage;
 
 import com.dnastack.wes.shared.ConfigurationException;
+import com.dnastack.wes.shared.NotFoundException;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
@@ -17,6 +18,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -104,12 +106,12 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         }
 
         try (ReadChannel readChannel = blob.reader(BlobSourceOption.userProject(project))) {
-                readChannel.seek(rangeStart);
-                readChannel.limit(rangeEnd);
-                // the outer stream is
-                try (InputStream inputStream = Channels.newInputStream(readChannel)) {
-                    inputStream.transferTo(outputStream);
-                }
+            readChannel.seek(rangeStart);
+            readChannel.limit(rangeEnd);
+            // the outer stream is
+            try (InputStream inputStream = Channels.newInputStream(readChannel)) {
+                inputStream.transferTo(outputStream);
+            }
         }
     }
 
@@ -125,6 +127,22 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     @Override
     public void deleteFile(String filePath) {
         client.delete(GcpStorageUtils.blobIdFromGsUrl(filePath));
+    }
+
+    @Override
+    public BlobMetadata getBlobMetadata(String filePath) {
+        Blob blob = client.get(GcpStorageUtils.blobIdFromGsUrl(filePath));
+        if (Boolean.FALSE.equals(blob.exists())) {
+            throw new NotFoundException("File: " + filePath + ", does does not exist");
+        }
+
+        return BlobMetadata.builder().name(blob.getName())
+            .contentType(blob.getContentType())
+            .contentEncoding(blob.getContentEncoding())
+            .size(blob.getSize())
+            .checksums(List.of(BlobMetadata.Checksum.builder().type(BlobMetadata.ChecksumType.CRC32).value(blob.getCrc32cToHexString()).build()))
+            .creationTime(TimeUtils.offsetToInstant(blob.getCreateTimeOffsetDateTime()))
+            .lastModifiedTime(TimeUtils.offsetToInstant(blob.getUpdateTimeOffsetDateTime())).build();
     }
 
 }

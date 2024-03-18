@@ -1,11 +1,14 @@
 package com.dnastack.wes.storage;
 
 import com.azure.storage.blob.*;
+import com.azure.storage.blob.models.BlobProperties;
 import com.azure.storage.blob.models.BlobRange;
 import com.azure.storage.blob.models.DownloadRetryOptions;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.dnastack.wes.shared.ConfigurationException;
+import com.dnastack.wes.shared.NotFoundException;
+import org.apache.tomcat.util.buf.HexUtils;
 import org.springframework.http.HttpRange;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -17,6 +20,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 public class AzureBlobStorageClient implements BlobStorageClient {
 
@@ -50,10 +54,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
     @Override
     public URL getSignedUrl(String blobUri) {
-        BlobUrlParts parts = BlobUrlParts.parse(blobUri);
-        BlobContainerClient containerClient = client.getBlobContainerClient(parts.getBlobContainerName());
-        BlobClient blobClient = containerClient.getBlobClient(parts.getBlobName());
-
+        BlobClient blobClient = getBlobClient(blobUri);
         String sas = blobClient.generateSas(new BlobServiceSasSignatureValues(OffsetDateTime.now()
             .plus(signedUrlTtl, ChronoUnit.MILLIS), new BlobSasPermission().setReadPermission(true)));
 
@@ -66,15 +67,13 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
     @Override
     public String writeBytes(InputStream stream, long size, String stagingFolder, String fileName) throws IOException {
-        BlobContainerClient containerClient = client.getBlobContainerClient(container);
-
         UriComponentsBuilder builder = UriComponentsBuilder.newInstance();
         if (stagingPath != null) {
             builder.pathSegment(stagingPath);
         }
-
         String objectName = builder.pathSegment(stagingFolder, fileName).build().toString();
-        BlobClient blobClient = containerClient.getBlobClient(objectName);
+
+        BlobClient blobClient = getBlobClient(objectName);
         if (Boolean.TRUE.equals(blobClient.exists())) {
             throw new IOException("Could not write object " + fileName + "to target destination " + objectName
                                   + ". Object already exists");
@@ -86,19 +85,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
     @Override
     public void readBytes(OutputStream outputStream, String blobUri, HttpRange httpRange) throws IOException {
-        String containerName;
-        String blobName;
-        if (blobUri.startsWith("https")) {
-            BlobUrlParts parts = BlobUrlParts.parse(blobUri);
-            containerName = parts.getBlobContainerName();
-            blobName = parts.getBlobName();
-        } else {
-            blobName = blobUri;
-            containerName = container;
-        }
-
-        BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
-        BlobClient blobClient = containerClient.getBlobClient(blobName);
+        BlobClient blobClient = getBlobClient(blobUri);
 
         if (Boolean.FALSE.equals(blobClient.exists())) {
             throw new IOException("Could not read from blob: " + blobUri + ", object does not exist");
@@ -109,7 +96,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
         long rangeStart = 0;
         long rangeEnd = blobSize;
 
-        if (httpRange != null){
+        if (httpRange != null) {
             rangeStart = httpRange.getRangeStart(blobSize);
             rangeEnd = httpRange.getRangeEnd(blobSize);
         }
@@ -119,7 +106,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
             outputStream,
             range,
             new DownloadRetryOptions()
-            .setMaxRetryRequests(3),
+                .setMaxRetryRequests(3),
             null,
             false,
             null,
@@ -130,7 +117,7 @@ public class AzureBlobStorageClient implements BlobStorageClient {
     @Override
     public boolean isFile(String filePath) {
         try {
-            return client.getBlobContainerClient(container).getBlobClient(filePath).exists();
+            return getBlobClient(filePath).exists();
         } catch (RuntimeException e) {
             return false;
         }
@@ -138,7 +125,44 @@ public class AzureBlobStorageClient implements BlobStorageClient {
 
     @Override
     public void deleteFile(String filePath) {
-        client.getBlobContainerClient(container).getBlobClient(filePath).delete();
+        getBlobClient(filePath).delete();
     }
+
+    @Override
+    public BlobMetadata getBlobMetadata(String filePath) {
+        BlobClient blobClient = getBlobClient(filePath);
+        if (Boolean.FALSE.equals(blobClient.exists())) {
+            throw new NotFoundException("File: " + filePath + ", does does not exist");
+        }
+
+
+        BlobProperties properties = blobClient.getProperties();
+        return BlobMetadata.builder().name(BlobUrlParts.parse(filePath).getBlobName())
+            .contentType(properties.getContentType())
+            .contentEncoding(properties.getContentEncoding())
+            .size(properties.getBlobSize())
+            .checksums(
+                List.of(BlobMetadata.Checksum.builder().type(BlobMetadata.ChecksumType.MD5).value(HexUtils.toHexString(properties.getContentMd5())).build()))
+            .creationTime(TimeUtils.offsetToInstant(properties.getCreationTime()))
+            .lastModifiedTime(TimeUtils.offsetToInstant(properties.getLastModified())).build();
+    }
+
+
+    private BlobClient getBlobClient(String filePath) {
+        String containerName;
+        String blobName;
+        if (filePath.startsWith("https")) {
+            BlobUrlParts parts = BlobUrlParts.parse(filePath);
+            containerName = parts.getBlobContainerName();
+            blobName = parts.getBlobName();
+        } else {
+            blobName = filePath;
+            containerName = container;
+        }
+
+        BlobContainerClient containerClient = client.getBlobContainerClient(containerName);
+        return containerClient.getBlobClient(blobName);
+    }
+
 
 }

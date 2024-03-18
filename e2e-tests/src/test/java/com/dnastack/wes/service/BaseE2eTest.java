@@ -5,6 +5,7 @@ import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.EncoderConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
 import io.restassured.http.Header;
 import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,6 +23,12 @@ public abstract class BaseE2eTest {
     protected static String clientSecret;
     protected static String resourceUrl;
     protected static String scopes;
+    protected static AuthType authType;
+
+    enum AuthType {
+        NO_AUTH,
+        OAUTH2,
+    }
 
     @BeforeAll
     public static void setUpAllForAllTests() throws Exception {
@@ -30,6 +37,8 @@ public abstract class BaseE2eTest {
         clientSecret = optionalEnv("E2E_CLIENT_SECRET", "dev-secret-never-use-in-prod");
         scopes = optionalEnv("E2E_CLIENT_SCOPES", null);
         resourceUrl = optionalEnv("E2E_CLIENT_RESOURCE_BASE_URI","http://localhost:8090");
+        authType = AuthType.valueOf(optionalEnv("E2E_AUTH_TYPE","OAUTH2"));
+
         RestAssured.baseURI = optionalEnv("E2E_BASE_URI", "http://localhost:8090");
         RestAssured.config = RestAssuredConfig.config()
             .encoderConfig(EncoderConfig.encoderConfig().appendDefaultContentCharsetToContentTypeIfUndefined(false));
@@ -57,6 +66,20 @@ public abstract class BaseE2eTest {
 
     public Header getHeader(String requiredResources, Set<String> requiredScopes) {
         return new Header("Authorization", "Bearer " + getAccessToken(requiredResources, requiredScopes));
+    }
+
+
+    public RequestSpecification getRequest(){
+        RequestSpecification requestSpecification  = given().log().ifValidationFails();
+        if (authType.equals(AuthType.OAUTH2)) {
+            return requestSpecification.auth().oauth2(getAccessToken(resourceUrl.endsWith("/") ? resourceUrl : resourceUrl + "/"  ,null));
+        } else {
+            return requestSpecification;
+        }
+    }
+
+    public RequestSpecification getJsonRequest(){
+        return getRequest().accept(ContentType.JSON);
     }
 
     private String getAccessToken(String requiredResources, Set<String> requiredScopes) {

@@ -1,4 +1,4 @@
-package com.dnastack.wes.api;
+package com.dnastack.wes.files;
 
 import java.util.List;
 
