@@ -35,7 +35,7 @@ public class RunFileController {
         return runFileService.getRunFile(runId,path);
     }
 
-    @AuditActionUri("wes:run:files:get-content")
+    @AuditActionUri("wes:runs:files:get-content")
     @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/file", produces = { MediaType.APPLICATION_OCTET_STREAM_VALUE })
     public void streamFileContents(
