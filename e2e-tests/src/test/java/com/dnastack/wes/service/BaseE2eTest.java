@@ -78,6 +78,10 @@ public abstract class BaseE2eTest {
         }
     }
 
+    public RequestSpecification getUnauthenticatedRequest(){
+        return given().log().ifValidationFails();
+    }
+
     public RequestSpecification getJsonRequest(){
         return getRequest().accept(ContentType.JSON);
     }

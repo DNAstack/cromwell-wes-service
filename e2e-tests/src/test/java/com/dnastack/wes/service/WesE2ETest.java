@@ -85,7 +85,7 @@ public class WesE2ETest extends BaseE2eTest {
     public void listingRunsUnauthorizedError() {
         Assumptions.assumeFalse(authType.equals(AuthType.NO_AUTH));
         //@formatter:off
-        getJsonRequest()
+        getUnauthenticatedRequest()
         .get("/ga4gh/wes/v1/runs")
         .then()
             .assertThat()
