@@ -13,7 +13,7 @@
 
     <groupId>com.dnastack</groupId>
     <artifactId>cromwell-wes-service</artifactId>
-    <version>v1.3.0</version>
+    <version>v1.4.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>cromwell-wes-service</name>
