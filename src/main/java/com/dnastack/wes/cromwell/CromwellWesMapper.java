@@ -68,13 +68,21 @@ public class CromwellWesMapper {
         Log workflowLog = Log.builder().startTime(metadataResponse.getStart()).endTime(metadataResponse.getEnd())
             .name(metadataResponse.getWorkflowName()).build();
         if (metadataResponse.getFailures() != null) {
-            workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs", "stderr").build().toString());
+            rewriteWorkflowLogIfNeeded(workflowLog);
         }
         runLog.setRunLog(workflowLog);
         runLog.setTaskLogs(mapTaskCallsToLog(metadataResponse));
         runLog.setRequest(mapMetadataToRunRequest(metadataResponse));
 
         return runLog;
+    }
+
+    private void rewriteWorkflowLogIfNeeded(Log workflowLog) {
+        if (isInRequest()) {
+            workflowLog.setStderr(ServletUriComponentsBuilder.fromCurrentRequest().query(null).pathSegment("logs", "stderr").build().toString());
+        } else {
+            workflowLog.setStderr("logs/stderr");
+        }
     }
 
     private <T> T translatePaths(TypeReference<T> typeReference, T objectToTranslate, List<PathTranslator> translators) {
@@ -117,7 +125,7 @@ public class CromwellWesMapper {
     }
 
     private String getTaskId(String jobId) {
-        return jobId == null ? null: jobId.replaceAll("/", "__");
+        return jobId == null ? null : jobId.replaceAll("/", "__");
     }
 
     private String getTaskName(CromwellMetadataResponse metadataResponse, String callName, CromwellTaskCall taskCall) {
@@ -160,13 +168,19 @@ public class CromwellWesMapper {
     }
 
     public Log mapTaskCallToLog(CromwellTaskCall taskCall) {
-        HttpServletRequest request =
-            ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes()))
-                .getRequest();
-        String path = request.getRequestURI();
-        String stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + taskCall.getTaskId() + "/stdout").toString());
-        String stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + taskCall.getTaskId() + "/stderr").toString());
-
+        String stdout;
+        String stderr;
+        if (isInRequest()){
+            HttpServletRequest request =
+                ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes()))
+                    .getRequest();
+            String path = request.getRequestURI();
+            stdout = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + taskCall.getTaskId() + "/stdout").toString());
+            stderr = XForwardUtil.getExternalPath(request, Paths.get(path, "logs/task/" + taskCall.getTaskId() + "/stderr").toString());
+        } else  {
+            stdout = taskCall.getStdout();
+            stderr = taskCall.getStderr();
+        }
         return Log.builder().name(taskCall.getTaskName()).id(taskCall.getTaskId()).exitCode(taskCall.getReturnCode()).cmd(taskCall.getCommandLine())
             .startTime(taskCall.getStart()).endTime(taskCall.getEnd()).stderr(stderr).stdout(stdout).build();
     }
@@ -210,5 +224,8 @@ public class CromwellWesMapper {
 
     }
 
+    boolean isInRequest(){
+        return RequestContextHolder.getRequestAttributes() != null;
+    }
 
 }
