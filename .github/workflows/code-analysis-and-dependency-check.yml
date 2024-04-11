@@ -1,0 +1,164 @@
+name: Code Analysis and OWASP Dependency Check
+
+on:
+  workflow_call:
+    inputs:
+      with-frontend:
+        required: true
+        type: boolean
+      java-version:
+        required: false
+        type: string
+        default: 17
+      java-distribution:
+        required: false
+        type: string
+        default: corretto
+      additional-tools:
+        required: false
+        type: string
+        default: ""
+      frontend-directory:
+        required: false
+        type: string
+        default: ./angular
+      node-version:
+        required: false
+        type: string
+        default: 16.x
+      code-coverage-enabled:
+        required: false
+        type: string
+        default: false
+      nvd-data-feed-url:
+        required: false
+        type: string
+        default: https://storage.googleapis.com/dnastack-nvd-cve-cache/nvdcve-{0}.json.gz
+    secrets:
+      sonar-host-url:
+        required: true
+      sonar-token:
+        required: true
+      pat-with-read-packages-permission:
+        required: false
+      test-environment-variables:
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  code-analysis-and-dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Set up JDK ${{ inputs.java-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
+      - name: Install additional tools
+        if: ${{ inputs.additional-tools != '' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.additional-tools }}
+      # Sets the m2 settings.xml with the permissions for GitHub server (uses GITHUB_TOKEN under hood)
+      - uses: s4u/maven-settings-action@v2.8.0
+        with:
+          servers: |
+            [{
+              "id": "github",
+              "username": "$GITHUB_ACTOR",
+              "password": "${{ secrets.pat-with-read-packages-permission }}"
+            }]
+          githubServer: false # we are overriding it
+      # Sets the npmrc with the permissions for private GitHub packages
+      - name: Use Node.js ${{ inputs.node-version }}
+        if: ${{ inputs.with-frontend }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: "${{ inputs.frontend-directory }}/package-lock.json"
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@dnastack'
+      - name: Cache SonarQube packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Initialize build (with frontend) # Install Node, and NPM dependencies - so they can be analyzed
+        if: ${{ inputs.with-frontend }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.pat-with-read-packages-permission }}
+        run: mvn -B initialize -P 'install-npm-and-node,resolve-dependencies,!full-build'
+      - name: Initialize build
+        if: ${{ !inputs.with-frontend }}
+        run: mvn -B initialize -P 'install-npm-and-node,!resolve-dependencies,!full-build'
+      - name: Maven Dependency Tree Dependency Submission
+        uses: advanced-security/maven-dependency-submission-action@v3.0.3
+      - name: OWASP Dependency check
+        run: mvn -B verify -DskipTests -DnvdDatafeedUrl=${{ inputs.nvd-data-feed-url }} dependency-check:aggregate -P '!install-npm-and-node,!resolve-dependencies,!full-build'
+      - name: Analyze and upload to SonarQube (with frontend)
+        if: ${{ inputs.with-frontend }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+        run: mvn -B verify -DskipTests -Dsonar.nodejs.executable=./node_installation/node/node sonar:sonar -P '!full-build'
+      - name: Analyze and upload to SonarQube
+        if: ${{ !inputs.with-frontend }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+        run: mvn -B verify -DskipTests sonar:sonar -P '!full-build'
+
+      - name: SonarQube Code coverage
+        if: ${{ inputs.code-coverage-enabled }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+        run: |
+          # If secret env variables provided, source them for integration tests
+          if [[ ! -z "${{ secrets.test-environment-variables }}" ]]
+          then     
+          
+            set -a
+            source <(
+          # Can't indent this part because of heredoc
+          cat << 'EOF'
+          ${{ secrets.test-environment-variables }}
+          EOF
+            )
+            set +a
+          
+          fi
+        
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+      - uses: actions/upload-artifact@v3
+        with:
+          name: report-task.txt
+          path: target/sonar/report-task.txt
+          if-no-files-found: error
+          retention-days: 1
+  quality-gate-check:
+    name: SonarQube Quality Gate check
+    needs: code-analysis-and-dependency-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: report-task.txt
+      - uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5 # Force to fail step after specific time.
+        env:
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+        with:
+          scanMetadataReportFile: ./report-task.txt
