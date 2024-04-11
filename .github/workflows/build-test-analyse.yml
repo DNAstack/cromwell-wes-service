@@ -2,14 +2,14 @@ name: Build, Test & Analyse
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
 
 jobs:
   build-and-test-java-app:
     name: Build & Test Java App
-    uses: ./.github/workflows/build-and-test-java-app.yml
+    uses: ./.github/workflows/build-test-java-app.yml
     with:
       java-version: 21
     secrets:
