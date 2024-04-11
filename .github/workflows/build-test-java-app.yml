@@ -1,0 +1,83 @@
+name: Build & Test Java App
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        required: false
+        type: string
+        default: 17
+      java-distribution:
+        required: false
+        type: string
+        default: corretto
+      additional-tools:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      pat-with-read-packages-permission:
+        required: true
+      test-environment-variables:
+        required: false
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK ${{ inputs.java-version }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
+      - name: Install additional tools
+        if: ${{ inputs.additional-tools != '' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.additional-tools }}
+      - name: Set up Maven's settings.xml
+        uses: s4u/maven-settings-action@v2.8.0
+        with:
+          servers: |
+            [{
+              "id": "github",
+              "username": "$GITHUB_ACTOR",
+              "password": "${{ secrets.pat-with-read-packages-permission }}"
+            }]
+          githubServer: false # we are overriding it
+      - name: Build with Maven (without Angular build)
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        run: |
+          # If secret env variables provided, source them for integration tests
+          if [[ ! -z "${{ secrets.test-environment-variables }}" ]]
+          then
+
+            set -a
+            source <(
+          # Can't indent this part because of heredoc
+          cat << 'EOF'
+          ${{ secrets.test-environment-variables }}
+          EOF
+            )
+            set +a
+
+          fi
+
+          mvn -B --update-snapshots verify -P '!install-npm-and-node,!resolve-dependencies,!full-build'
