@@ -117,11 +117,21 @@ public class AzureBlobStorageClient implements BlobStorageClient {
     @Override
     public boolean isFile(String filePath) {
         try {
-            return getBlobClient(filePath).exists();
+            return BlobUrlParts.parse(filePath).getBlobName() != null;
         } catch (RuntimeException e) {
             return false;
         }
     }
+
+    @Override
+    public boolean doesFileExist(String filePath) {
+        try {
+            return getBlobClient(filePath).exists();
+        } catch (Exception e){
+            return false;
+        }
+    }
+
 
     @Override
     public void deleteFile(String filePath) {
