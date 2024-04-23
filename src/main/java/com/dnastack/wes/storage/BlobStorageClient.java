@@ -22,6 +22,8 @@ public interface BlobStorageClient {
 
     boolean isFile(String filePath);
 
+    boolean doesFileExist(String filePath);
+
     void deleteFile(String filePath) throws IOException;
 
     BlobMetadata getBlobMetadata(String filePath);

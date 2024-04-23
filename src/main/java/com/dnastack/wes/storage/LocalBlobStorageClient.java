@@ -1,6 +1,5 @@
 package com.dnastack.wes.storage;
 
-import com.azure.storage.blob.BlobUrlParts;
 import com.dnastack.wes.shared.ConfigurationException;
 import com.dnastack.wes.shared.NotFoundException;
 import org.springframework.http.HttpRange;
@@ -97,8 +96,19 @@ public class LocalBlobStorageClient implements BlobStorageClient {
     @Override
     public boolean isFile(String filePath) {
         try {
-            return filePath.startsWith("/") && Files.exists(Path.of(filePath));
+            Path path = Paths.get(filePath);
+            return Files.isRegularFile(path);
+
         } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean doesFileExist(String filePath) {
+        try {
+            return Files.exists(Path.of(filePath));
+        } catch (Exception e) {
             return false;
         }
     }

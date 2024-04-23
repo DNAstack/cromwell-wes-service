@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.http.ContentType;
+import io.restassured.path.json.JsonPath;
 import io.restassured.specification.MultiPartSpecification;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
@@ -604,30 +605,29 @@ public class WesE2ETest extends BaseE2eTest {
             @MethodSource("completeWorkflowWithFilesProvider")
             @DisplayName("Delete Run Files for existing run asynchronously returns all deleted files")
             public void deleteRunFilesAsyncReturnsNonEmptyCollection(String runId) {
-                //@formatter:off
-                getJsonRequest()
-                .queryParam("async", true)
-                .delete("/ga4gh/wes/v1/runs/{runId}/files", runId)
-                .then()
+                JsonPath path = getJsonRequest()
+                    .queryParam("async", true)
+                    .delete("/ga4gh/wes/v1/runs/{runId}/files", runId)
+                    .then()
                     .assertThat()
                     .statusCode(200)
                     .body("deletions.size()", greaterThan(0))
-                    .body("deletions.every { it.path != null && it.file_type == 'SECONDARY' && it.state == 'ASYNC' }", equalTo(true));
-                //@formatter:on
+                    .body("deletions.every { it.path != null && it.file_type == 'SECONDARY' && it.state == 'ASYNC' }", equalTo(true))
+                    .extract()
+                    .jsonPath();
+
+                String deletedPath = path.getString("deletions[0].path");
+
 
                 Awaitility.await()
                     .atMost(Duration.ofSeconds(30))
                     .pollInterval(Duration.ofSeconds(5))
                     .untilAsserted(() ->
-                        //@formatter:off
                         getJsonRequest()
-                        .get("/ga4gh/wes/v1/runs/{runId}/files",  runId )
-                        .then()
-                            .assertThat()
-                            .statusCode(200)
-                            .body("runFiles.size()", greaterThan(0))
-                            .body("runFiles.every { it.path != null && it.file_type in ['FINAL', 'LOG'] }", equalTo(true)));
-                        //@formatter:on
+                            .queryParam("path", deletedPath)
+                            .get("/ga4gh/wes/v1/runs/{runId}/file", runId)
+                            .then()
+                            .assertThat().statusCode(404));
             }
 
 
@@ -645,7 +645,7 @@ public class WesE2ETest extends BaseE2eTest {
             }
 
 
-             Stream<Arguments> completeWorkflowWithFilesProvider() throws Exception {
+            Stream<Arguments> completeWorkflowWithFilesProvider() throws Exception {
                 Map<String, String> inputs = Collections.singletonMap("hello_world.name", "Some sort of String");
 
                 //@formatter:off
