@@ -116,10 +116,13 @@ public class RunFileService {
     public RunFileDeletion deleteRunFile(RunFile runFile) {
         try {
             storageClient.deleteFile(runFile.getPath());
-            log.info("Deleting file '{}'", runFile.getPath());
+            log.debug("Deleting file '{}'", runFile.getPath());
             return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.DELETED, null);
-        } catch (IOException e) {
-            log.error("Encountered exception while deleting file '%s': '%s'".formatted(runFile.getPath(), e.getMessage()), e);
+        } catch (NotFoundException e){
+            log.debug("File '{}' was not found, skipping deletion", runFile.getPath());
+            return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.NOT_FOUND, ErrorResponse.builder().errorCode(404).msg(e.getMessage()).build());
+        } catch (Exception e) {
+            log.debug("Encountered exception while deleting file '%s': '%s'".formatted(runFile.getPath(), e.getMessage()), e);
             return new RunFileDeletion(runFile, RunFileDeletion.DeletionState.FAILED, ErrorResponse.builder().errorCode(400).msg(e.getMessage()).build());
         }
     }

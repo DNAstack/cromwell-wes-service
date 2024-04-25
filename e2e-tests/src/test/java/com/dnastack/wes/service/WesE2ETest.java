@@ -596,7 +596,7 @@ public class WesE2ETest extends BaseE2eTest {
                     .assertThat()
                     .statusCode(200)
                     .body("deletions.size()", greaterThan(0))
-                    .body("deletions.every { it.path != null && it.file_type == 'SECONDARY' && it.state == 'DELETED' }", equalTo(true));
+                    .body("deletions.every { it.path != null && it.file_type == 'SECONDARY' && (it.state == 'DELETED' || it.state == 'NOT_FOUND') }", equalTo(true));
                 //@formatter:on
             }
 

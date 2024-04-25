@@ -9,7 +9,8 @@ public record RunFileDeletion(@JsonUnwrapped RunFile runFile, DeletionState stat
     public enum DeletionState {
         DELETED,
         ASYNC,
-        FAILED
+        FAILED,
+        NOT_FOUND
     }
 
 }
