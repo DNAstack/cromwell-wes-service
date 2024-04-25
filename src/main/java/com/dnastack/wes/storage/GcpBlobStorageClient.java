@@ -56,8 +56,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
 
     @Override
     public URL getSignedUrl(String blobUri) {
-        BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
-        Blob blob = client.get(blobId);
+        Blob blob = getBlob(blobUri);
         return blob.signUrl(ttl, TimeUnit.MILLISECONDS, SignUrlOption.httpMethod(HttpMethod.GET), SignUrlOption
             .httpMethod(HttpMethod.HEAD));
     }
@@ -66,14 +65,13 @@ public class GcpBlobStorageClient implements BlobStorageClient {
     public String writeBytes(InputStream blobStream, long size, String stagingFolder, String blobName) throws IOException {
         String blobUri = UriComponentsBuilder.fromUri(stagingLocation).pathSegment(stagingFolder, blobName)
             .toUriString();
-        BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
-        Blob blob = client.get(blobId);
-        if (blob != null && blob.exists()) {
-            throw new IOException("An in the current staging directory with the name: " + blobName
+        if (doesFileExist(blobUri)) {
+            throw new IOException("A blob in the current staging directory with the name: " + blobName
                                   + " already exists. Could not overrwrite file");
         }
 
-        blob = client.create(BlobInfo.newBuilder(blobId).build());
+        BlobId blobId = getBlobId(blobUri);
+        Blob blob = client.create(BlobInfo.newBuilder(blobId).build());
         try (WriteChannel writeChannel = blob.writer(BlobWriteOption.userProject(project))) {
             ByteBuffer byteBuffer = ByteBuffer.allocate(64 * 1024);
             while (blobStream.available() > 0) {
@@ -89,8 +87,7 @@ public class GcpBlobStorageClient implements BlobStorageClient {
 
     @Override
     public void readBytes(OutputStream outputStream, String blobUri, HttpRange httpRange) throws IOException {
-        BlobId blobId = GcpStorageUtils.blobIdFromGsUrl(blobUri);
-        Blob blob = client.get(blobId);
+        Blob blob = getBlob(blobUri);
 
         if (blob == null || !blob.exists()) {
             throw new FileNotFoundException("Could not open open file: " + blobUri + " it does not appear to exist");
@@ -128,26 +125,33 @@ public class GcpBlobStorageClient implements BlobStorageClient {
         return GcpStorageUtils.blobIdFromGsUrl(filePath);
     }
 
+    Blob getBlob(String filePath) {
+        return client.get(getBlobId(filePath));
+    }
+
 
     @Override
     public boolean doesFileExist(String filePath) {
         try {
-            return client.get(GcpStorageUtils.blobIdFromGsUrl(filePath)).exists();
-        } catch (Exception e){
+            return getBlob(filePath).exists();
+        } catch (Exception e) {
             return false;
-
         }
     }
 
     @Override
     public void deleteFile(String filePath) {
-        client.delete(GcpStorageUtils.blobIdFromGsUrl(filePath));
+        if (!doesFileExist(filePath)) {
+            throw new NotFoundException("File: " + filePath + ", does does not exist");
+        }
+
+        client.delete(getBlobId(filePath));
     }
 
     @Override
     public BlobMetadata getBlobMetadata(String filePath) {
-        Blob blob = client.get(GcpStorageUtils.blobIdFromGsUrl(filePath));
-        if (Boolean.FALSE.equals(blob.exists())) {
+        Blob blob = getBlob(filePath);
+        if (blob == null || Boolean.FALSE.equals(blob.exists())) {
             throw new NotFoundException("File: " + filePath + ", does does not exist");
         }
 
