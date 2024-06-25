@@ -29,12 +29,13 @@ import static org.hamcrest.Matchers.*;
 @DisplayName("WES tests")
 public class WesE2ETest extends BaseE2eTest {
 
+    static final Duration maxWait = Duration.parse(optionalEnv("E2E_MAX_WORKFLOW_WAIT_TIME","PT10M"));
     static final List<String> TERMINAL_STATES = List.of("COMPLETE", "EXECUTOR_ERROR", "SYSTEM_ERROR", "CANCELED");
     ConditionFactory pollInterval = with()
         .ignoreException(AssertionError.class)
         .pollDelay(Duration.ofSeconds(2)).and()
         .pollInterval(Duration.ofSeconds(3))
-        .atMost(Duration.ofMinutes(5));
+        .atMost(maxWait);
     private static final WdlSupplier supplier = new WdlSupplier();
 
     @Test
