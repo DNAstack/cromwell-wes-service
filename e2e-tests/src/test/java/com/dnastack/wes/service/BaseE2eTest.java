@@ -1,5 +1,6 @@
 package com.dnastack.wes.service;
 
+import com.dnastack.wes.service.util.EnvUtil;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.EncoderConfig;
@@ -25,51 +26,35 @@ public abstract class BaseE2eTest {
     protected static String scopes;
     protected static AuthType authType;
 
-    enum AuthType {
+    public enum AuthType {
         NO_AUTH,
         OAUTH2,
     }
 
     @BeforeAll
     public static void setUpAllForAllTests() throws Exception {
-        tokenUri = optionalEnv("E2E_TOKEN_URI","http://localhost:8081/oauth/token");
-        clientId = optionalEnv("E2E_CLIENT_ID", "wes-service-e2e-test");
-        clientSecret = optionalEnv("E2E_CLIENT_SECRET", "dev-secret-never-use-in-prod");
-        scopes = optionalEnv("E2E_CLIENT_SCOPES", null);
-        resourceUrl = optionalEnv("E2E_CLIENT_RESOURCE_BASE_URI","http://localhost:8090");
-        authType = AuthType.valueOf(optionalEnv("E2E_AUTH_TYPE","OAUTH2"));
+        tokenUri = EnvUtil.optionalEnv("E2E_TOKEN_URI","http://localhost:8081/oauth/token");
+        clientId = EnvUtil.optionalEnv("E2E_CLIENT_ID", "wes-service-e2e-test");
+        clientSecret = EnvUtil.optionalEnv("E2E_CLIENT_SECRET", "dev-secret-never-use-in-prod");
+        scopes = EnvUtil.optionalEnv("E2E_CLIENT_SCOPES", null);
+        resourceUrl = EnvUtil.optionalEnv("E2E_CLIENT_RESOURCE_BASE_URI","http://localhost:8090");
+        authType = AuthType.valueOf(EnvUtil.optionalEnv("E2E_AUTH_TYPE","OAUTH2"));
 
-        RestAssured.baseURI = optionalEnv("E2E_BASE_URI", "http://localhost:8090");
+        RestAssured.baseURI = EnvUtil.optionalEnv("E2E_BASE_URI", "http://localhost:8090");
         RestAssured.config = RestAssuredConfig.config()
             .encoderConfig(EncoderConfig.encoderConfig().appendDefaultContentCharsetToContentTypeIfUndefined(false));
     }
 
-    public static String requiredEnv(String name) {
-        String val = System.getenv(name);
-        if (val == null) {
-            fail("Environment variable `" + name + "` is required");
-        }
-        return val;
-    }
-
-    public static String optionalEnv(String name, String defaultValue) {
-        String val = System.getenv(name);
-        if (val == null) {
-            return defaultValue;
-        }
-        return val;
-    }
-
-    public Header getHeader(String requiredResource) {
+    public static Header getHeader(String requiredResource) {
         return getHeader(requiredResource, null);
     }
 
-    public Header getHeader(String requiredResources, Set<String> requiredScopes) {
+    public static Header getHeader(String requiredResources, Set<String> requiredScopes) {
         return new Header("Authorization", "Bearer " + getAccessToken(requiredResources, requiredScopes));
     }
 
 
-    public RequestSpecification getRequest(){
+    public static RequestSpecification getRequest(){
         RequestSpecification requestSpecification  = given().log().ifValidationFails();
         if (authType.equals(AuthType.OAUTH2)) {
             return requestSpecification.auth().oauth2(getAccessToken(resourceUrl.endsWith("/") ? resourceUrl : resourceUrl + "/"  ,null));
@@ -78,15 +63,15 @@ public abstract class BaseE2eTest {
         }
     }
 
-    public RequestSpecification getUnauthenticatedRequest(){
+    public static RequestSpecification getUnauthenticatedRequest(){
         return given().log().ifValidationFails();
     }
 
-    public RequestSpecification getJsonRequest(){
+    public static RequestSpecification getJsonRequest(){
         return getRequest().accept(ContentType.JSON);
     }
 
-    private String getAccessToken(String requiredResources, Set<String> requiredScopes) {
+    private static String getAccessToken(String requiredResources, Set<String> requiredScopes) {
         Objects.requireNonNull(requiredResources);
 
         RequestSpecification specification = new RequestSpecBuilder()
