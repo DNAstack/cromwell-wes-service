@@ -48,7 +48,7 @@
         <!-- Other -->
         <spring-cloud.version>2023.0.0</spring-cloud.version>
         <springdoc-openapi.version>2.3.0</springdoc-openapi.version>
-        <logback.version>1.4.5</logback.version>
+        <logback.version>1.5.18</logback.version>
         <logback.contrib.version>0.1.5</logback.contrib.version>
         <jjwt.version>0.12.3</jjwt.version>
         <okhttp3.version>4.12.0</okhttp3.version>
