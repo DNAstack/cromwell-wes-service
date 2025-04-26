@@ -141,7 +141,7 @@ jobs:
           fi
         
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: report-task.txt
           path: target/sonar/report-task.txt
