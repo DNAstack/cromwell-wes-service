@@ -46,7 +46,7 @@
         <gcloud.storage.version>2.20.1</gcloud.storage.version>
         <gcloud.auth.version>1.16.0</gcloud.auth.version>
         <!-- Other -->
-        <spring-cloud.version>2023.0.0</spring-cloud.version>
+        <spring-cloud.version>2024.0.1</spring-cloud.version>
         <springdoc-openapi.version>2.3.0</springdoc-openapi.version>
         <logback.version>1.5.18</logback.version>
         <logback.contrib.version>0.1.5</logback.contrib.version>
