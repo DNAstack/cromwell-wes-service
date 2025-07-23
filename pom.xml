@@ -32,7 +32,7 @@
         <maven.go-offline.plugin.version>1.2.8</maven.go-offline.plugin.version>
         <!-- Sonar: https://jeremylong.github.io/DependencyCheck/dependency-check-maven/configuration.html -->
         <!-- Note: sonar plugin picks up sonar.dependencyCheck.* properties -->
-        <sonar.dependency-check.plugin.version>9.0.9</sonar.dependency-check.plugin.version>
+        <sonar.dependency-check.plugin.version>11.1.1</sonar.dependency-check.plugin.version>
         <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json</sonar.dependencyCheck.jsonReportPath>
         <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html</sonar.dependencyCheck.htmlReportPath>
         <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
