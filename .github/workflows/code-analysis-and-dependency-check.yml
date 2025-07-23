@@ -152,7 +152,7 @@ jobs:
     needs: code-analysis-and-dependency-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: report-task.txt
       - uses: sonarsource/sonarqube-quality-gate-action@master
