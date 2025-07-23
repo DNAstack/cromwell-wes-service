@@ -52,11 +52,11 @@ and can be used as an engine for running workflows with [DNAstack Workbench](htt
 You can get up and running with the WES Service locally for testing in minutes.
 
 1. Download the latest [cromwell release](https://github.com/broadinstitute/cromwell/releases/latest)  and start
-   Cromwell in server mode on port 8000.
+   Cromwell in server mode on port 8100.
    ```bash
    CROMWELL_VERSION=85
    wget https://github.com/broadinstitute/cromwell/releases/download/${CROMWELL_VERSION}/cromwell-${CROMWELL_VERSION}.jar
-   java -jar cromwell-${CROMWELL_VERSION}.jar server
+   java -jar cromwell-${CROMWELL_VERSION}.jar -Dwebservice.port=8100 server
    ```
 2. Build the WES Service or download the jar file from
    the [latest release](https://github.com/DNAstack/cromwell-wes-service/releases/latest).
@@ -64,9 +64,11 @@ You can get up and running with the WES Service locally for testing in minutes.
    WES_SERVICE_VERSION=1.0.0
    wget https://github.com/DNAstack/cromwell-wes-service/releases/${WES_SERVICE_VERSION}/cromwell-wes-service-${WES_SERVICE_VERSION}.jar
    ```
-3. Start the WES Service in `no-auth` mode allowing unrestricted access to the API locally
+3. Start the WES Service using profiles:
+    * `no-auth` allowing unrestricted access to the API locally
+    * `local-dev` enables debug logging, and uses Cromwell on port 8100 instead of 8000 to avoid conflict with data-lake-frontend
    ```bash
-   java -Dspring.profiles.active=no-auth -jar cromwell-wes-service-${WES_SERVICE_VERSION}.jar
+   java -Dspring.profiles.active="no-auth,local-dev" -jar cromwell-wes-service-${WES_SERVICE_VERSION}.jar
    ```
 4. Submit a test workflow using curl. If the run submission is successful, the response should have a json object with a
    single
@@ -243,13 +245,12 @@ You can see an example nginx configuration using mTLS in front of the WES servic
 ## Configuring Cromwell
 
 The WES service can be layered on top of any cromwell API (only versions greater than 38 have been tested) to provide a
-fully featured WES API. By default, a cromwell instance on localhost running on port 8000 is expected however this can
-be
-easily configured through environment variables.
+fully featured WES API. By default, a cromwell instance on localhost running on port 8100 is expected however this can
+be easily configured through environment variables.
 
 **Configuration**
 
-`WES_CROMWELL_URL` (`http://localhost:8000`)
+`WES_CROMWELL_URL` (`http://localhost:8100`)
 
 The URI of the cromwell instance to connect to
 
