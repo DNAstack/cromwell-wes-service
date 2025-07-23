@@ -240,7 +240,10 @@ spring:
   config:
     activate:
       on-profile: "local-dev"
-
+wes:
+  cromwell:
+    # Locally, run Cromwell on port 8100 instead of 8000 to avoid conflict with DLFE
+    url: http://localhost:8100
 logging:
   level:
     com.dnastack: DEBUG

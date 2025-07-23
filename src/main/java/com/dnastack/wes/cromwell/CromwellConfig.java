@@ -18,7 +18,7 @@ public class CromwellConfig {
     /**
      * The root url of the cromwell API.
      */
-    String url = "http://localhost:8100";
+    String url = "http://localhost:8000";
 
     /**
      * Provide a username to use for basic Auth

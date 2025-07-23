@@ -64,9 +64,11 @@ You can get up and running with the WES Service locally for testing in minutes.
    WES_SERVICE_VERSION=1.0.0
    wget https://github.com/DNAstack/cromwell-wes-service/releases/${WES_SERVICE_VERSION}/cromwell-wes-service-${WES_SERVICE_VERSION}.jar
    ```
-3. Start the WES Service in `no-auth` mode allowing unrestricted access to the API locally
+3. Start the WES Service using profiles:
+    * `no-auth` allowing unrestricted access to the API locally
+    * `local-dev` enables debug logging, and uses Cromwell on port 8100 instead of 8000 to avoid conflict with data-lake-frontend
    ```bash
-   java -Dspring.profiles.active=no-auth -jar cromwell-wes-service-${WES_SERVICE_VERSION}.jar
+   java -Dspring.profiles.active="no-auth,local-dev" -jar cromwell-wes-service-${WES_SERVICE_VERSION}.jar
    ```
 4. Submit a test workflow using curl. If the run submission is successful, the response should have a json object with a
    single
