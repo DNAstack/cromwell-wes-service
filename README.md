@@ -56,7 +56,7 @@ You can get up and running with the WES Service locally for testing in minutes.
    ```bash
    CROMWELL_VERSION=85
    wget https://github.com/broadinstitute/cromwell/releases/download/${CROMWELL_VERSION}/cromwell-${CROMWELL_VERSION}.jar
-   java -jar cromwell-${CROMWELL_VERSION}.jar -Dwebservice.port=8100 server
+   java -Dwebservice.port=8100 -jar cromwell-${CROMWELL_VERSION}.jar server
    ```
 2. Build the WES Service or download the jar file from
    the [latest release](https://github.com/DNAstack/cromwell-wes-service/releases/latest).
