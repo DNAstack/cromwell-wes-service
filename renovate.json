@@ -4,7 +4,7 @@
     "config:best-practices",
     ":automergeRequireAllStatusChecks",
     "mergeConfidence:all-badges",
-    "npm:unpublishSafe",
+    "security:minimumReleaseAgeNpm",
     ":dependencyDashboard"
   ],
   "minimumReleaseAge": "7 days",
@@ -16,37 +16,62 @@
   "commitMessagePrefix": "[CU-86b4umhm1]",
   "packageRules": [
     {
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
-      "labels": ["Major"]
+      "labels": [
+        "Major"
+      ]
     },
     {
-      "matchDepTypes": ["dependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepTypes": [
+        "dependencies"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "automerge": true,
       "minimumReleaseAge": "14 days"
     },
     {
-      "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "automerge": true,
       "minimumReleaseAge": "14 days"
     },
     {
-      "matchCategories": ["java"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchCategories": [
+        "java"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "automerge": true,
       "minimumReleaseAge": "14 days"
     },
     {
-      "matchPackageNames": ["dnastack-development-tools"],
+      "matchPackageNames": [
+        "dnastack-development-tools"
+      ],
       "automerge": true,
       "minimumReleaseAge": "1 hour",
-      "labels": ["internal-infrastructure"]
+      "labels": [
+        "internal-infrastructure"
+      ]
     }
   ],
   "vulnerabilityAlerts": {
-    "labels": ["renovate-security"],
+    "labels": [
+      "renovate-security"
+    ],
     "enabled": true
   }
 }
