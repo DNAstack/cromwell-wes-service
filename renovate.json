@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":automergeRequireAllStatusChecks",
+    "mergeConfidence:all-badges",
+    "npm:unpublishSafe",
+    ":dependencyDashboard"
+  ],
+  "minimumReleaseAge": "7 days",
+  "osvVulnerabilityAlerts": true,
+  "ignoreTests": false,
+  "automergeStrategy": "merge-commit",
+  "platformAutomerge": false,
+  "configMigration": true,
+  "commitMessagePrefix": "[CU-86b4umhm1]",
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["Major"]
+    },
+    {
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "matchCategories": ["java"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "matchPackageNames": ["dnastack-development-tools"],
+      "automerge": true,
+      "minimumReleaseAge": "1 hour",
+      "labels": ["internal-infrastructure"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["renovate-security"],
+    "enabled": true
+  }
+}
