@@ -4,7 +4,7 @@
     "config:best-practices",
     ":automergeRequireAllStatusChecks",
     "mergeConfidence:all-badges",
-    "npm:unpublishSafe",
+    "security:minimumReleaseAgeNpm",
     ":dependencyDashboard"
   ],
   "minimumReleaseAge": "7 days",
