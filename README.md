@@ -54,7 +54,7 @@ You can get up and running with the WES Service locally for testing in minutes.
 1. Download the latest [cromwell release](https://github.com/broadinstitute/cromwell/releases/latest)  and start
    Cromwell in server mode on port 8100.
    ```bash
-   CROMWELL_VERSION=85
+   CROMWELL_VERSION=89
    wget https://github.com/broadinstitute/cromwell/releases/download/${CROMWELL_VERSION}/cromwell-${CROMWELL_VERSION}.jar
    java -Dwebservice.port=8100 -jar cromwell-${CROMWELL_VERSION}.jar server
    ```

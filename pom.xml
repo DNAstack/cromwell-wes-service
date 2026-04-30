@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.4</version>
+        <version>3.5.14</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -43,10 +43,10 @@
         <!-- SDKs and APIs -->
         <azurestorage.version>12.9.0</azurestorage.version>
         <azure-sdk.version>1.2.8</azure-sdk.version>
-        <gcloud.storage.version>2.20.1</gcloud.storage.version>
-        <gcloud.auth.version>1.16.0</gcloud.auth.version>
+        <gcloud.storage.version>2.67.0</gcloud.storage.version>
+        <gcloud.auth.version>1.46.0</gcloud.auth.version>
         <!-- Other -->
-        <spring-cloud.version>2024.0.1</spring-cloud.version>
+        <spring-cloud.version>2025.0.2</spring-cloud.version>
         <springdoc-openapi.version>2.3.0</springdoc-openapi.version>
         <logback.version>1.5.18</logback.version>
         <logback.contrib.version>0.1.5</logback.contrib.version>
