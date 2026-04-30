@@ -16,9 +16,6 @@ on:
         required: false
         type: string
         default: 'pom.xml e2e-tests/pom.xml'
-    secrets:
-      pat-with-read-packages-permission:
-        required: false
 
 jobs:
   sca:
@@ -34,18 +31,6 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
           cache: maven
-
-      - name: Set up Maven's settings.xml
-        if: ${{ inputs.java-version != '' }}
-        uses: s4u/maven-settings-action@894661b3ddae382f1ae8edbeab60987e08cf0788 # v4.0.0
-        with:
-          servers: |
-            [{
-              "id": "github",
-              "username": "$GITHUB_ACTOR",
-              "password": "${{ secrets.pat-with-read-packages-permission }}"
-            }]
-          githubServer: false
 
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6

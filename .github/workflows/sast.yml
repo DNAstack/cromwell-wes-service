@@ -20,8 +20,6 @@ on:
         required: true
       sonar-token:
         required: true
-      pat-with-read-packages-permission:
-        required: false
 
 jobs:
   sast:
@@ -37,15 +35,6 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
           cache: maven
-      - uses: s4u/maven-settings-action@894661b3ddae382f1ae8edbeab60987e08cf0788 # v4.0.0
-        with:
-          servers: |
-            [{
-              "id": "github",
-              "username": "$GITHUB_ACTOR",
-              "password": "${{ secrets.pat-with-read-packages-permission }}"
-            }]
-          githubServer: false
       - name: Cache SonarQube packages
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
         with:

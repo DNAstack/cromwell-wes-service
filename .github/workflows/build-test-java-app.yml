@@ -11,9 +11,6 @@ on:
         required: false
         type: string
         default: corretto
-    secrets:
-      pat-with-read-packages-permission:
-        required: true
 
 jobs:
   build-and-test:
@@ -26,15 +23,5 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: ${{ inputs.java-distribution }}
           cache: maven
-      - name: Set up Maven's settings.xml
-        uses: s4u/maven-settings-action@894661b3ddae382f1ae8edbeab60987e08cf0788 # v4.0.0
-        with:
-          servers: |
-            [{
-              "id": "github",
-              "username": "$GITHUB_ACTOR",
-              "password": "${{ secrets.pat-with-read-packages-permission }}"
-            }]
-          githubServer: false
       - name: Build with Maven
         run: mvn -B --update-snapshots verify
