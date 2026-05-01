@@ -39,7 +39,7 @@
         <!-- DNAstack Libs -->
         <dnastack.token-validator.version>1.0.11</dnastack.token-validator.version>
         <dnastack.spring-boot-audit-event-logger.version>1.0.17</dnastack.spring-boot-audit-event-logger.version>
-        <dnastack.logback-extensions.version>1.0.0</dnastack.logback-extensions.version>
+        <dnastack.logback-extensions.version>1.0.1</dnastack.logback-extensions.version>
         <!-- SDKs and APIs -->
         <azurestorage.version>12.9.0</azurestorage.version>
         <azure-sdk.version>1.2.8</azure-sdk.version>
