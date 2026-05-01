@@ -38,7 +38,7 @@
         <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
         <!-- DNAstack Libs -->
         <dnastack.token-validator.version>1.0.11</dnastack.token-validator.version>
-        <dnastack.spring-boot-audit-event-logger.version>1.0.17</dnastack.spring-boot-audit-event-logger.version>
+        <dnastack.spring-boot-audit-event-logger.version>1.0.23</dnastack.spring-boot-audit-event-logger.version>
         <dnastack.logback-extensions.version>1.0.0</dnastack.logback-extensions.version>
         <!-- SDKs and APIs -->
         <azurestorage.version>12.9.0</azurestorage.version>
