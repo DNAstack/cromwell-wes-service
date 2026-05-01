@@ -334,7 +334,7 @@
                         <dynamicDependency>
                             <groupId>org.codehaus.plexus</groupId>
                             <artifactId>plexus-utils</artifactId>
-                            <version>1.1</version>
+                            <version>3.6.1</version>
                             <repositoryType>MAIN</repositoryType>
                         </dynamicDependency>
                     </dynamicDependencies>
