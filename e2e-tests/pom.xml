@@ -19,7 +19,7 @@
         <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
         <maven.go-offline.plugin.version>1.2.8</maven.go-offline.plugin.version>
         <!-- DNAstack Libs -->
-        <dnastack.actuator-e2e-test.version>1.0.4</dnastack.actuator-e2e-test.version>
+        <dnastack.actuator-e2e-test.version>1.0.5</dnastack.actuator-e2e-test.version>
         <!-- Other -->
         <lombok.version>1.18.30</lombok.version>
         <junit.version>5.10.1</junit.version>
