@@ -1,0 +1,10 @@
+# Gitleaks ignore file for cromwell-wes-service
+# Add fingerprints (one per line) for findings confirmed as false positives.
+# Format: <file>:<rule-id>:<line-number> or the fingerprint printed by gitleaks.
+
+# Test fixture: JWT signing key used only in e2e tests.
+e2e-tests/src/test/resources/com/dnastack/wes/service/jwt.pem:private-key:1
+
+# URL-encoded pagination query string in README documentation
+# (decodes to "page=2&pageSize=5", not a secret).
+README.md:generic-api-key:609

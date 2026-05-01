@@ -1,0 +1,8 @@
+# Trivy ignore file for known/accepted vulnerabilities.
+# See: https://trivy.dev/docs/configuration/filtering/#trivyignoreyaml
+#
+# Format:
+#   vulnerabilities:
+#     - id: CVE-XXXX-XXXXX
+#       reason: "Why this is acceptable"
+#       expired_at: 2026-XX-XXT00:00:00Z

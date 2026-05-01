@@ -1,0 +1,13 @@
+# Gitleaks configuration for cromwell-wes-service
+# Uses default rules with project-specific path exclusions.
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+    '''target/''',
+    '''node_modules/''',
+    '''node_installation/''',
+    '''cromwell-executions/''',
+]

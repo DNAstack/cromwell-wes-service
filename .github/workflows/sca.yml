@@ -1,0 +1,62 @@
+name: SCA - Dependency Vulnerability Scan
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: 'Java version for Maven SBOM generation. Enables full transitive dependency scanning via CycloneDX.'
+        required: false
+        type: string
+        default: ''
+      java-distribution:
+        required: false
+        type: string
+        default: corretto
+      maven-pom-files:
+        description: 'Space-separated pom.xml paths for SBOM generation. Default covers standard app layout.'
+        required: false
+        type: string
+        default: 'pom.xml e2e-tests/pom.xml'
+
+jobs:
+  sca:
+    name: SCA (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Set up JDK ${{ inputs.java-version }}
+        if: ${{ inputs.java-version != '' }}
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          cache: maven
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.69.3
+
+      - name: Generate and scan Maven SBOMs
+        if: ${{ inputs.java-version != '' }}
+        run: |
+          MVN_CMD="mvn"
+          if [ -f "./mvnw" ]; then MVN_CMD="./mvnw"; fi
+          exit_code=0
+          for pom in ${{ inputs.maven-pom-files }}; do
+            if [ -f "$pom" ]; then
+              dir=$(dirname "$pom")
+              echo "::group::Generating SBOM for $pom"
+              $MVN_CMD -f "$pom" org.cyclonedx:cyclonedx-maven-plugin:makeBom -B -q
+              echo "::endgroup::"
+              trivy sbom "$dir/target/bom.json" --severity CRITICAL,HIGH --exit-code 1 --ignorefile .trivyignore.yaml --quiet || exit_code=$?
+            fi
+          done
+          exit $exit_code
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: 'true'
+
+      - name: Scan filesystem
+        run: trivy fs . --severity CRITICAL,HIGH --exit-code 1 --scanners vuln --ignorefile .trivyignore.yaml --quiet
+        env:
+          TRIVY_DISABLE_VEX_NOTICE: 'true'

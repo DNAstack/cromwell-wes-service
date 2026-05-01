@@ -6,22 +6,37 @@ on:
   pull_request:
     branches: [ main ]
 
+# This repo is public, but dnastack-development-tools is private. GitHub Actions
+# doesn't allow public repos to call reusable workflows from private repos, so we
+# vendor local copies of the workflows here. Their contents are kept in sync with
+# DNAstack/dnastack-development-tools/.github/workflows/<name>.yml@<pinned SHA>
+# and trimmed to what this repo needs.
+
 jobs:
   build-and-test-java-app:
     name: Build & Test Java App
     uses: ./.github/workflows/build-test-java-app.yml
     with:
       java-version: 21
-    secrets:
-      pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
-  code-analysis-and-dependency-check:
-    name: Code Analysis and OWASP Dependency Check
-    uses: ./.github/workflows/code-analysis-and-dependency-check.yml
+
+  sast:
+    name: SAST (SonarQube)
+    uses: ./.github/workflows/sast.yml
     with:
-      with-frontend: false
       java-version: 21
       code-coverage-enabled: true
     secrets:
-      pat-with-read-packages-permission: ${{ secrets.AUTH_TOKEN }}
       sonar-token: ${{ secrets.SONAR_TOKEN }}
       sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+
+  sca:
+    name: SCA (Trivy)
+    uses: ./.github/workflows/sca.yml
+    with:
+      java-version: 21
+
+  secrets-detection:
+    name: Secrets Detection (Gitleaks)
+    uses: ./.github/workflows/secrets-detection.yml
+    secrets:
+      gitleaks-license: ${{ secrets.GITLEAKS_LICENSE }}
