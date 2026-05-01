@@ -134,6 +134,18 @@
         </dependency>
     </dependencies>
 
+    <repositories>
+        <!--
+          Private dependencies hosted in our private github repo are resolved using credentials pulled from settings.xml
+          in cloud build environment. ID of repository must match ID of server in settings.xml
+        -->
+        <repository>
+            <id>github</id>
+            <name>DNAstack Public Github Packages</name>
+            <url>https://maven.pkg.github.com/DNAstack/dnastack-packages</url>
+        </repository>
+    </repositories>
+
     <build>
         <plugins>
             <plugin>
