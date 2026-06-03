@@ -1,7 +1,7 @@
 package com.dnastack.wes.security;
 
-import brave.Tracing;
 import com.dnastack.auth.JwtTokenParser;
+import io.micrometer.observation.ObservationRegistry;
 import com.dnastack.auth.PermissionChecker;
 import com.dnastack.auth.PermissionCheckerFactory;
 import com.dnastack.auth.model.IssuerInfo;
@@ -40,10 +40,10 @@ public class PassportSecurityConfiguration {
         List<IssuerInfo> allowedIssuers,
         @Value("${wes.auth.validator.policy-evaluation-requester}") String policyEvaluationRequester,
         @Value("${wes.auth.validator.policy-evaluation-uri}") String policyEvaluationUri,
-        Tracing tracing,
+        ObservationRegistry observationRegistry,
         @Qualifier("com.dnastack.auth.token-validator-connection-pool") ConnectionPool connectionPool
     ) {
-        return PermissionCheckerFactory.create(allowedIssuers, policyEvaluationRequester, policyEvaluationUri, tracing, connectionPool);
+        return PermissionCheckerFactory.create(allowedIssuers, policyEvaluationRequester, policyEvaluationUri, observationRegistry, connectionPool);
     }
 
     @Bean
