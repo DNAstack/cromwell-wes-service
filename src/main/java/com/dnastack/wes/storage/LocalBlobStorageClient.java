@@ -83,6 +83,7 @@ public class LocalBlobStorageClient implements BlobStorageClient {
         long rangeEnd = fileToRead.length();
         if (httpRange != null) {
             rangeStart = httpRange.getRangeStart(fileToRead.length());
+            rangeEnd = httpRange.getRangeEnd(fileToRead.length()) + 1;
         }
 
         try (FileChannel channel = new RandomAccessFile(fileToRead, "r").getChannel()) {
