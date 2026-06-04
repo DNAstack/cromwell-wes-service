@@ -56,7 +56,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-<dependency>
+            <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-sdk-bom</artifactId>
                 <version>${azure-sdk.version}</version>
