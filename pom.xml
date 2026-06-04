@@ -5,10 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.14</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.dnastack.starter</groupId>
+        <artifactId>spring-boot-parent</artifactId>
+        <version>4.0.0</version>
+        <relativePath/>
     </parent>
 
     <groupId>com.dnastack</groupId>
@@ -36,10 +36,6 @@
         <sonar.dependencyCheck.jsonReportPath>target/dependency-check-report.json</sonar.dependencyCheck.jsonReportPath>
         <sonar.dependencyCheck.htmlReportPath>target/dependency-check-report.html</sonar.dependencyCheck.htmlReportPath>
         <sonar.dependencyCheck.summarize>true</sonar.dependencyCheck.summarize>
-        <!-- DNAstack Libs -->
-        <dnastack.token-validator.version>1.0.11</dnastack.token-validator.version>
-        <dnastack.spring-boot-audit-event-logger.version>1.0.17</dnastack.spring-boot-audit-event-logger.version>
-        <dnastack.logback-extensions.version>1.0.0</dnastack.logback-extensions.version>
         <!-- SDKs and APIs -->
         <azurestorage.version>12.9.0</azurestorage.version>
         <azure-sdk.version>1.2.8</azure-sdk.version>
@@ -47,11 +43,7 @@
         <gcloud.auth.version>1.46.0</gcloud.auth.version>
         <!-- Other -->
         <spring-cloud.version>2025.0.2</spring-cloud.version>
-        <springdoc-openapi.version>2.3.0</springdoc-openapi.version>
-        <logback.version>1.5.18</logback.version>
-        <logback.contrib.version>0.1.5</logback.contrib.version>
-        <jjwt.version>0.12.3</jjwt.version>
-        <okhttp3.version>4.12.0</okhttp3.version>
+        <!-- feign-form is not managed by spring-cloud-dependencies BOM -->
         <feign-form.version>3.8.0</feign-form.version>
     </properties>
 
@@ -63,16 +55,6 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>${logback.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-core</artifactId>
-                <version>${logback.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.azure</groupId>
@@ -103,17 +85,14 @@
         <dependency>
             <groupId>com.dnastack</groupId>
             <artifactId>dnastack-token-validator</artifactId>
-            <version>${dnastack.token-validator.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dnastack</groupId>
             <artifactId>logback-extensions</artifactId>
-            <version>${dnastack.logback-extensions.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dnastack</groupId>
             <artifactId>spring-boot-audit-event-logger</artifactId>
-            <version>${dnastack.spring-boot-audit-event-logger.version}</version>
         </dependency>
 
         <!-- Spring -->
@@ -142,19 +121,17 @@
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
         </dependency>
 
         <!-- Springdoc -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc-openapi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
-            <version>${springdoc-openapi.version}</version>
         </dependency>
 
         <!--Supporting-->
@@ -165,7 +142,6 @@
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>${okhttp3.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -174,14 +150,6 @@
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-openfeign-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
         <dependency>
             <groupId>io.github.openfeign.form</groupId>
@@ -205,13 +173,11 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -233,7 +199,6 @@
         <dependency>
             <groupId>ch.qos.logback.contrib</groupId>
             <artifactId>logback-jackson</artifactId>
-            <version>${logback.contrib.version}</version>
         </dependency>
 
         <!-- Cloud Dependencies -->

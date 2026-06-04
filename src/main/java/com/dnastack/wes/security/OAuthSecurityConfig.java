@@ -1,11 +1,11 @@
 package com.dnastack.wes.security;
 
-import brave.Tracing;
 import com.dnastack.auth.JwtTokenParser;
 import com.dnastack.auth.JwtTokenParserFactory;
 import com.dnastack.auth.client.OidcHttpClient;
 import com.dnastack.auth.client.TokenActionsHttpClient;
 import com.dnastack.auth.client.TokenActionsHttpClientFactory;
+import io.micrometer.observation.ObservationRegistry;
 import com.dnastack.auth.keyresolver.CachingIssuerPubKeyJwksResolver;
 import com.dnastack.auth.keyresolver.IssuerPubKeyStaticResolver;
 import com.dnastack.auth.model.IssuerInfo;
@@ -85,7 +85,7 @@ public class OAuthSecurityConfig {
 
     @Bean
     public List<IssuerInfo> allowedIssuers(
-        AuthConfig authConfig, Tracing tracing, @Qualifier("com.dnastack.auth.token-validator-connection-pool") ConnectionPool connectionPool
+        AuthConfig authConfig, ObservationRegistry observationRegistry, @Qualifier("com.dnastack.auth.token-validator-connection-pool") ConnectionPool connectionPool
     ) {
         final AuthConfig.IssuerConfig issuerConfig = authConfig.getTokenIssuer();
         final String issuerUri = issuerConfig.getIssuerUri();
@@ -95,15 +95,15 @@ public class OAuthSecurityConfig {
             .allowedResources(issuerConfig.getResources())
             .publicKeyResolver(issuerConfig.getRsaPublicKey() != null
                 ? new IssuerPubKeyStaticResolver(issuerUri, issuerConfig.getRsaPublicKey())
-                : CachingIssuerPubKeyJwksResolver.create(issuerUri, new OidcHttpClient(tracing, connectionPool)))
+                : CachingIssuerPubKeyJwksResolver.create(issuerUri, new OidcHttpClient(observationRegistry, connectionPool)))
             .build());
     }
 
     @Bean
     public JwtTokenParser tokenParser(
-        List<IssuerInfo> allowedIssuers, Tracing tracing, @Qualifier("com.dnastack.auth.token-validator-connection-pool") ConnectionPool connectionPool
+        List<IssuerInfo> allowedIssuers, ObservationRegistry observationRegistry, @Qualifier("com.dnastack.auth.token-validator-connection-pool") ConnectionPool connectionPool
     ) {
-        final TokenActionsHttpClient tokenActionsHttpClient = TokenActionsHttpClientFactory.create(tracing, connectionPool);
+        final TokenActionsHttpClient tokenActionsHttpClient = TokenActionsHttpClientFactory.create(observationRegistry, connectionPool);
         return JwtTokenParserFactory.create(allowedIssuers, tokenActionsHttpClient);
     }
 
