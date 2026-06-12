@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+function validate_arg() {
+  local name=${1}
+  local value=${2}
+
+  if [ -z ${value} ]; then
+    echo "Must specify value for ${name}." >&2
+    exit 1
+  else
+    echo -n ${value}
+  fi
+}
+
+set -e
+set -x
+
+# This script runs the maven build, including unit tests, assembles a fat jar with
+# embedded web server, and packages the resulting thing in a Docker image that runs
+# the server on startup. The image is tagged with the string passed in as the first argument.
+
+# This script is invoked during CI build with the following arguments:
+target_image_name=$(validate_arg "target image name" ${1})
+app_name=$(validate_arg "app name" ${2})
+app_version=$(validate_arg "app version" ${3})
+cloud_init_version=$(validate_arg "cloud init version" ${4})
+
+
+docker build \
+  --build-arg APP_NAME=${app_name} \
+  --build-arg APP_VERSION=${app_version} \
+  --build-arg CLOUD_INIT_VERSION=${cloud_init_version} \
+  -t ${target_image_name} \
+  cloud-init-docker

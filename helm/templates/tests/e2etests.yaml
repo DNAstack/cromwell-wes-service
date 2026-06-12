@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "cromwell-wes-service-e2etest"
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      serviceAccountName: cromwellwesservice
+      restartPolicy: Never
+      containers:
+        - name: "cromwell-wes-service-e2etest"
+          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/cromwell-wes-service-e2e-tests:{{ .Chart.Version }}"
+          env:
+            - name: _JAVA_OPTIONS
+              value: "-Dlogging.level.root=TRACE"
+            - name: E2E_BASE_URI
+              value: '{{- include "dnastack.cromwellWesService.internalUrl" . }}'
+            - name: E2E_CLIENT_RESOURCE_BASE_URI
+              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+            - name: E2E_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  key: clientId
+                  name: cromwell-wes-service-e2e-test-client-credentials
+            - name: E2E_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: clientSecret
+                  name: cromwell-wes-service-e2e-test-client-credentials
+            - name: E2E_TOKEN_URI
+              value: '{{- include "dnastack.wallet.internalUrl" . }}/oauth/token'
+            - name: E2E_WALLET_BASE_URI
+              value: '{{- include "dnastack.wallet.externalUrl" . }}'
+            - name: E2E_WALLET_TOKEN_URI
+              value: '{{- include "dnastack.wallet.internalUrl" . }}/oauth/token'
+            - name: E2E_WALLET_AUDIENCE
+              value: '{{- include "dnastack.cromwellWesService.resourceUrl" . }}'
+            - name: E2E_WALLET_RESOURCE
+              value: '{{- include "dnastack.cromwellWesService.resourceUrl" . }}/'
+            - name: E2E_ACTUATOR_INFO_NAME
+              value: "cromwell-wes-service"
+            - name: E2E_TEST_OBJECT_TRANSFER
+              value: "false"
+      {{- if .Values.test.keepalive.enabled }}
+          volumeMounts:
+            - mountPath: "/target"
+              name: "reports"
+        - name: "keepalive"
+          image: "busybox"
+          command: ["/bin/sh", "-c", "sleep {{ .Values.test.keepalive.duration }}"]
+          volumeMounts:
+            - mountPath: "/target"
+              name: "reports"
+      volumes:
+        - name: "reports"
+          emptyDir: {}
+      {{- end }}

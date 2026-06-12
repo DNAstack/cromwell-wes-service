@@ -1,0 +1,204 @@
+# ==============================================================================
+# cromwell-wes-service client credentials (Secret + WalletClient)
+# ==============================================================================
+{{- $clientSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-client-credentials") | default dict }}
+{{- if or (empty $clientSecretObj)
+          (and
+            (hasKey $clientSecretObj.metadata "annotations")
+            (hasKey $clientSecretObj.metadata.annotations "meta.helm.sh/release-name")
+            (eq (get $clientSecretObj.metadata.annotations "meta.helm.sh/release-name") .Release.Name))
+}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cromwell-wes-service-client-credentials
+  labels:
+    app: cromwell-wes-service
+    type: app_wallet-client-credential
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  {{- $clientSecretData := (get $clientSecretObj "data") | default dict }}
+  {{- $clientSecret := (get $clientSecretData "clientSecret") | default (randBytes 32 | b64dec | printf "%x" | b64enc) }}
+  clientId: {{ b64enc "cromwell-wes-service" | quote }}
+  clientSecret: {{ $clientSecret | quote }}
+{{- end }}
+
+---
+
+# ==============================================================================
+# cromwell-wes-service-public client credentials (Secret + WalletClient)
+# Used by ewes-service for device_code flows.
+# ==============================================================================
+{{- $publicSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-public-client-credentials") | default dict }}
+{{- if or (empty $publicSecretObj)
+          (and
+            (hasKey $publicSecretObj.metadata "annotations")
+            (hasKey $publicSecretObj.metadata.annotations "meta.helm.sh/release-name")
+            (eq (get $publicSecretObj.metadata.annotations "meta.helm.sh/release-name") .Release.Name))
+}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cromwell-wes-service-public-client-credentials
+  labels:
+    app: cromwell-wes-service
+    type: app_wallet-client-credential
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  {{- $publicSecretData := (get $publicSecretObj "data") | default dict }}
+  {{- $publicSecret := (get $publicSecretData "clientSecret") | default (randBytes 32 | b64dec | printf "%x" | b64enc) }}
+  clientId: {{ b64enc "cromwell-wes-service-public" | quote }}
+  clientSecret: {{ $publicSecret | quote }}
+{{- end }}
+
+---
+
+# ==============================================================================
+# cromwell-wes-service-cromwell-db-credentials
+# Password is generated once on first install and preserved on upgrades via
+# helm.sh/resource-policy: keep. Cloud-init reads this secret and creates the
+# Cromwell Postgres user with the stored password. Cromwell container reads these
+# credentials at startup via CROMWELL_DB_USER / CROMWELL_DB_PASSWORD env vars.
+# ==============================================================================
+{{- $cromwellDbSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-cromwell-db-credentials") | default dict }}
+{{- if or (empty $cromwellDbSecretObj)
+          (and
+            (hasKey $cromwellDbSecretObj.metadata "annotations")
+            (hasKey $cromwellDbSecretObj.metadata.annotations "meta.helm.sh/release-name")
+            (eq (get $cromwellDbSecretObj.metadata.annotations "meta.helm.sh/release-name") .Release.Name))
+}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cromwell-wes-service-cromwell-db-credentials
+  labels:
+    app: cromwell-wes-service
+    type: cromwell-db-credential
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  {{- $cromwellDbSecretData := (get $cromwellDbSecretObj "data") | default dict }}
+  {{- $cromwellDbPassword := (get $cromwellDbSecretData "password") | default (randBytes 32 | b64dec | printf "%x" | b64enc) }}
+  username: {{ b64enc "cromwell" | quote }}
+  password: {{ $cromwellDbPassword | quote }}
+{{- end }}
+
+---
+
+# ==============================================================================
+# WalletClient: cromwell-wes-service
+# ==============================================================================
+apiVersion: dnastack.com/v1
+kind: WalletClient
+metadata:
+  name: cromwell-wes-service
+  labels:
+    app: cromwell-wes-service
+spec:
+  syncMode: CREATE_AND_UPDATE
+  clientSecrets:
+    - credentialId: default
+      syncMode: CREATE_ONLY
+      secretKeyRef:
+        name: cromwell-wes-service-client-credentials
+        key: clientSecret
+    - credentialId: rotation-backup
+      syncMode: CREATE_ONLY
+      secretKeyRef:
+        name: cromwell-wes-service-client-credentials
+        key: clientSecret
+  data:
+    id: cromwell-wes-service
+    name: "OAuth client for cromwell-wes-service"
+    grants:
+      - audience: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+        grantTypes:
+          - client_credentials
+        responseTypes:
+          - token
+        scopes:
+          - name: wes
+
+---
+
+# ==============================================================================
+# WalletClient: cromwell-wes-service-public
+# Public client used by ewes-service for device_code flows.
+# ==============================================================================
+apiVersion: dnastack.com/v1
+kind: WalletClient
+metadata:
+  name: cromwell-wes-service-public
+  labels:
+    app: cromwell-wes-service
+spec:
+  syncMode: CREATE_AND_UPDATE
+  clientSecrets:
+    - credentialId: default
+      syncMode: CREATE_ONLY
+      secretKeyRef:
+        name: cromwell-wes-service-public-client-credentials
+        key: clientSecret
+    - credentialId: rotation-backup
+      syncMode: CREATE_ONLY
+      secretKeyRef:
+        name: cromwell-wes-service-public-client-credentials
+        key: clientSecret
+  data:
+    id: cromwell-wes-service-public
+    name: "Public OAuth client for cromwell-wes-service (device code flows)"
+    grants:
+      - audience: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+        # sensitive: true is load-bearing here — these scopes appear in the device_code consent UI
+        grantTypes:
+          - "urn:ietf:params:oauth:grant-type:device_code"
+          - refresh_token
+        responseTypes:
+          - code
+          - token
+        scopes:
+          - name: wes
+          - name: offline_access
+          - name: openid
+            sensitive: true
+          - name: profile
+            sensitive: true
+          - name: email
+            sensitive: true
+
+---
+
+# ==============================================================================
+# WalletPolicy: cromwell-wes-service-policy
+# ==============================================================================
+apiVersion: dnastack.com/v1
+kind: WalletPolicy
+metadata:
+  name: cromwell-wes-service-policy
+  labels:
+    app: cromwell-wes-service
+spec:
+  syncMode: CREATE_AND_UPDATE
+  data:
+    id: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+    name: Access Policy for cromwell-wes-service
+    statements:
+      - principals:
+          - type: service
+            id: cromwell-wes-service
+          - type: service
+            id: cromwell-wes-service-e2e-test
+          - type: group
+            id: dnastack-devs-external
+        actions:
+          - wes:runs:read
+          - wes:runs:write
+          - wes:runs:cancel
+          - wes:execute
+        resources:
+          - uri: '{{- include "dnastack.cromwellWesService.externalUrl" . }}/'

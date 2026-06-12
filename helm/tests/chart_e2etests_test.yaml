@@ -1,0 +1,80 @@
+suite: E2E test Job tests
+templates:
+  - templates/tests/e2etests.yaml
+tests:
+  - it: renders e2e test Job
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    asserts:
+      - notFailedTemplate: {}
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.name
+          value: cromwell-wes-service-e2etest
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: test
+
+  - it: keepalive sidecar absent by default
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers
+          content:
+            name: keepalive
+
+  - it: keepalive sidecar present when enabled
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+      test.keepalive.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers
+          content:
+            name: keepalive
+            image: busybox
+            command: ["/bin/sh", "-c", "sleep 300"]
+            volumeMounts:
+              - mountPath: "/target"
+                name: "reports"

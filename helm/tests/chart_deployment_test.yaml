@@ -1,0 +1,217 @@
+suite: Deployment shape tests
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: renders expected resource kinds
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    asserts:
+      - notFailedTemplate: {}
+      - containsDocument:
+          kind: Deployment
+          apiVersion: apps/v1
+          any: true
+      - containsDocument:
+          kind: Service
+          apiVersion: v1
+          any: true
+      - containsDocument:
+          kind: ServiceAccount
+          apiVersion: v1
+          any: true
+      - containsDocument:
+          kind: ClusterRoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          any: true
+      - containsDocument:
+          kind: ConfigMap
+          apiVersion: v1
+          any: true
+
+  - it: Deployment has two main containers
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: cromwell-wes-service
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: cromwell
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8080
+      - equal:
+          path: spec.template.spec.containers[1].ports[0].containerPort
+          value: 8000
+
+  - it: Deployment has cloud-init init container
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: cromwell-wes-service-cloud-init
+
+  - it: Deployment has SKIP_WALLET_INIT true in cloud-init
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: SKIP_WALLET_INIT
+            value: "true"
+
+  - it: cromwell container mounts GCP SA secret
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: cromwell-sa
+            secret:
+              secretName: cromwell-wes-service-cromwell-credentials
+
+  - it: respects configurable SA secret name
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+      app.cromwell.saSecretName: workspaces-wes-cromwell-credentials
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: cromwell-sa
+            secret:
+              secretName: workspaces-wes-cromwell-credentials
+
+  - it: cromwell container reads DB credentials from secret
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: CROMWELL_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: cromwell-wes-service-cromwell-db-credentials
+                key: username
+
+  - it: replicas defaults to 1
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+
+  - it: IngressRoute not rendered when ingressRoute.enabled is false
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+      ingressRoute.enabled: false
+    asserts:
+      - notFailedTemplate: {}

@@ -48,3 +48,9 @@ target/
 /.nb-gradle/
 
 */dependency-reduced-pom.xml
+
+# Helm — all regenerated at build time via `helm dep update` / `helm unittest`
+helm/charts/
+helm/Chart.lock
+helm/.debug/
+helm/tests/__snapshot__/
