@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# PROVIDE: cromwell-wes-service
+
+set -e
+conditionallyEnableDebugLogging
+
+setupAppDatabase
+
+CROMWELL_CREDS_SECRET="${APP_NAME}-cromwell-db-credentials"
+CROMWELL_DB_PASSWORD=$(kubectl get secret "${CROMWELL_CREDS_SECRET}" \
+  -n "${NAMESPACE}" \
+  -o jsonpath='{.data.password}' | base64 -d)
+setupAppDatabase "${SHARED_POSTGRES_INSTANCE}" cromwell "cromwell" "${CROMWELL_DB_PASSWORD}" "${CROMWELL_CREDS_SECRET}"
+
+validatePreconfiguredSecret "${APP_NAME}-gcp-credentials" "Must create GCP Service account for WES to access cloud storage"
+labelSecret "${APP_NAME}-gcp-credentials" "app=${APP_NAME}"
+labelSecret "${APP_NAME}-gcp-credentials" "type=app_service-account"

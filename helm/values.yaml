@@ -1,0 +1,75 @@
+global:
+  cloud:
+    clusterName:
+    clusterNamespace:
+    spaceDnsName:
+    gcloud:
+      project:
+    region:
+    zone:
+  database:
+    postgres:
+      instance:
+      version:
+      internalHost:   # in-cluster postgres hostname, defaults to "postgres"
+  image:
+    repository:
+    secretName:
+  ingressRoutes:
+    enabled:
+  instrumentation:
+    env:
+
+image:
+  secretName:   # image pull secret for GCP artifact registry
+  repository:   # docker repository to pull images from
+
+ingressRoute:
+  enabled:   # boolean; per-env global-values.yaml flips this on once ready to cut over ingress
+
+app:
+  configVersion: config-version
+  secretHash: secrets-hash
+  memoryLimit: "2048Mi"
+  replicas: 1
+  spring:
+    additionalProfiles: ""
+
+  # Pre-configured GCP credentials secrets. These must exist in the cluster before
+  # deploying. The defaults use the cromwell-wes-service naming; for alpha/preview
+  # cutover from the legacy workspaces-wes deployment, override to the existing names
+  # (e.g. workspaces-wes-gcp-credentials) in the env's global-values.yaml.
+  gcpCredentialsSecretName: cromwell-wes-service-gcp-credentials
+
+  cromwell:
+    imageVersion: "89"   # broadinstitute/cromwell image tag
+    saSecretName: cromwell-wes-service-cromwell-credentials      # GCP SA for Cromwell to access GCS
+    dbCredentialsSecretName: cromwell-wes-service-cromwell-db-credentials  # created by cloud-init
+    gcpExecutionProject: ""   # GCP project where Cromwell batch jobs run (e.g. ardent-window-817)
+    gcpBucket: ""             # GCS bucket for Cromwell outputs (e.g. gs://my-wes-bucket)
+    gcpStagingLocation: ""    # GCS staging location for WES blob storage
+    gcpZone: "us-central1-a"  # GCP zone for Cromwell batch jobs
+    cromwellUrl: "http://localhost:8000"  # in-pod URL to the Cromwell sidecar
+
+cromwellWesService:
+  appName:
+wallet:
+  appName:
+
+database:
+  postgresVersion:
+  postgresInstance:
+
+cloud:
+  clusterNamespace:
+  clusterName:
+  spaceDnsName:
+
+env: []   # extra env merged into main container via mergeEnvLists
+
+test:
+  keepalive:
+    enabled: false
+    # 5 min is enough for the Concourse upload-test-output step to kubectl exec
+    # artifacts out of the test pod. Longer windows silently block helm test reruns.
+    duration: 300

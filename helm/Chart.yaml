@@ -1,0 +1,10 @@
+apiVersion: v2
+name: cromwell-wes-service
+description: Helm chart for the DNAstack Cromwell WES Service
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: workbench-helm-library
+    version: 0.5.0-0-ga2566e1
+    repository: oci://us-central1-docker.pkg.dev/dnastack-container-store/helm-charts

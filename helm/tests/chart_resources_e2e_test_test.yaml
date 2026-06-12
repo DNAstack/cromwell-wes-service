@@ -1,0 +1,56 @@
+suite: E2E test resources tests
+templates:
+  - templates/resources/e2e-test.yaml
+tests:
+  - it: renders e2e-test Secret and WalletClient
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    asserts:
+      - notFailedTemplate: {}
+      - containsDocument:
+          kind: Secret
+          apiVersion: v1
+          name: cromwell-wes-service-e2e-test-client-credentials
+          any: true
+      - containsDocument:
+          kind: WalletClient
+          apiVersion: dnastack.com/v1
+          name: cromwell-wes-service-e2e-test
+          any: true
+
+  - it: e2e-test Secret clientId is base64 of cromwell-wes-service-e2e-test
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: metadata.name
+      value: cromwell-wes-service-e2e-test-client-credentials
+    asserts:
+      - equal:
+          path: data.clientId
+          value: Y3JvbXdlbGwtd2VzLXNlcnZpY2UtZTJlLXRlc3Q=   # base64("cromwell-wes-service-e2e-test")

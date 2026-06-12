@@ -1,0 +1,124 @@
+suite: App resources tests
+templates:
+  - templates/resources/app.yaml
+tests:
+  - it: renders Secrets, WalletClients, and WalletPolicy
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    asserts:
+      - notFailedTemplate: {}
+      - containsDocument:
+          kind: Secret
+          apiVersion: v1
+          name: cromwell-wes-service-client-credentials
+          any: true
+      - containsDocument:
+          kind: Secret
+          apiVersion: v1
+          name: cromwell-wes-service-public-client-credentials
+          any: true
+      - containsDocument:
+          kind: Secret
+          apiVersion: v1
+          name: cromwell-wes-service-cromwell-db-credentials
+          any: true
+      - containsDocument:
+          kind: WalletClient
+          apiVersion: dnastack.com/v1
+          name: cromwell-wes-service
+          any: true
+      - containsDocument:
+          kind: WalletClient
+          apiVersion: dnastack.com/v1
+          name: cromwell-wes-service-public
+          any: true
+      - containsDocument:
+          kind: WalletPolicy
+          apiVersion: dnastack.com/v1
+          name: cromwell-wes-service-policy
+          any: true
+
+  - it: cromwell-db-credentials Secret has username cromwell
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: metadata.name
+      value: cromwell-wes-service-cromwell-db-credentials
+    asserts:
+      - equal:
+          path: data.username
+          value: Y3JvbXdlbGw=   # base64("cromwell")
+
+  - it: WalletPolicy resource URI uses external URL
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: metadata.name
+      value: cromwell-wes-service-policy
+    asserts:
+      - equal:
+          path: spec.data.statements[0].resources[0].uri
+          value: 'https://wes.example.com/'
+
+  - it: Secrets have helm.sh/resource-policy keep
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      cromwellWesService.appName: cromwell-wes-service
+      cromwellWesService.externalHostname: wes.example.com
+      wallet.appName: wallet
+      wallet.externalHostname: auth.example.com
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: metadata.name
+      value: cromwell-wes-service-client-credentials
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep

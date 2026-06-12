@@ -1,0 +1,449 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cromwellwesservice
+{{- if (coalesce .Values.image.secretName ((.Values.global).image).secretName) }}
+imagePullSecrets:
+  - name: "{{ coalesce .Values.image.secretName ((.Values.global).image).secretName }}"
+{{- end }}
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cromwellwesservice-{{ .Release.Namespace }}-edit-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: cromwellwesservice
+    namespace: {{ .Release.Namespace }}
+
+---
+
+# ConfigMap containing the Cromwell HOCON configuration. Non-secret values are
+# templated directly by Helm. DB credentials (CROMWELL_DB_USER / CROMWELL_DB_PASSWORD)
+# are kept as HOCON substitution references; Typesafe Config resolves them from the
+# environment variables injected by the cromwell container's secretKeyRef entries.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cromwell-wes-service-cromwell-config
+  labels:
+    app: cromwell-wes-service
+    configVersion: {{ .Values.app.configVersion }}
+data:
+  cromwell.conf: |
+    webservice {
+      port = 8000
+      interface = 0.0.0.0
+      binding-timeout = 5s
+    }
+
+    akka.http.server.request-timeout = 60s
+
+    system {
+      new-workflow-poll-rate = 5
+      io {
+        number-of-requests = 500000
+        per = 100 seconds
+        number-of-attempts = 10
+      }
+
+      max-concurrent-workflows = 10000
+      workflow-restart = true
+    }
+
+    google {
+      application-name = "cromwell"
+      auths = [
+        {
+          name = "cromwell-service-account"
+          scheme = "application_default"
+        }
+      ]
+    }
+
+    engine {
+      filesystems {
+        gcs {
+          auth = "cromwell-service-account"
+        }
+        local {
+          enabled: false
+        }
+        http {
+          enabled: true
+        }
+      }
+    }
+
+    call-caching {
+      enabled = true
+    }
+
+    backend {
+      default = "GCPBatch"
+      providers {
+        GCPBatch {
+          actor-factory = "cromwell.backend.google.batch.GcpBatchBackendLifecycleActorFactory"
+          config {
+            project = {{ .Values.app.cromwell.gcpExecutionProject | quote }}
+            root = {{ .Values.app.cromwell.gcpBucket | quote }}
+
+            maximum-polling-interval = 600
+
+            batch {
+              auth = "cromwell-service-account"
+              location: "{{ coalesce ((.Values.global).cloud).region "us-central1" }}"
+            }
+
+            filesystems {
+              gcs {
+                auth = "cromwell-service-account"
+                project = {{ .Values.app.cromwell.gcpExecutionProject | quote }}
+              }
+              http {}
+            }
+
+            pipeline-timeout = 28 days
+
+            default-runtime-attributes {
+              cpu: 1
+              failOnStderr: false
+              continueOnReturnCode: 0
+              memory: "2 GB"
+              bootDiskSizeGb: 10
+              disks: "local-disk 10 SSD"
+              noAddress: false
+              preemptible: 0
+              docker: "ubuntu:latest"
+              zones: [{{ .Values.app.cromwell.gcpZone | quote }}]
+            }
+          }
+        }
+      }
+    }
+
+    database {
+      profile = "slick.jdbc.PostgresProfile$"
+      db {
+        url = "jdbc:postgresql://{{ coalesce .Values.app.cromwell.postgresInternalHost ((.Values.global).database.postgres).internalHost "postgres" }}/cromwell?rewriteBatchedStatements=true&useSSL=false"
+        user = ${CROMWELL_DB_USER}
+        password = ${CROMWELL_DB_PASSWORD}
+        driver = "org.postgresql.Driver"
+        connectionTimeout = 5000
+      }
+    }
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cromwell-wes-service
+  labels:
+    app: cromwell-wes-service
+    configVersion: {{ .Values.app.configVersion }}
+    secretsHash: {{ .Values.app.secretHash }}
+    product: "workbench"
+    {{- range $key, $value := .Values.global.deploymentLabels }}
+    {{ tpl ($key | toString) $ }}: {{ tpl ($value | toString) $ | quote }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: cromwell-wes-service
+      configVersion: {{ .Values.app.configVersion }}
+      secretsHash: {{ .Values.app.secretHash }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+        {{- range $key, $value := .Values.global.templateAnnotations }}
+        {{ tpl ($key | toString) $ }}: {{ tpl ($value | toString) $ | quote }}
+        {{- end }}
+      labels:
+        app: cromwell-wes-service
+        version: '{{- include "dnastack.app.version" . }}'
+        configVersion: {{ .Values.app.configVersion }}
+        secretsHash: {{ .Values.app.secretHash }}
+        product: "workbench"
+        {{- range $key, $value := .Values.global.templateLabels }}
+        {{ tpl ($key | toString) $ }}: {{ tpl ($value | toString) $ | quote }}
+        {{- end }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - cromwell-wes-service
+              topologyKey: topology.kubernetes.io/hostname
+            weight: 100
+      serviceAccountName: cromwellwesservice
+      initContainers:
+        - name: cromwell-wes-service-cloud-init
+          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/cromwell-wes-service-cloud-init-job:{{- include "dnastack.cloudinit.version" . }}"
+          command: [ "/cloud-init/run_cloud_init.sh" ]
+          args: []
+          env:
+            - name: APP_NAME
+              value: 'cromwell-wes-service'
+            - name: VALUES_HASH
+              value: '{{ .Values | toYaml | sha256sum }}'
+            - name: CLOUD_INIT_VERSION
+              value: '{{- include "dnastack.cloudinit.version" . }}'
+            - name: DEPLOYMENT_ROOT_DIR
+              value: '/cloud-init'
+            - name: NAMESPACE
+              value: '{{ coalesce .Values.cloud.clusterNamespace ((.Values.global).cloud).clusterNamespace }}'
+            - name: CONFIG_VERSION
+              value: '{{ .Values.app.configVersion }}'
+            - name: SKIP_FILE_CONFIGS
+              value: "true"
+            - name: SKIP_REPO_CHECK
+              value: "true"
+            - name: SKIP_WALLET_INIT
+              value: "true"
+            - name: USE_LOCAL_HTTPIE
+              value: "true"
+            - name: USE_LOCAL_PSQL
+              value: "true"
+            - name: REPLICA_COUNT
+              value: "1"
+            - name: SHARED_POSTGRES_INSTANCE
+              value: '{{ coalesce .Values.database.postgresInstance (((.Values.global).database).postgres).instance }}'
+            - name: APP_POSTGRES_VERSION
+              value: '{{ coalesce .Values.database.postgresVersion (((.Values.global).database).postgres).version }}'
+            - name: USE_USER_TOKEN_FOR_ADMIN_ACTIONS
+              value: "false"
+            - name: APP_WORKSPACES_WES_HOSTNAME
+              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+            - name: WALLET_URL
+              value: '{{- include "dnastack.wallet.internalUrl" . }}'
+            - name: WALLET_RESOURCE
+              value: '{{- include "dnastack.wallet.resourceUrl" . }}/'
+            - name: WALLET_ADMIN_KUBEKEY
+              value: 'wallet-cloud-init-client-credentials'
+          envFrom:
+            - configMapRef:
+                name: cloud-init-env-vars
+                optional: true
+
+      containers:
+        - name: cromwell-wes-service
+          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/cromwell-wes-service:{{- include "dnastack.app.version" . }}"
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            limits:
+              memory: {{ .Values.app.memoryLimit }}
+            requests:
+              memory: {{ .Values.app.memoryLimit }}
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 15
+          env:
+            - name: JAVA_OPTS
+              value: "-XX:+ExitOnOutOfMemoryError -XX:+PrintFlagsFinal"
+            - name: ESTIMATED_THREADS
+              value: "220"
+            - name: ESTIMATED_LOADED_CLASSES
+              value: "28000"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "default,cloud{{ if .Values.app.spring.additionalProfiles }},{{ .Values.app.spring.additionalProfiles }}{{ end }}"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: INFO_APP_NAME
+              value: "WES on Cromwell/GCP"
+            - name: WES_URL
+              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+            - name: WES_CROMWELL_URL
+              value: {{ .Values.app.cromwell.cromwellUrl | default "http://localhost:8000" | quote }}
+            - name: WES_BLOBSTORAGECLIENT_NAME
+              value: "GCP"
+            - name: WES_BLOBSTORAGECLIENT_GCP_SERVICEACCOUNTJSON
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.gcpCredentialsSecretName | default "cromwell-wes-service-gcp-credentials" | quote }}
+                  key: service-account
+            - name: WES_BLOBSTORAGECLIENT_GCP_PROJECT
+              value: '{{ coalesce ((.Values.global).cloud.gcloud).project ((.Values.global).cloud).project "" }}'
+            - name: WES_BLOBSTORAGECLIENT_GCP_STAGINGLOCATION
+              value: {{ .Values.app.cromwell.gcpStagingLocation | quote }}
+            - name: INFO_APP_VERSION
+              value: '{{- include "dnastack.app.version" . }}'
+            - name: WES_AUTH_ISSUERURI
+              value: '{{- include "dnastack.wallet.externalUrl" . }}'
+            - name: MANAGEMENT_METRICS_TAGS_REGION
+              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+            - name: WES_REGISTRY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: "cromwell-wes-service-public-client-credentials"
+                  key: clientId
+            - name: WES_REGISTRY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "cromwell-wes-service-public-client-credentials"
+                  key: clientSecret
+            - name: SPRING_APPLICATION_JSON
+              value: |
+                {
+                  "wes": {
+                    "cromwell": {
+                      "defaultWorkflowOptions": {
+                        "delete_intermediate_output_files": true,
+                        "write_to_cache": false,
+                        "read_from_cache": false,
+                        "default_runtime_attributes": {
+                          "docker": "ubuntu:latest",
+                          "cpu": 1,
+                          "memory": "2 GB",
+                          "bootDiskSizeGb": 10,
+                          "disks": "local-disk 10 SSD"
+                        }
+                      }
+                    }
+                  }
+                }
+            - name: DD_PROFILING_ENABLED
+              value: "false"
+            - name: DD_APPSEC_ENABLED
+              value: "false"
+            - name: DD_TRACE_PROPAGATION_STYLE
+              value: "datadog,b3single,b3multi"
+            - name: DD_TRACE_PARTIAL_FLUSH_MIN_SPANS
+              value: "400"
+            - name: DD_PROFILING_JFR_TEMPLATE_OVERRIDE_FILE
+              value: minimal
+            {{- include "mergeEnvLists" (dict "lists" (list .Values.env .Values.global.instrumentation.env) "template" $) | nindent 12 }}
+
+        - name: cromwell
+          image: "broadinstitute/cromwell:{{ .Values.app.cromwell.imageVersion | default "89" }}"
+          resources:
+            limits:
+              memory: "4700Mi"
+            requests:
+              memory: "4700Mi"
+          ports:
+            - name: cromwell-http
+              containerPort: 8000
+          startupProbe:
+            httpGet:
+              path: /engine/v1/status
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /engine/v1/status
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 30
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /engine/v1/status
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 20
+          env:
+            - name: CROMWELL_ARGS
+              value: "server"
+            - name: JAVA_OPTS
+              value: "-XX:+ExitOnOutOfMemoryError -XX:+PrintFlagsFinal -DLOG_LEVEL=WARN -Dconfig.file=/configuration/cromwell.conf -XX:MaxMetaspaceSize=715M -XX:ReservedCodeCacheSize=240M -Xss1M -Xmx3151836K"
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/secrets/cromwell/key.json"
+            # These env vars are resolved by Typesafe Config (HOCON) substitution at startup,
+            # satisfying the ${CROMWELL_DB_USER} / ${CROMWELL_DB_PASSWORD} references in cromwell.conf.
+            - name: CROMWELL_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.cromwell.dbCredentialsSecretName | default "cromwell-wes-service-cromwell-db-credentials" | quote }}
+                  key: username
+            - name: CROMWELL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.cromwell.dbCredentialsSecretName | default "cromwell-wes-service-cromwell-db-credentials" | quote }}
+                  key: password
+            - name: DD_APM_ENABLED
+              value: "true"
+            - name: DD_PROFILING_ENABLED
+              value: "false"
+            - name: DD_APPSEC_ENABLED
+              value: "false"
+            - name: DD_SERVICE
+              value: "cromwell-wes-service-cromwell"
+            - name: DD_VERSION
+              value: '{{- include "dnastack.app.version" . }}'
+          volumeMounts:
+            - mountPath: "/secrets/cromwell/key.json"
+              name: cromwell-sa
+              subPath: service-account
+            - mountPath: "/configuration/cromwell.conf"
+              subPath: cromwell.conf
+              name: cromwell-config
+
+      volumes:
+        - name: cromwell-sa
+          secret:
+            secretName: {{ .Values.app.cromwell.saSecretName | default "cromwell-wes-service-cromwell-credentials" | quote }}
+        - name: cromwell-config
+          configMap:
+            name: cromwell-wes-service-cromwell-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cromwell-wes-service
+  labels:
+    name: cromwell-wes-service
+spec:
+  selector:
+    app: cromwell-wes-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

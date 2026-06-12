@@ -1,0 +1,12 @@
+# Named zz_required.yaml so it processes last (reverse-alphabetical order), running
+# the value-gate after all other templates have been evaluated.
+{{- $_ := required "image.repository is a required value" (coalesce .Values.image.repository ((.Values.global).image).repository) }}
+{{- $_ = required "app.configVersion is a required value" .Values.app.configVersion }}
+{{- $_ = required "database.postgresVersion is a required value" (coalesce .Values.database.postgresVersion (((.Values.global).database).postgres).version) }}
+{{- $_ = required "database.postgresInstance is a required value" (coalesce .Values.database.postgresInstance (((.Values.global).database).postgres).instance) }}
+{{- $_ = required "cloud.clusterNamespace is a required value" (coalesce .Values.cloud.clusterNamespace ((.Values.global).cloud).clusterNamespace) }}
+{{- $_ = required "cloud.clusterName is a required value" (coalesce .Values.cloud.clusterName ((.Values.global).cloud).clusterName) }}
+{{- $_ = required "cloud.spaceDnsName is a required value" (coalesce .Values.cloud.spaceDnsName ((.Values.global).cloud).spaceDnsName) }}
+{{- $_ = required "app.cromwell.gcpExecutionProject is a required value" .Values.app.cromwell.gcpExecutionProject }}
+{{- $_ = required "app.cromwell.gcpBucket is a required value" .Values.app.cromwell.gcpBucket }}
+{{- $_ = required "app.cromwell.gcpStagingLocation is a required value" .Values.app.cromwell.gcpStagingLocation }}

@@ -1,0 +1,17 @@
+{{- if (coalesce .Values.ingressRoute.enabled ((.Values.global).ingressRoutes).enabled) -}}
+{{- $spaceDnsName := coalesce .Values.cloud.spaceDnsName ((.Values.global).cloud).spaceDnsName -}}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: cromwell-wes-service-ingress-route
+  namespace: "{{ coalesce .Values.cloud.clusterNamespace ((.Values.global).cloud).clusterNamespace }}"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`{{ include "dnastack.externalHostname" (dict "Values" .Values "Template" .Template "name" "cromwellWesService") }}`)
+      kind: Rule
+      services:
+        - name: cromwell-wes-service
+          port: 8080
+{{- end }}
