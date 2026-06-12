@@ -185,7 +185,7 @@ metadata:
 spec:
   syncMode: CREATE_AND_UPDATE
   data:
-    id: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+    id: cromwell-wes-service-policy
     name: Access Policy for cromwell-wes-service
     statements:
       - principals:
