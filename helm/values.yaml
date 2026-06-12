@@ -39,12 +39,12 @@ app:
   # deploying. The defaults use the cromwell-wes-service naming; for alpha/preview
   # cutover from the legacy workspaces-wes deployment, override to the existing names
   # (e.g. workspaces-wes-gcp-credentials) in the env's global-values.yaml.
-  gcpCredentialsSecretName: cromwell-wes-service-gcp-credentials
+  gcpCredentialsSecretName: workspaces-wes-gcp-credentials
 
   cromwell:
     imageVersion: "89"   # broadinstitute/cromwell image tag
-    saSecretName: cromwell-wes-service-cromwell-credentials      # GCP SA for Cromwell to access GCS
-    dbCredentialsSecretName: cromwell-wes-service-cromwell-db-credentials  # created by cloud-init
+    saSecretName: workspaces-wes-cromwell-credentials      # GCP SA for Cromwell to access GCS
+    dbCredentialsSecretName: workspaces-wes-cromwell-db-credentials  # created by cloud-init (APP_NAME=workspaces-wes)
     gcpExecutionProject: ""   # GCP project where Cromwell batch jobs run (e.g. ardent-window-817)
     gcpBucket: ""             # GCS bucket for Cromwell outputs (e.g. gs://my-wes-bucket)
     gcpStagingLocation: ""    # GCS staging location for WES blob storage

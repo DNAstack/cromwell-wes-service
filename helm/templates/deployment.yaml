@@ -299,7 +299,7 @@ spec:
             - name: WES_BLOBSTORAGECLIENT_GCP_SERVICEACCOUNTJSON
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.app.gcpCredentialsSecretName | default "cromwell-wes-service-gcp-credentials" | quote }}
+                  name: {{ .Values.app.gcpCredentialsSecretName | default "workspaces-wes-gcp-credentials" | quote }}
                   key: service-account
             - name: WES_BLOBSTORAGECLIENT_GCP_PROJECT
               value: '{{ coalesce ((.Values.global).cloud.gcloud).project ((.Values.global).cloud).project "" }}'
@@ -399,12 +399,12 @@ spec:
             - name: CROMWELL_DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.app.cromwell.dbCredentialsSecretName | default "cromwell-wes-service-cromwell-db-credentials" | quote }}
+                  name: {{ .Values.app.cromwell.dbCredentialsSecretName | default "workspaces-wes-cromwell-db-credentials" | quote }}
                   key: username
             - name: CROMWELL_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.app.cromwell.dbCredentialsSecretName | default "cromwell-wes-service-cromwell-db-credentials" | quote }}
+                  name: {{ .Values.app.cromwell.dbCredentialsSecretName | default "workspaces-wes-cromwell-db-credentials" | quote }}
                   key: password
             - name: DD_APM_ENABLED
               value: "true"
@@ -427,7 +427,7 @@ spec:
       volumes:
         - name: cromwell-sa
           secret:
-            secretName: {{ .Values.app.cromwell.saSecretName | default "cromwell-wes-service-cromwell-credentials" | quote }}
+            secretName: {{ .Values.app.cromwell.saSecretName | default "workspaces-wes-cromwell-credentials" | quote }}
         - name: cromwell-config
           configMap:
             name: cromwell-wes-service-cromwell-config

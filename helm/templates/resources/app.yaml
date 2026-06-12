@@ -58,13 +58,14 @@ data:
 ---
 
 # ==============================================================================
-# cromwell-wes-service-cromwell-db-credentials
+# workspaces-wes-cromwell-db-credentials
 # Password is generated once on first install and preserved on upgrades via
 # helm.sh/resource-policy: keep. Cloud-init reads this secret and creates the
 # Cromwell Postgres user with the stored password. Cromwell container reads these
 # credentials at startup via CROMWELL_DB_USER / CROMWELL_DB_PASSWORD env vars.
+# Must match APP_NAME=workspaces-wes used by the cloud-init script.
 # ==============================================================================
-{{- $cromwellDbSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-cromwell-db-credentials") | default dict }}
+{{- $cromwellDbSecretObj := (lookup "v1" "Secret" .Release.Namespace "workspaces-wes-cromwell-db-credentials") | default dict }}
 {{- if or (empty $cromwellDbSecretObj)
           (and
             (hasKey $cromwellDbSecretObj.metadata "annotations")
@@ -74,7 +75,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cromwell-wes-service-cromwell-db-credentials
+  name: workspaces-wes-cromwell-db-credentials
   labels:
     app: cromwell-wes-service
     type: cromwell-db-credential
