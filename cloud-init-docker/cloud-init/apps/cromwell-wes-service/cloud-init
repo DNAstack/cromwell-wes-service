@@ -2,24 +2,16 @@
 # PROVIDE: cromwell-wes-service
 
 set -e
-set -x
+conditionallyEnableDebugLogging
 
-# Set up the WES application database user.
 setupAppDatabase
 
-# Set up the Cromwell database user. The cromwell-db-credentials Secret is
-# chart-managed (lookup+keep pattern) and contains a pre-generated password.
-# We read that password here so cloud-init and the Cromwell container agree on
-# the same credentials rather than each generating their own random value.
 CROMWELL_CREDS_SECRET="${APP_NAME}-cromwell-db-credentials"
 CROMWELL_DB_PASSWORD=$(kubectl get secret "${CROMWELL_CREDS_SECRET}" \
   -n "${NAMESPACE}" \
   -o jsonpath='{.data.password}' | base64 -d)
 setupAppDatabase "${SHARED_POSTGRES_INSTANCE}" cromwell "cromwell" "${CROMWELL_DB_PASSWORD}" "${CROMWELL_CREDS_SECRET}"
 
-# Validate that the pre-configured GCP service account secrets exist.
-# These are not created by the chart — they must be provisioned externally.
-validatePreconfiguredSecret "${APP_NAME}-gcp-credentials" \
-  "Must create GCP Service account for WES to access cloud storage"
+validatePreconfiguredSecret "${APP_NAME}-gcp-credentials" "Must create GCP Service account for WES to access cloud storage"
 labelSecret "${APP_NAME}-gcp-credentials" "app=${APP_NAME}"
 labelSecret "${APP_NAME}-gcp-credentials" "type=app_service-account"
