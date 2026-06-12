@@ -199,7 +199,7 @@ spec:
           args: []
           env:
             - name: APP_NAME
-              value: 'cromwell-wes-service'
+              value: 'workspaces-wes'
             - name: VALUES_HASH
               value: '{{ .Values | toYaml | sha256sum }}'
             - name: CLOUD_INIT_VERSION
