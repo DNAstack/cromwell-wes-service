@@ -51,7 +51,7 @@ app:
     gcpZone: "us-central1-a"  # GCP zone for Cromwell batch jobs
     cromwellUrl: "http://localhost:8000"  # in-pod URL to the Cromwell sidecar
 
-cromwellWesService:
+workspacesWes:
   appName:
 wallet:
   appName:

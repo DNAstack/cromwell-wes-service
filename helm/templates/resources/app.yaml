@@ -116,7 +116,7 @@ spec:
     id: cromwell-wes-service
     name: "OAuth client for cromwell-wes-service"
     grants:
-      - audience: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+      - audience: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
         grantTypes:
           - client_credentials
         responseTypes:
@@ -153,7 +153,7 @@ spec:
     id: cromwell-wes-service-public
     name: "Public OAuth client for cromwell-wes-service (device code flows)"
     grants:
-      - audience: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+      - audience: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
         # sensitive: true is load-bearing here — these scopes appear in the device_code consent UI
         grantTypes:
           - "urn:ietf:params:oauth:grant-type:device_code"
@@ -201,4 +201,4 @@ spec:
           - wes:runs:cancel
           - wes:execute
         resources:
-          - uri: '{{- include "dnastack.cromwellWesService.externalUrl" . }}/'
+          - uri: '{{- include "dnastack.workspacesWes.externalUrl" . }}/'
