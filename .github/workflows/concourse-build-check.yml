@@ -10,7 +10,7 @@ jobs:
     uses: DNAstack/dnastack-development-tools/.github/workflows/concourse-build-check.yml@b8f171d57cc310232a18ac2028e8ed3ee68eabce
     with:
       pipeline_name: 'workbench-alpha'
-      job_name: 'cromwell-wes-service-deploy-helm'
+      job_name: 'workspaces-wes-deploy-helm'
       concourse_username: ${{ vars.CONCOURSE_USERNAME }}
     secrets:
       concourse_password: ${{ secrets.CONCOURSE_PASSWORD }}

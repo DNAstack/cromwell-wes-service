@@ -1,5 +1,5 @@
 apiVersion: v2
-name: cromwell-wes-service
+name: workspaces-wes
 description: Helm chart for the DNAstack Cromwell WES Service
 type: application
 version: 0.1.0
