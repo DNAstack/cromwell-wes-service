@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "cromwell-wes-service-e2etest"
+  name: "workspaces-wes-e2etest"
   annotations:
     "helm.sh/hook": test
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
@@ -11,8 +11,8 @@ spec:
       serviceAccountName: cromwellwesservice
       restartPolicy: Never
       containers:
-        - name: "cromwell-wes-service-e2etest"
-          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/cromwell-wes-service-e2e-tests:{{ .Chart.Version }}"
+        - name: "workspaces-wes-e2etest"
+          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/workspaces-wes-e2e-tests:{{ .Chart.Version }}"
           env:
             - name: _JAVA_OPTIONS
               value: "-Dlogging.level.root=TRACE"
