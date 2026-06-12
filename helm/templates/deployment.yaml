@@ -194,7 +194,7 @@ spec:
       serviceAccountName: cromwellwesservice
       initContainers:
         - name: cromwell-wes-service-cloud-init
-          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/cromwell-wes-service-cloud-init-job:{{- include "dnastack.cloudinit.version" . }}"
+          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/workspaces-wes-cloud-init-job:{{- include "dnastack.cloudinit.version" . }}"
           command: [ "/cloud-init/run_cloud_init.sh" ]
           args: []
           env:
@@ -243,7 +243,7 @@ spec:
 
       containers:
         - name: cromwell-wes-service
-          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/cromwell-wes-service:{{- include "dnastack.app.version" . }}"
+          image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/workspaces-wes:{{- include "dnastack.app.version" . }}"
           ports:
             - name: http
               containerPort: 8080
