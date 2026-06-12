@@ -11,8 +11,8 @@ tests:
       cloud.clusterName: c
       cloud.clusterNamespace: n
       cloud.spaceDnsName: d
-      cromwellWesService.appName: cromwell-wes-service
-      cromwellWesService.externalHostname: wes.example.com
+      workspacesWes.appName: workspaces-wes
+      workspacesWes.externalHostname: wes.example.com
       wallet.appName: wallet
       wallet.externalHostname: auth.example.com
       app.cromwell.gcpExecutionProject: project
@@ -38,8 +38,8 @@ tests:
       cloud.clusterName: c
       cloud.clusterNamespace: n
       cloud.spaceDnsName: d
-      cromwellWesService.appName: cromwell-wes-service
-      cromwellWesService.externalHostname: wes.example.com
+      workspacesWes.appName: workspaces-wes
+      workspacesWes.externalHostname: wes.example.com
       wallet.appName: wallet
       wallet.externalHostname: auth.example.com
       app.cromwell.gcpExecutionProject: project
@@ -60,8 +60,8 @@ tests:
       cloud.clusterName: c
       cloud.clusterNamespace: n
       cloud.spaceDnsName: d
-      cromwellWesService.appName: cromwell-wes-service
-      cromwellWesService.externalHostname: wes.example.com
+      workspacesWes.appName: workspaces-wes
+      workspacesWes.externalHostname: wes.example.com
       wallet.appName: wallet
       wallet.externalHostname: auth.example.com
       app.cromwell.gcpExecutionProject: project

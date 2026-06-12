@@ -9,7 +9,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`{{ include "dnastack.externalHostname" (dict "Values" .Values "Template" .Template "name" "cromwellWesService") }}`)
+    - match: Host(`{{ include "dnastack.externalHostname" (dict "Values" .Values "Template" .Template "name" "workspacesWes") }}`)
       kind: Rule
       services:
         - name: cromwell-wes-service

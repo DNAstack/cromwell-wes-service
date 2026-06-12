@@ -229,7 +229,7 @@ spec:
             - name: USE_USER_TOKEN_FOR_ADMIN_ACTIONS
               value: "false"
             - name: APP_WORKSPACES_WES_HOSTNAME
-              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+              value: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
             - name: WALLET_URL
               value: '{{- include "dnastack.wallet.internalUrl" . }}'
             - name: WALLET_RESOURCE
@@ -291,7 +291,7 @@ spec:
             - name: INFO_APP_NAME
               value: "WES on Cromwell/GCP"
             - name: WES_URL
-              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+              value: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
             - name: WES_CROMWELL_URL
               value: {{ .Values.app.cromwell.cromwellUrl | default "http://localhost:8000" | quote }}
             - name: WES_BLOBSTORAGECLIENT_NAME
@@ -310,7 +310,7 @@ spec:
             - name: WES_AUTH_ISSUERURI
               value: '{{- include "dnastack.wallet.externalUrl" . }}'
             - name: MANAGEMENT_METRICS_TAGS_REGION
-              value: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+              value: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
             - name: WES_REGISTRY_CLIENT_ID
               valueFrom:
                 secretKeyRef:

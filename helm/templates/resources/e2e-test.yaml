@@ -50,7 +50,7 @@ spec:
     id: cromwell-wes-service-e2e-test
     name: "Client for end-to-end testing of cromwell-wes-service"
     grants:
-      - audience: '{{- include "dnastack.cromwellWesService.externalUrl" . }}'
+      - audience: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
         grantTypes:
           - client_credentials
         responseTypes:
