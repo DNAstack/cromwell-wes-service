@@ -36,9 +36,7 @@ app:
     additionalProfiles: ""
 
   # Pre-configured GCP credentials secrets. These must exist in the cluster before
-  # deploying. The defaults use the cromwell-wes-service naming; for alpha/preview
-  # cutover from the legacy workspaces-wes deployment, override to the existing names
-  # (e.g. workspaces-wes-gcp-credentials) in the env's global-values.yaml.
+  # deploying. Defaults match the workspaces-wes-* naming used by cloud-init.
   gcpCredentialsSecretName: workspaces-wes-gcp-credentials
 
   cromwell:
