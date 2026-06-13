@@ -23,32 +23,32 @@ tests:
       - containsDocument:
           kind: Secret
           apiVersion: v1
-          name: cromwell-wes-service-client-credentials
+          name: workspaces-wes-client-credentials
           any: true
       - containsDocument:
           kind: Secret
           apiVersion: v1
-          name: cromwell-wes-service-public-client-credentials
+          name: workspaces-wes-public-client-credentials
           any: true
       - containsDocument:
           kind: Secret
           apiVersion: v1
-          name: cromwell-wes-service-cromwell-db-credentials
+          name: workspaces-wes-cromwell-db-credentials
           any: true
       - containsDocument:
           kind: WalletClient
           apiVersion: dnastack.com/v1
-          name: cromwell-wes-service
+          name: workspaces-wes
           any: true
       - containsDocument:
           kind: WalletClient
           apiVersion: dnastack.com/v1
-          name: cromwell-wes-service-public
+          name: workspaces-wes-public
           any: true
       - containsDocument:
           kind: WalletPolicy
           apiVersion: dnastack.com/v1
-          name: cromwell-wes-service-policy
+          name: workspaces-wes-policy
           any: true
 
   - it: cromwell-db-credentials Secret has username cromwell
@@ -69,7 +69,7 @@ tests:
       app.cromwell.gcpStagingLocation: gs://bucket/staging
     documentSelector:
       path: metadata.name
-      value: cromwell-wes-service-cromwell-db-credentials
+      value: workspaces-wes-cromwell-db-credentials
     asserts:
       - equal:
           path: data.username
@@ -93,7 +93,7 @@ tests:
       app.cromwell.gcpStagingLocation: gs://bucket/staging
     documentSelector:
       path: metadata.name
-      value: cromwell-wes-service-policy
+      value: workspaces-wes-policy
     asserts:
       - equal:
           path: spec.data.statements[0].resources[0].uri
@@ -117,7 +117,7 @@ tests:
       app.cromwell.gcpStagingLocation: gs://bucket/staging
     documentSelector:
       path: metadata.name
-      value: cromwell-wes-service-client-credentials
+      value: workspaces-wes-client-credentials
     asserts:
       - equal:
           path: metadata.annotations["helm.sh/resource-policy"]

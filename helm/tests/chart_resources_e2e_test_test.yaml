@@ -23,15 +23,15 @@ tests:
       - containsDocument:
           kind: Secret
           apiVersion: v1
-          name: cromwell-wes-service-e2e-test-client-credentials
+          name: workspaces-wes-e2e-test-client-credentials
           any: true
       - containsDocument:
           kind: WalletClient
           apiVersion: dnastack.com/v1
-          name: cromwell-wes-service-e2e-test
+          name: workspaces-wes-e2e-test
           any: true
 
-  - it: e2e-test Secret clientId is base64 of cromwell-wes-service-e2e-test
+  - it: e2e-test Secret clientId is base64 of workspaces-wes-e2e-test
     set:
       image.repository: gcr.io/dnastack-container-store
       app.configVersion: cv
@@ -49,8 +49,8 @@ tests:
       app.cromwell.gcpStagingLocation: gs://bucket/staging
     documentSelector:
       path: metadata.name
-      value: cromwell-wes-service-e2e-test-client-credentials
+      value: workspaces-wes-e2e-test-client-credentials
     asserts:
       - equal:
           path: data.clientId
-          value: Y3JvbXdlbGwtd2VzLXNlcnZpY2UtZTJlLXRlc3Q=   # base64("cromwell-wes-service-e2e-test")
+          value: d29ya3NwYWNlcy13ZXMtZTJlLXRlc3Q=   # base64("workspaces-wes-e2e-test")

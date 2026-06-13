@@ -129,7 +129,7 @@ tests:
           content:
             name: cromwell-sa
             secret:
-              secretName: cromwell-wes-service-cromwell-credentials
+              secretName: workspaces-wes-cromwell-credentials
 
   - it: respects configurable SA secret name
     set:
@@ -177,7 +177,7 @@ tests:
             name: CROMWELL_DB_USER
             valueFrom:
               secretKeyRef:
-                name: cromwell-wes-service-cromwell-db-credentials
+                name: workspaces-wes-cromwell-db-credentials
                 key: username
 
   - it: replicas defaults to 1
