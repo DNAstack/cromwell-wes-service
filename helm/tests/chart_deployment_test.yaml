@@ -55,7 +55,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].name
-          value: cromwell-wes-service
+          value: workspaces-wes
       - equal:
           path: spec.template.spec.containers[1].name
           value: cromwell

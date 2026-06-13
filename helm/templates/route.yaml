@@ -12,6 +12,6 @@ spec:
     - match: Host(`{{ include "dnastack.externalHostname" (dict "Values" .Values "Template" .Template "name" "workspacesWes") }}`)
       kind: Rule
       services:
-        - name: cromwell-wes-service
+        - name: workspaces-wes
           port: 8080
 {{- end }}

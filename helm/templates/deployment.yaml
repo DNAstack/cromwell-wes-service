@@ -143,9 +143,9 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cromwell-wes-service
+  name: workspaces-wes
   labels:
-    app: cromwell-wes-service
+    app: workspaces-wes
     configVersion: {{ .Values.app.configVersion }}
     secretsHash: {{ .Values.app.secretHash }}
     product: "workbench"
@@ -156,7 +156,7 @@ spec:
   replicas: {{ .Values.app.replicas }}
   selector:
     matchLabels:
-      app: cromwell-wes-service
+      app: workspaces-wes
       configVersion: {{ .Values.app.configVersion }}
       secretsHash: {{ .Values.app.secretHash }}
   template:
@@ -170,7 +170,7 @@ spec:
         {{ tpl ($key | toString) $ }}: {{ tpl ($value | toString) $ | quote }}
         {{- end }}
       labels:
-        app: cromwell-wes-service
+        app: workspaces-wes
         version: '{{- include "dnastack.app.version" . }}'
         configVersion: {{ .Values.app.configVersion }}
         secretsHash: {{ .Values.app.secretHash }}
@@ -188,7 +188,7 @@ spec:
                 - key: app
                   operator: In
                   values:
-                  - cromwell-wes-service
+                  - workspaces-wes
               topologyKey: topology.kubernetes.io/hostname
             weight: 100
       serviceAccountName: cromwellwesservice
@@ -242,7 +242,7 @@ spec:
                 optional: true
 
       containers:
-        - name: cromwell-wes-service
+        - name: workspaces-wes
           image: "{{ coalesce .Values.image.repository ((.Values.global).image).repository }}/workspaces-wes:{{- include "dnastack.app.version" . }}"
           ports:
             - name: http
@@ -436,12 +436,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cromwell-wes-service
+  name: workspaces-wes
   labels:
-    name: cromwell-wes-service
+    name: workspaces-wes
 spec:
   selector:
-    app: cromwell-wes-service
+    app: workspaces-wes
   ports:
     - name: http
       port: 8080
