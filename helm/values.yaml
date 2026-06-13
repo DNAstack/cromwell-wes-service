@@ -68,6 +68,6 @@ env: []   # extra env merged into main container via mergeEnvLists
 test:
   keepalive:
     enabled: false
-    # 5 min is enough for the Concourse upload-test-output step to kubectl exec
+    # Must exceed test runtime (currently ~7 min) to give Concourse time to exec
     # artifacts out of the test pod. Longer windows silently block helm test reruns.
-    duration: 300
+    duration: 600
