@@ -24,12 +24,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key: clientId
-                  name: cromwell-wes-service-e2e-test-client-credentials
+                  name: workspaces-wes-e2e-test-client-credentials
             - name: E2E_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   key: clientSecret
-                  name: cromwell-wes-service-e2e-test-client-credentials
+                  name: workspaces-wes-e2e-test-client-credentials
             - name: E2E_TOKEN_URI
               value: '{{- include "dnastack.wallet.internalUrl" . }}/oauth/token'
             - name: E2E_WALLET_BASE_URI

@@ -1,7 +1,7 @@
 # ==============================================================================
-# cromwell-wes-service-e2e-test client (Secret + WalletClient + WalletPolicy)
+# workspaces-wes-e2e-test client (Secret + WalletClient + WalletPolicy)
 # ==============================================================================
-{{- $e2eSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-e2e-test-client-credentials") | default dict }}
+{{- $e2eSecretObj := (lookup "v1" "Secret" .Release.Namespace "workspaces-wes-e2e-test-client-credentials") | default dict }}
 {{- if or (empty $e2eSecretObj)
           (and
             (hasKey $e2eSecretObj.metadata "annotations")
@@ -11,7 +11,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cromwell-wes-service-e2e-test-client-credentials
+  name: workspaces-wes-e2e-test-client-credentials
   labels:
     app: cromwell-wes-service
     type: test_wallet-client-credential
@@ -21,7 +21,7 @@ type: Opaque
 data:
   {{- $e2eSecretData := (get $e2eSecretObj "data") | default dict }}
   {{- $e2eClientSecret := (get $e2eSecretData "clientSecret") | default (randBytes 32 | b64dec | printf "%x" | b64enc) }}
-  clientId: {{ b64enc "cromwell-wes-service-e2e-test" | quote }}
+  clientId: {{ b64enc "workspaces-wes-e2e-test" | quote }}
   clientSecret: {{ $e2eClientSecret | quote }}
 {{- end }}
 
@@ -30,7 +30,7 @@ data:
 apiVersion: dnastack.com/v1
 kind: WalletClient
 metadata:
-  name: cromwell-wes-service-e2e-test
+  name: workspaces-wes-e2e-test
   labels:
     app: cromwell-wes-service
 spec:
@@ -39,16 +39,16 @@ spec:
     - credentialId: default
       syncMode: CREATE_ONLY
       secretKeyRef:
-        name: cromwell-wes-service-e2e-test-client-credentials
+        name: workspaces-wes-e2e-test-client-credentials
         key: clientSecret
     - credentialId: rotation-backup
       syncMode: CREATE_ONLY
       secretKeyRef:
-        name: cromwell-wes-service-e2e-test-client-credentials
+        name: workspaces-wes-e2e-test-client-credentials
         key: clientSecret
   data:
-    id: cromwell-wes-service-e2e-test
-    name: "Client for end-to-end testing of cromwell-wes-service"
+    id: workspaces-wes-e2e-test
+    name: "Client for end-to-end testing of workspaces-wes"
     grants:
       - audience: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
         grantTypes:

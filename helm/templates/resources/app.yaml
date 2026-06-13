@@ -1,7 +1,7 @@
 # ==============================================================================
-# cromwell-wes-service client credentials (Secret + WalletClient)
+# workspaces-wes client credentials (Secret + WalletClient)
 # ==============================================================================
-{{- $clientSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-client-credentials") | default dict }}
+{{- $clientSecretObj := (lookup "v1" "Secret" .Release.Namespace "workspaces-wes-client-credentials") | default dict }}
 {{- if or (empty $clientSecretObj)
           (and
             (hasKey $clientSecretObj.metadata "annotations")
@@ -11,7 +11,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cromwell-wes-service-client-credentials
+  name: workspaces-wes-client-credentials
   labels:
     app: cromwell-wes-service
     type: app_wallet-client-credential
@@ -21,17 +21,17 @@ type: Opaque
 data:
   {{- $clientSecretData := (get $clientSecretObj "data") | default dict }}
   {{- $clientSecret := (get $clientSecretData "clientSecret") | default (randBytes 32 | b64dec | printf "%x" | b64enc) }}
-  clientId: {{ b64enc "cromwell-wes-service" | quote }}
+  clientId: {{ b64enc "workspaces-wes" | quote }}
   clientSecret: {{ $clientSecret | quote }}
 {{- end }}
 
 ---
 
 # ==============================================================================
-# cromwell-wes-service-public client credentials (Secret + WalletClient)
+# workspaces-wes-public client credentials (Secret + WalletClient)
 # Used by ewes-service for device_code flows.
 # ==============================================================================
-{{- $publicSecretObj := (lookup "v1" "Secret" .Release.Namespace "cromwell-wes-service-public-client-credentials") | default dict }}
+{{- $publicSecretObj := (lookup "v1" "Secret" .Release.Namespace "workspaces-wes-public-client-credentials") | default dict }}
 {{- if or (empty $publicSecretObj)
           (and
             (hasKey $publicSecretObj.metadata "annotations")
@@ -41,7 +41,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cromwell-wes-service-public-client-credentials
+  name: workspaces-wes-public-client-credentials
   labels:
     app: cromwell-wes-service
     type: app_wallet-client-credential
@@ -51,7 +51,7 @@ type: Opaque
 data:
   {{- $publicSecretData := (get $publicSecretObj "data") | default dict }}
   {{- $publicSecret := (get $publicSecretData "clientSecret") | default (randBytes 32 | b64dec | printf "%x" | b64enc) }}
-  clientId: {{ b64enc "cromwell-wes-service-public" | quote }}
+  clientId: {{ b64enc "workspaces-wes-public" | quote }}
   clientSecret: {{ $publicSecret | quote }}
 {{- end }}
 
@@ -92,12 +92,12 @@ data:
 ---
 
 # ==============================================================================
-# WalletClient: cromwell-wes-service
+# WalletClient: workspaces-wes
 # ==============================================================================
 apiVersion: dnastack.com/v1
 kind: WalletClient
 metadata:
-  name: cromwell-wes-service
+  name: workspaces-wes
   labels:
     app: cromwell-wes-service
 spec:
@@ -106,16 +106,16 @@ spec:
     - credentialId: default
       syncMode: CREATE_ONLY
       secretKeyRef:
-        name: cromwell-wes-service-client-credentials
+        name: workspaces-wes-client-credentials
         key: clientSecret
     - credentialId: rotation-backup
       syncMode: CREATE_ONLY
       secretKeyRef:
-        name: cromwell-wes-service-client-credentials
+        name: workspaces-wes-client-credentials
         key: clientSecret
   data:
-    id: cromwell-wes-service
-    name: "OAuth client for cromwell-wes-service"
+    id: workspaces-wes
+    name: "OAuth client for workspaces-wes"
     grants:
       - audience: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
         grantTypes:
@@ -128,13 +128,13 @@ spec:
 ---
 
 # ==============================================================================
-# WalletClient: cromwell-wes-service-public
+# WalletClient: workspaces-wes-public
 # Public client used by ewes-service for device_code flows.
 # ==============================================================================
 apiVersion: dnastack.com/v1
 kind: WalletClient
 metadata:
-  name: cromwell-wes-service-public
+  name: workspaces-wes-public
   labels:
     app: cromwell-wes-service
 spec:
@@ -143,16 +143,16 @@ spec:
     - credentialId: default
       syncMode: CREATE_ONLY
       secretKeyRef:
-        name: cromwell-wes-service-public-client-credentials
+        name: workspaces-wes-public-client-credentials
         key: clientSecret
     - credentialId: rotation-backup
       syncMode: CREATE_ONLY
       secretKeyRef:
-        name: cromwell-wes-service-public-client-credentials
+        name: workspaces-wes-public-client-credentials
         key: clientSecret
   data:
-    id: cromwell-wes-service-public
-    name: "Public OAuth client for cromwell-wes-service (device code flows)"
+    id: workspaces-wes-public
+    name: "Public OAuth client for workspaces-wes (device code flows)"
     grants:
       - audience: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
         # sensitive: true is load-bearing here — these scopes appear in the device_code consent UI
@@ -175,25 +175,25 @@ spec:
 ---
 
 # ==============================================================================
-# WalletPolicy: cromwell-wes-service-policy
+# WalletPolicy: workspaces-wes-policy
 # ==============================================================================
 apiVersion: dnastack.com/v1
 kind: WalletPolicy
 metadata:
-  name: cromwell-wes-service-policy
+  name: workspaces-wes-policy
   labels:
     app: cromwell-wes-service
 spec:
   syncMode: CREATE_AND_UPDATE
   data:
-    id: cromwell-wes-service-policy
-    name: Access Policy for cromwell-wes-service
+    id: workspaces-wes-policy
+    name: Access Policy for workspaces-wes
     statements:
       - principals:
           - type: service
-            id: cromwell-wes-service
+            id: workspaces-wes
           - type: service
-            id: cromwell-wes-service-e2e-test
+            id: workspaces-wes-e2e-test
           - type: group
             id: dnastack-devs-external
         actions:

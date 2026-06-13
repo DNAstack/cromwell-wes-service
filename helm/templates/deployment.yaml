@@ -314,12 +314,12 @@ spec:
             - name: WES_REGISTRY_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: "cromwell-wes-service-public-client-credentials"
+                  name: "workspaces-wes-public-client-credentials"
                   key: clientId
             - name: WES_REGISTRY_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: "cromwell-wes-service-public-client-credentials"
+                  name: "workspaces-wes-public-client-credentials"
                   key: clientSecret
             - name: SPRING_APPLICATION_JSON
               value: |
