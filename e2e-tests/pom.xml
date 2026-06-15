@@ -28,7 +28,7 @@
         <restassured.version>5.4.0</restassured.version>
         <slf4j.version>2.0.10</slf4j.version>
         <awaitility.version>4.2.0</awaitility.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jackson.version>2.18.6</jackson.version>
         <jfairy.version>0.5.9</jfairy.version>
         <gcloud.version>1.93.0</gcloud.version>
     </properties>
