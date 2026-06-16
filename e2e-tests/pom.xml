@@ -27,7 +27,7 @@
         <selenium.version>4.16.1</selenium.version>
         <restassured.version>5.5.7</restassured.version>
         <slf4j.version>2.0.18</slf4j.version>
-        <awaitility.version>4.2.0</awaitility.version>
+        <awaitility.version>4.3.0</awaitility.version>
         <jackson.version>2.18.6</jackson.version>
         <jfairy.version>0.5.9</jfairy.version>
         <gcloud.version>1.94.0</gcloud.version>
