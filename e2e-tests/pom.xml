@@ -26,7 +26,7 @@
         <webdriver.version>5.6.3</webdriver.version>
         <selenium.version>4.16.1</selenium.version>
         <restassured.version>5.4.0</restassured.version>
-        <slf4j.version>2.0.10</slf4j.version>
+        <slf4j.version>2.0.18</slf4j.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jackson.version>2.18.6</jackson.version>
         <jfairy.version>0.5.9</jfairy.version>
