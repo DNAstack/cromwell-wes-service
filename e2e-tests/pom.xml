@@ -16,7 +16,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
-        <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
+        <maven.surefire.plugin.version>3.5.6</maven.surefire.plugin.version>
         <maven.go-offline.plugin.version>1.2.8</maven.go-offline.plugin.version>
         <!-- DNAstack Libs -->
         <dnastack.actuator-e2e-test.version>1.0.5</dnastack.actuator-e2e-test.version>
