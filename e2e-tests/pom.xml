@@ -29,8 +29,6 @@
         <slf4j.version>2.0.18</slf4j.version>
         <awaitility.version>4.3.0</awaitility.version>
         <jackson.version>2.22.0</jackson.version>
-        <!-- jackson-annotations publishes 2.22 (no patch), not 2.22.0 — pin separately so resolution doesn't fail -->
-        <jackson-annotations.version>2.22</jackson-annotations.version>
         <jfairy.version>0.5.9</jfairy.version>
         <gcloud.version>1.94.0</gcloud.version>
     </properties>
@@ -84,7 +82,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>${jackson-annotations.version}</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>

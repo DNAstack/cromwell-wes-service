@@ -22,21 +22,21 @@ public class RunFileController {
     public RunFileController(RunFileService runFileService) {this.runFileService = runFileService;}
 
     @AuditActionUri("wes:runs:files:list")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.files.list', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFiles getRunFiles(@PathVariable String runId) {
         return runFileService.getRunFiles(runId);
     }
 
     @AuditActionUri("wes:runs:files:get-metadata")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.files.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/file", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFile getRunFile(@PathVariable String runId, @RequestParam String path) {
         return runFileService.getRunFile(runId,path);
     }
 
     @AuditActionUri("wes:runs:files:get-content")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.files.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:read', 'wes')")
     @GetMapping(value = "/runs/{runId}/file", produces = { MediaType.APPLICATION_OCTET_STREAM_VALUE })
     public void streamFileContents(
         HttpServletResponse response,
@@ -50,7 +50,7 @@ public class RunFileController {
 
 
     @AuditActionUri("wes:run:files:delete")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.files.delete', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'wes:runs:write', 'wes')")
     @DeleteMapping(value = "/runs/{run_id}/files", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunFileDeletions deleteRunFiles(
         @PathVariable("run_id") String runId,
