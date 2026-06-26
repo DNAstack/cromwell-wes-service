@@ -25,7 +25,7 @@
         <junit.version>5.14.4</junit.version>
         <webdriver.version>5.6.3</webdriver.version>
         <selenium.version>4.16.1</selenium.version>
-        <restassured.version>5.5.7</restassured.version>
+        <restassured.version>6.0.0</restassured.version>
         <slf4j.version>2.0.18</slf4j.version>
         <awaitility.version>4.3.0</awaitility.version>
         <jackson.bom.version>2.22.0</jackson.bom.version>
