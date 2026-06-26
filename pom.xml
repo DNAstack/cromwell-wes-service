@@ -42,7 +42,7 @@
         <gcloud.storage.version>2.69.0</gcloud.storage.version>
         <gcloud.auth.version>1.48.0</gcloud.auth.version>
         <!-- Other -->
-        <spring-cloud.version>2025.1.1</spring-cloud.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
         <!-- feign-form is not managed by spring-cloud-dependencies BOM -->
         <feign-form.version>3.8.0</feign-form.version>
     </properties>
