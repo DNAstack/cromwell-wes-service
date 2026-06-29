@@ -69,7 +69,7 @@ public class WesV1Controller {
     }
 
 
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'workbench.runs.execute', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', {'wes:execute','workbench.runs.execute'}, 'wes')")
     @PostMapping(value = "/runs", produces = {
         MediaType.APPLICATION_JSON_VALUE
     }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -94,7 +94,7 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:runs:list")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', 'workbench.runs.list', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs', {'wes:runs:read','workbench.runs.list'}, 'wes')")
     @GetMapping(path = "/runs", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunListResponse getRuns(
         @RequestParam(value = "page_size", required = false) Integer pageSize,
@@ -104,21 +104,21 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:run:read")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.get'}, 'wes')")
     @GetMapping(value = "/runs/{run_id}", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunLog getRun(@PathVariable("run_id") String runId) {
         return adapter.getRun(runId);
     }
 
     @AuditActionUri("wes:run:status")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.get'}, 'wes')")
     @GetMapping(value = "/runs/{run_id}/status", produces = { MediaType.APPLICATION_JSON_VALUE })
     public RunStatus getRunStatus(@PathVariable("run_id") String runId) {
         return adapter.getRunStatus(runId);
     }
 
     @AuditActionUri("wes:run:cancel")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.cancel', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:cancel','workbench.runs.cancel'}, 'wes')")
     @PostMapping(path = "/runs/{runId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
     public RunId cancelRun(@PathVariable("runId") String runId) {
         return adapter.cancel(runId);
@@ -126,14 +126,14 @@ public class WesV1Controller {
 
 
     @AuditActionUri("wes:run:stderr")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.logs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.logs.get'}, 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getStderr(HttpServletResponse response, @RequestHeader HttpHeaders headers, @PathVariable String runId) throws IOException {
         adapter.getLogBytes(response.getOutputStream(), runId, RangeHeaderUtils.getRangeFromHeaders(response, headers));
     }
 
     @AuditActionUri("wes:run:stderr")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.logs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.logs.get'}, 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskId}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getTaskStderr(
         HttpServletResponse response,
@@ -145,7 +145,7 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:run:stdout")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.logs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.logs.get'}, 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskId}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getTaskStdout(
         HttpServletResponse response,
@@ -157,7 +157,7 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:run:stderr")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.logs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.logs.get'}, 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stderr", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getTaskStderr(
         HttpServletResponse response,
@@ -170,7 +170,7 @@ public class WesV1Controller {
     }
 
     @AuditActionUri("wes:run:stdout")
-    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, 'workbench.runs.logs.get', 'wes')")
+    @PreAuthorize("@accessEvaluator.canAccessResource('/ga4gh/wes/v1/runs/' + #runId, {'wes:runs:read','workbench.runs.logs.get'}, 'wes')")
     @GetMapping(value = "/runs/{runId}/logs/task/{taskName}/{index}/stdout", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void getTaskStdout(
         HttpServletResponse response,

@@ -31,8 +31,12 @@ import java.util.List;
 public class PassportSecurityConfiguration {
 
     @Bean
-    public AccessEvaluator accessEvaluator(AuthConfig authConfig, PermissionChecker permissionChecker) {
-        return new AccessEvaluator(authConfig, permissionChecker);
+    public AccessEvaluator accessEvaluator(
+        AuthConfig authConfig,
+        @Value("${app.rbac.fine-grained-enforcement.enabled:false}") boolean fineGrainedEnforcementEnabled,
+        PermissionChecker permissionChecker
+    ) {
+        return new AccessEvaluator(authConfig, fineGrainedEnforcementEnabled, permissionChecker);
     }
 
     @Bean
