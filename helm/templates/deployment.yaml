@@ -309,6 +309,8 @@ spec:
               value: '{{- include "dnastack.app.version" . }}'
             - name: WES_AUTH_ISSUERURI
               value: '{{- include "dnastack.wallet.externalUrl" . }}'
+            - name: APP_RBAC_FINE_GRAINED_ENFORCEMENT_ENABLED
+              value: {{ .Values.app.rbac.fineGrainedEnforcementEnabled | quote }}
             - name: MANAGEMENT_METRICS_TAGS_REGION
               value: '{{- include "dnastack.workspacesWes.externalUrl" . }}'
             - name: WES_REGISTRY_CLIENT_ID

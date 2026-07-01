@@ -32,6 +32,10 @@ app:
   secretHash: secrets-hash
   memoryLimit: "2048Mi"
   replicas: 1
+  rbac:
+    # false: @PreAuthorize endpoints enforce coarse wes:* actions; true: enforce fine workbench.runs.* actions.
+    # Each environment flips this in helm/<env>/global-values.yaml once its consumer grants carry the fine actions.
+    fineGrainedEnforcementEnabled: false
   spring:
     additionalProfiles: ""
 

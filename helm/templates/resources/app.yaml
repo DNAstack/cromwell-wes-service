@@ -201,5 +201,13 @@ spec:
           - wes:runs:write
           - wes:runs:cancel
           - wes:execute
+          - workbench.runs.execute
+          - workbench.runs.list
+          - workbench.runs.get
+          - workbench.runs.cancel
+          - workbench.runs.logs.get
+          - workbench.runs.files.list
+          - workbench.runs.files.get
+          - workbench.runs.files.delete
         resources:
           - uri: '{{- include "dnastack.workspacesWes.externalUrl" . }}/'
