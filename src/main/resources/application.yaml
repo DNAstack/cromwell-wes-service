@@ -161,10 +161,6 @@ wes:
 # Auditing
 app:
   url: ${wes.url}
-  rbac:
-    fine-grained-enforcement:
-      # false: endpoints enforce their coarse wes:* action; true: enforce the fine workbench.runs.* action.
-      enabled: false
 
 auditing:
   enabled: true
