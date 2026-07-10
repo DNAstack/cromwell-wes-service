@@ -197,10 +197,6 @@ spec:
           - type: group
             id: dnastack-devs-external
         actions:
-          - wes:runs:read
-          - wes:runs:write
-          - wes:runs:cancel
-          - wes:execute
           - workbench.runs.execute
           - workbench.runs.list
           - workbench.runs.get

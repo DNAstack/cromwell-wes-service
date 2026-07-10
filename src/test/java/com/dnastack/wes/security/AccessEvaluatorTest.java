@@ -28,68 +28,20 @@ class AccessEvaluatorTest {
         SecurityContextHolder.clearContext();
     }
 
-    private AccessEvaluator evaluator(boolean fineGrainedEnabled) {
+    private AccessEvaluator evaluator() {
         AuthConfig authConfig = new AuthConfig();
         AuthConfig.IssuerConfig issuerConfig = new AuthConfig.IssuerConfig();
         issuerConfig.setAudiences(List.of(AUDIENCE));
         authConfig.tokenIssuer = issuerConfig;
-        return new AccessEvaluator(authConfig, fineGrainedEnabled, permissionChecker);
+        return new AccessEvaluator(authConfig, permissionChecker);
     }
 
     @Test
-    void selectEnforcedActions_whenDisabled_keepsOnlyCoarse() {
-        assertThat(evaluator(false).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.get")))
-            .containsExactly("wes:runs:read");
-    }
-
-    @Test
-    void selectEnforcedActions_whenEnabled_keepsOnlyFine() {
-        assertThat(evaluator(true).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.get")))
-            .containsExactly("workbench.runs.get");
-    }
-
-    @Test
-    void selectEnforcedActions_forUnmigratedSingleAction_returnsItUnderEitherState() {
-        Set<String> coarseOnly = Set.of("wes:execute");
-        assertThat(evaluator(false).selectEnforcedActions(coarseOnly)).containsExactly("wes:execute");
-        assertThat(evaluator(true).selectEnforcedActions(coarseOnly)).containsExactly("wes:execute");
-    }
-
-    @Test
-    void selectEnforcedActions_whenDisabled_foldsEveryReadEndpointBackOntoTheSharedCoarseAction() {
-        assertThat(evaluator(false).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.list"))).containsExactly("wes:runs:read");
-        assertThat(evaluator(false).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.get"))).containsExactly("wes:runs:read");
-        assertThat(evaluator(false).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.logs.get"))).containsExactly("wes:runs:read");
-        assertThat(evaluator(false).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.files.list"))).containsExactly("wes:runs:read");
-        assertThat(evaluator(false).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.files.get"))).containsExactly("wes:runs:read");
-    }
-
-    @Test
-    void selectEnforcedActions_whenEnabled_separatesEachReadEndpointOntoItsOwnFineAction() {
-        assertThat(evaluator(true).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.list"))).containsExactly("workbench.runs.list");
-        assertThat(evaluator(true).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.get"))).containsExactly("workbench.runs.get");
-        assertThat(evaluator(true).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.logs.get"))).containsExactly("workbench.runs.logs.get");
-        assertThat(evaluator(true).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.files.list"))).containsExactly("workbench.runs.files.list");
-        assertThat(evaluator(true).selectEnforcedActions(Set.of("wes:runs:read", "workbench.runs.files.get"))).containsExactly("workbench.runs.files.get");
-    }
-
-    @Test
-    void canAccessResource_whenDisabled_forwardsOnlyCoarseToPermissionChecker() {
+    void canAccessResource_forwardsRequiredActionsVerbatimToPermissionChecker() {
         givenAuthenticatedJwt();
         ArgumentCaptor<Set<String>> forwarded = captureForwardedActions();
 
-        evaluator(false).canAccessResource("/ga4gh/wes/v1/runs", Set.of("wes:runs:read", "workbench.runs.list"), Set.of("wes"));
-
-        verify(permissionChecker).hasPermissions(eq("token-value"), any(), eq(AUDIENCE + "/ga4gh/wes/v1/runs"), forwarded.capture());
-        assertThat(forwarded.getValue()).containsExactly("wes:runs:read");
-    }
-
-    @Test
-    void canAccessResource_whenEnabled_forwardsOnlyFineToPermissionChecker() {
-        givenAuthenticatedJwt();
-        ArgumentCaptor<Set<String>> forwarded = captureForwardedActions();
-
-        evaluator(true).canAccessResource("/ga4gh/wes/v1/runs", Set.of("wes:runs:read", "workbench.runs.list"), Set.of("wes"));
+        evaluator().canAccessResource("/ga4gh/wes/v1/runs", Set.of("workbench.runs.list"), Set.of("wes"));
 
         verify(permissionChecker).hasPermissions(eq("token-value"), any(), eq(AUDIENCE + "/ga4gh/wes/v1/runs"), forwarded.capture());
         assertThat(forwarded.getValue()).containsExactly("workbench.runs.list");
