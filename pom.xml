@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.dnastack.starter</groupId>
         <artifactId>spring-boot-parent</artifactId>
-        <version>4.0.1-27-ga5f8c5f</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
