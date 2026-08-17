@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.dnastack.starter</groupId>
         <artifactId>spring-boot-parent</artifactId>
-        <version>4.0.1</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
@@ -76,6 +76,23 @@
                 <version>${gcloud.auth.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- Force these Netty modules to 4.1.136.Final for CVE-2026-59901/55831/55833/56745/56819;
+                 they enter transitively via the Azure SDK's azure-core-http-netty (still on 4.1.135.Final). -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec</artifactId>
+                <version>4.1.136.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http</artifactId>
+                <version>4.1.136.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-codec-http2</artifactId>
+                <version>4.1.136.Final</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
