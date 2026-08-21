@@ -7,7 +7,7 @@ on:
 jobs:
   concourse-build-check:
     name: Concourse Build Check
-    uses: DNAstack/dnastack-development-tools/.github/workflows/concourse-build-check.yml@b8f171d57cc310232a18ac2028e8ed3ee68eabce
+    uses: DNAstack/dnastack-development-tools/.github/workflows/concourse-build-check.yml@7c3b1aef57cde6747b17061e0e0861968e6b05b7
     with:
       pipeline_name: 'workbench-alpha'
       job_name: 'workspaces-wes-deploy-helm'
