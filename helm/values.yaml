@@ -48,6 +48,11 @@ app:
     gcpStagingLocation: ""    # GCS staging location for WES blob storage
     gcpZone: "us-central1-a"  # GCP zone for Cromwell batch jobs
     cromwellUrl: "http://localhost:8000"  # in-pod URL to the Cromwell sidecar
+    # Image Cromwell's GCP Batch backend runs its localization/delocalization runnables in.
+    # Must be a `slim` variant: alpine moved python to /usr/local/bin at 568.0.0, and Cromwell
+    # sets the runnable entrypoint to /bin/sh, so gsutil's preamble fails on /usr/bin/python3.
+    # The Batch worker service account needs artifactregistry.reader on the mirror's project.
+    cloudSdkImage: "us-central1-docker.pkg.dev/dnastack-container-store/mirror-images/google.com/cloudsdktool/cloud-sdk:583.0.0-slim"
 
 workspacesWes:
   appName:

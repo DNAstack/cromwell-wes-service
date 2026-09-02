@@ -58,6 +58,11 @@ data:
 
     google {
       application-name = "cromwell"
+
+      # Cromwell's GCP Batch backend otherwise defaults to a gcr.io cloud-sdk tag that Google
+      # garbage-collects once it ages out, which fails every task at VM startup on the docker pull.
+      cloud-sdk-image-url = "{{ .Values.app.cromwell.cloudSdkImage }}"
+
       auths = [
         {
           name = "cromwell-service-account"
