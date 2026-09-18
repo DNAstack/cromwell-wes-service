@@ -52,7 +52,7 @@ app:
     # Must be a `slim` variant: alpine moved python to /usr/local/bin at 568.0.0, and Cromwell
     # sets the runnable entrypoint to /bin/sh, so gsutil's preamble fails on /usr/bin/python3.
     # The Batch worker service account needs artifactregistry.reader on the mirror's project.
-    cloudSdkImage: "us-central1-docker.pkg.dev/dnastack-container-store/mirror-images/google.com/cloudsdktool/cloud-sdk:583.0.0-slim"
+    cloudSdkImage: "us-central1-docker.pkg.dev/dnastack-container-store/mirror-images/google.com/cloudsdktool/cloud-sdk:583.0.0-slim@sha256:689584b66975635347fa55b0ee0629d1063b0b1b3526ba7920e24f4d28ed28fc"
 
 workspacesWes:
   appName:
