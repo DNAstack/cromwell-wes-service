@@ -200,6 +200,58 @@ tests:
           path: spec.replicas
           value: 1
 
+  - it: app.estimatedLoadedClasses defaults to the chart value
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ESTIMATED_LOADED_CLASSES
+            value: "28000"
+          count: 1
+
+  - it: app.estimatedLoadedClasses overrides the class count without a duplicate entry
+    set:
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      app.estimatedLoadedClasses: 1000000
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ESTIMATED_LOADED_CLASSES
+            value: "1000000"
+          count: 1
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ESTIMATED_LOADED_CLASSES
+            value: "28000"
+
   - it: IngressRoute not rendered when ingressRoute.enabled is false
     set:
       image.repository: gcr.io/dnastack-container-store

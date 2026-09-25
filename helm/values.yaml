@@ -31,6 +31,9 @@ app:
   configVersion: config-version
   secretHash: secrets-hash
   memoryLimit: "2048Mi"
+  # Class count the image's memory calculator sizes Metaspace from. Override it per
+  # environment in the customer values rather than changing the chart.
+  estimatedLoadedClasses: 28000
   replicas: 1
   spring:
     additionalProfiles: ""

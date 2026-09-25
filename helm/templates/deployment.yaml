@@ -288,7 +288,7 @@ spec:
             - name: ESTIMATED_THREADS
               value: "220"
             - name: ESTIMATED_LOADED_CLASSES
-              value: "28000"
+              value: {{ .Values.app.estimatedLoadedClasses | int | quote }}
             - name: SPRING_PROFILES_ACTIVE
               value: "default,cloud{{ if .Values.app.spring.additionalProfiles }},{{ .Values.app.spring.additionalProfiles }}{{ end }}"
             - name: SERVER_PORT
