@@ -55,15 +55,24 @@ COPY --from=0 /build/target/*.jar /app.jar
 COPY --from=0 /build/java-buildpack-memory-calculator /java-buildpack-memory-calculator
 EXPOSE 8090
 
+ENV DEFAULT_LOADED_CLASSES="25000"
+# Loaded-class count the image build derives from the service's observed jvm.loaded_classes in Datadog; empty for
+# local builds. The default class count is the larger of this and the floor; ESTIMATED_LOADED_CLASSES overrides both.
+ARG DERIVED_LOADED_CLASSES
+ENV DERIVED_LOADED_CLASSES="${DERIVED_LOADED_CLASSES}"
+
 # If the container has a memory limit, that limit (in bytes) is present in a file under /sys/fs/cgroup
 # In Linux 5.10.76, the value comes from memory.max.
 # If the container doesn't have a set memory limit, the file contains "max", hence we fall back to a default value of 2GiB
 # In Linux 5.4.129, the value comes from memory/memory.limit_in_bytes
 # If the container doesn't have a set memory limit, the file will be blank, hence we fall back to a default value of 2GiB
 CMD container_mem=$(cat "/sys/fs/cgroup/memory.max" || cat "/sys/fs/cgroup/memory/memory.limit_in_bytes") ; \
+    derived_loaded_classes="${DERIVED_LOADED_CLASSES:-0}"; \
+    loaded_classes="${ESTIMATED_LOADED_CLASSES:-$(( derived_loaded_classes > DEFAULT_LOADED_CLASSES ? derived_loaded_classes : DEFAULT_LOADED_CLASSES ))}"; \
+    echo "Loaded class count: $loaded_classes (ESTIMATED_LOADED_CLASSES=${ESTIMATED_LOADED_CLASSES:-unset}, derived ${DERIVED_LOADED_CLASSES:-none}, floor $DEFAULT_LOADED_CLASSES)"; \
     exec java $(/java-buildpack-memory-calculator \
     --total-memory=$([ "$container_mem" = "max" -o -z "$container_mem" -o "$container_mem" = "9223372036854771712" ] && echo "2097152000" || echo "$container_mem")B \
-    --loaded-class-count="${ESTIMATED_LOADED_CLASSES:-25000}" \
+    --loaded-class-count="$loaded_classes" \
     --thread-count="${ESTIMATED_THREADS:-100}" \
     --jvm-options="${JAVA_OPTS}") ${JAVA_OPTS} \
     -jar app.jar
