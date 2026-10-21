@@ -21,8 +21,10 @@ mkdir -p ${docker_context_dir}/.m2
 cp -rp src .mvn mvnw pom.xml ${docker_context_dir}
 cp ~/.m2/*.xml ${docker_context_dir}/.m2
 
+# DERIVED_LOADED_CLASSES is passed through from the environment when the image build sets it (see ci/impl/Dockerfile).
 docker build \
   --build-arg APP_NAME=${app_name} \
   --build-arg APP_VERSION=${app_version} \
+  --build-arg DERIVED_LOADED_CLASSES \
   -t ${target_image_name} \
   ci/impl
