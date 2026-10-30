@@ -6,7 +6,7 @@
 
 # This stage depends on a JDK image and uses Maven Wrapper to pull in dependencies and build the project
 # from source.
-FROM amazoncorretto:21-al2023 AS build
+FROM amazoncorretto:21-al2023@sha256:c568ffdb13330c2753d41c32639b52ae070a52658e0d7b17d2be09fdfac86afa AS build
 ARG APP_NAME
 ARG APP_VERSION
 
@@ -45,7 +45,7 @@ RUN ./mvnw -P -dnastack -B -o package
 
 # This stage uses a JRE rather than JDK because it doesn't have to build anything; it just runs the fat jar
 # produced by the previous stage.
-FROM amazoncorretto:21-alpine
+FROM amazoncorretto:21-alpine@sha256:4671567c1e0f43f93366a0a76fabbba6e9463c5448058e54fcc0c643830b2e5b
 ARG APP_NAME
 ARG APP_VERSION
 
