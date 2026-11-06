@@ -6,7 +6,7 @@
 
 # This stage depends on a JDK image and uses Maven Wrapper to pull in dependencies and build the project
 # from source.
-FROM amazoncorretto:21-al2023 AS build
+FROM amazoncorretto:21-al2023@sha256:90100f194336ef2326f5efe1ee747395fd87d8210ad6d60463196aa0c4b0ad4e AS build
 
 ARG APP_NAME
 ARG APP_VERSION
@@ -48,7 +48,7 @@ RUN ./mvnw -P -dnastack -B -o process-test-classes
 
 # This stage uses a JRE rather than JDK because it doesn't have to build anything; it just runs the fat jar
 # produced by the previous stage.
-FROM amazoncorretto:21-alpine
+FROM amazoncorretto:21-alpine@sha256:e37320b8ccdb61ed4272edf1f3c9836ca4ea660b37f048dbb6858901d5322145
 
 # Create a non-root user
 RUN adduser -D -h /home/testuser testuser
