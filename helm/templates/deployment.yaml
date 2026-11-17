@@ -105,6 +105,16 @@ data:
               location: "{{ coalesce ((.Values.global).cloud).region "us-central1" }}"
             }
 
+            {{- with .Values.app.cromwell.gcpNetwork }}
+            # Batch's own default-network lookup builds an invalid path, so name the network.
+            virtual-private-cloud {
+              network-name = {{ . | quote }}
+              {{- with $.Values.app.cromwell.gcpSubnetwork }}
+              subnetwork-name = {{ . | quote }}
+              {{- end }}
+            }
+            {{- end }}
+
             filesystems {
               gcs {
                 auth = "cromwell-service-account"

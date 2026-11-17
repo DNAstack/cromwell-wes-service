@@ -267,3 +267,60 @@ tests:
       ingressRoute.enabled: false
     asserts:
       - notFailedTemplate: {}
+
+  - it: Cromwell's Batch VMs attach to the default network and subnet by default
+    set: &batchNetworkBase
+      image.repository: gcr.io/dnastack-container-store
+      app.configVersion: cv
+      database.postgresInstance: pg
+      database.postgresVersion: "14"
+      cloud.clusterName: c
+      cloud.clusterNamespace: n
+      cloud.spaceDnsName: d
+      app.cromwell.gcpExecutionProject: project
+      app.cromwell.gcpBucket: gs://bucket
+      app.cromwell.gcpStagingLocation: gs://bucket/staging
+    documentSelector:
+      path: kind
+      value: ConfigMap
+    asserts:
+      - matchRegex:
+          path: data["cromwell.conf"]
+          pattern: 'virtual-private-cloud \{\s+network-name = "default"\s+subnetwork-name = "projects/\$\{projectId\}/regions/\*/subnetworks/default"\s+\}'
+
+  - it: app.cromwell.gcpNetwork and gcpSubnetwork override the Batch network
+    set:
+      <<: *batchNetworkBase
+      app.cromwell.gcpNetwork: projects/host/global/networks/shared
+      app.cromwell.gcpSubnetwork: projects/host/regions/*/subnetworks/batch
+    documentSelector:
+      path: kind
+      value: ConfigMap
+    asserts:
+      - matchRegex:
+          path: data["cromwell.conf"]
+          pattern: 'network-name = "projects/host/global/networks/shared"\s+subnetwork-name = "projects/host/regions/\*/subnetworks/batch"'
+
+  - it: an empty app.cromwell.gcpNetwork leaves the network choice to Batch
+    set:
+      <<: *batchNetworkBase
+      app.cromwell.gcpNetwork: ""
+    documentSelector:
+      path: kind
+      value: ConfigMap
+    asserts:
+      - notMatchRegex:
+          path: data["cromwell.conf"]
+          pattern: virtual-private-cloud
+
+  - it: a network without a subnet renders no subnetwork-name
+    set:
+      <<: *batchNetworkBase
+      app.cromwell.gcpSubnetwork: ""
+    documentSelector:
+      path: kind
+      value: ConfigMap
+    asserts:
+      - matchRegex:
+          path: data["cromwell.conf"]
+          pattern: 'virtual-private-cloud \{\s+network-name = "default"\s+\}'
