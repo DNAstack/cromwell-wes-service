@@ -431,6 +431,7 @@ spec:
               value: "cromwell-wes-service-cromwell"
             - name: DD_VERSION
               value: '{{- include "dnastack.app.version" . }}'
+            {{- include "mergeEnvLists" (dict "lists" (list .Values.cromwell.env) "template" $) | nindent 12 }}
           volumeMounts:
             - mountPath: "/secrets/cromwell/key.json"
               name: cromwell-sa
