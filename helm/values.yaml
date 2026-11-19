@@ -77,6 +77,9 @@ cloud:
 
 env: []   # extra env merged into main container via mergeEnvLists
 
+cromwell:
+  env: []   # extra env for the Cromwell sidecar
+
 test:
   keepalive:
     enabled: false
